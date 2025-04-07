@@ -5,7 +5,7 @@ import OnlineUsers from './OnlineUsers';
 import CharacterSelection from './CharacterSelection';
 import TavernMenu from './TavernMenu';
 import { useWebSocketStore } from '@/lib/websocket';
-import { Heading6 } from 'lucide-react';
+import { Menu } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 const TavernApp: FC = () => {
@@ -23,23 +23,45 @@ const TavernApp: FC = () => {
               {user ? `Welcome, ${user.username}!` : 'Welcome, Adventurer!'}
             </span>
             {user ? (
-              <Button 
-                variant="outline" 
-                size="sm"
-                className="bg-[#8B4513] text-[#E8D6B3] border-none hover:bg-[#9B5523] font-['VT323']"
-                onClick={toggleMenu} // Use menu button for logged in users
-              >
-                <Heading6 className="h-5 w-5" />
-              </Button>
+              <div className="menu-icon-container relative">
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  className="bg-[#4A3429] text-[#FFD700] border-2 border-[#8B4513] rounded-md hover:bg-[#3A2419] relative overflow-hidden"
+                  onClick={toggleMenu}
+                >
+                  <div className="absolute inset-0 bg-opacity-10 pointer-events-none"
+                      style={{
+                        backgroundImage: "linear-gradient(45deg, #3A2419 25%, #4A3429 25%, #4A3429 50%, #3A2419 50%, #3A2419 75%, #4A3429 75%, #4A3429 100%)",
+                        backgroundSize: "8px 8px"
+                      }}
+                  ></div>
+                  <Menu className="h-5 w-5 relative z-10" />
+                </Button>
+                {/* Hanging chains */}
+                <div className="absolute -top-3 left-4 w-1 h-3 bg-[#8B4513] rounded-sm"></div>
+                <div className="absolute -top-3 right-4 w-1 h-3 bg-[#8B4513] rounded-sm"></div>
+              </div>
             ) : (
-              <Button 
-                variant="outline" 
-                size="sm"
-                className="bg-[#8B4513] text-[#E8D6B3] border-none hover:bg-[#9B5523] font-['VT323']"
-                disabled // Disable button if not logged in, character selection already shows automatically
-              >
-                <Heading6 className="h-5 w-5" />
-              </Button>
+              <div className="menu-icon-container relative opacity-50">
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  className="bg-[#4A3429] text-[#FFD700] border-2 border-[#8B4513] rounded-md"
+                  disabled
+                >
+                  <div className="absolute inset-0 bg-opacity-10 pointer-events-none"
+                      style={{
+                        backgroundImage: "linear-gradient(45deg, #3A2419 25%, #4A3429 25%, #4A3429 50%, #3A2419 50%, #3A2419 75%, #4A3429 75%, #4A3429 100%)",
+                        backgroundSize: "8px 8px"
+                      }}
+                  ></div>
+                  <Menu className="h-5 w-5 relative z-10" />
+                </Button>
+                {/* Hanging chains */}
+                <div className="absolute -top-3 left-4 w-1 h-3 bg-[#8B4513] rounded-sm"></div>
+                <div className="absolute -top-3 right-4 w-1 h-3 bg-[#8B4513] rounded-sm"></div>
+              </div>
             )}
           </div>
         </div>
