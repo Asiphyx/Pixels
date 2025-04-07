@@ -1,0 +1,107 @@
+import { pgTable, text, serial, integer, timestamp, boolean } from "drizzle-orm/pg-core";
+import { createInsertSchema } from "drizzle-zod";
+import { z } from "zod";
+
+// User model
+export const users = pgTable("users", {
+  id: serial("id").primaryKey(),
+  username: text("username").notNull().unique(),
+  avatar: text("avatar").notNull(),
+  roomId: integer("room_id").notNull().default(1),
+  joinedAt: timestamp("joined_at").defaultNow(),
+  online: boolean("online").default(true)
+});
+
+export const insertUserSchema = createInsertSchema(users).omit({
+  id: true,
+  joinedAt: true
+});
+
+// Chat Room model
+export const rooms = pgTable("rooms", {
+  id: serial("id").primaryKey(),
+  name: text("name").notNull().unique(),
+  description: text("description").notNull()
+});
+
+export const insertRoomSchema = createInsertSchema(rooms).omit({
+  id: true
+});
+
+// Message model
+export const messages = pgTable("messages", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id"),
+  roomId: integer("room_id").notNull(),
+  content: text("content").notNull(),
+  type: text("type").notNull().default("user"), // user, system, bartender
+  bartenderId: integer("bartender_id"),
+  timestamp: timestamp("timestamp").defaultNow()
+});
+
+export const insertMessageSchema = createInsertSchema(messages).omit({
+  id: true,
+  timestamp: true
+});
+
+// Bartender model
+export const bartenders = pgTable("bartenders", {
+  id: serial("id").primaryKey(),
+  name: text("name").notNull(),
+  sprite: text("sprite").notNull(),
+  avatar: text("avatar").notNull(),
+  personality: text("personality").notNull()
+});
+
+export const insertBartenderSchema = createInsertSchema(bartenders).omit({
+  id: true
+});
+
+// Menu Item model
+export const menuItems = pgTable("menu_items", {
+  id: serial("id").primaryKey(),
+  name: text("name").notNull(),
+  description: text("description").notNull(),
+  price: integer("price").notNull(),
+  category: text("category").notNull(),
+  icon: text("icon").notNull()
+});
+
+export const insertMenuItemSchema = createInsertSchema(menuItems).omit({
+  id: true
+});
+
+// Type definitions
+export type User = typeof users.$inferSelect;
+export type InsertUser = z.infer<typeof insertUserSchema>;
+
+export type Room = typeof rooms.$inferSelect;
+export type InsertRoom = z.infer<typeof insertRoomSchema>;
+
+export type Message = typeof messages.$inferSelect;
+export type InsertMessage = z.infer<typeof insertMessageSchema>;
+
+export type Bartender = typeof bartenders.$inferSelect;
+export type InsertBartender = z.infer<typeof insertBartenderSchema>;
+
+export type MenuItem = typeof menuItems.$inferSelect;
+export type InsertMenuItem = z.infer<typeof insertMenuItemSchema>;
+
+// Websocket message types
+export enum WebSocketMessageType {
+  JOIN_ROOM = 'join_room',
+  LEAVE_ROOM = 'leave_room',
+  SEND_MESSAGE = 'send_message',
+  USER_JOINED = 'user_joined',
+  USER_LEFT = 'user_left',
+  NEW_MESSAGE = 'new_message',
+  ORDER_ITEM = 'order_item',
+  BARTENDER_RESPONSE = 'bartender_response',
+  ROOM_USERS = 'room_users',
+  ERROR = 'error'
+}
+
+export interface WebSocketMessage {
+  type: WebSocketMessageType;
+  payload: any;
+}
