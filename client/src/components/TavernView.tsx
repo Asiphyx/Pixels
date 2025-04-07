@@ -73,21 +73,20 @@ const TavernView: FC = () => {
       
       {/* Tavern Interior */}
       <div className="tavern-interior relative w-full h-full">
-        {/* Bar Counter - make it visually subtle but still interactive to give depth */}
-        <div className="bar-counter absolute bottom-20 left-0 right-0 h-8 bg-[#8B4513] opacity-70 shadow-md"></div>
+        {/* We'll skip the counter visual since we want the sprites positioned at the tavern table */}
         
-        {/* Bartenders - positioned to appear behind counter */}
-        <div className="bartenders absolute bottom-0 left-0 right-0 h-72 flex justify-around">
+        {/* Bartenders - positioned at the tavern table */}
+        <div className="bartenders absolute bottom-28 left-0 right-0 h-72 flex justify-around">
           {bartenders.map((bartender, index) => (
             <div 
               key={bartender.id}
               className={`bartender relative ${index > 0 ? 'hidden md:block' : ''} ${index > 1 ? 'md:hidden lg:block' : ''}`}
               style={{ 
-                transform: 'translateY(30%)', // Move sprites down to appear behind counter
+                transform: 'translateY(-10%)', // Adjust to position sprites at the tavern table
                 zIndex: 0
               }}
             >
-              <div className="name-tag absolute -top-10 left-1/2 transform -translate-x-1/2 bg-[#4A3429] bg-opacity-80 px-3 py-1 text-sm rounded text-[#E8D6B3] font-['VT323'] whitespace-nowrap shadow-md">
+              <div className="name-tag absolute -top-12 left-1/2 transform -translate-x-1/2 bg-[#2C1810] bg-opacity-75 px-3 py-1 text-sm rounded text-[#FFD700] font-['VT323'] whitespace-nowrap shadow-md border border-[#8B4513]">
                 {bartender.name}
               </div>
               <BartenderSprite sprite={bartender.sprite} />
