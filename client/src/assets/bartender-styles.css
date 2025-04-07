@@ -19,9 +19,9 @@
 /* Base styling for all bartender sprites */
 .bartender-sprite {
   position: relative;
-  overflow: hidden;
-  height: 200px;
-  width: 160px;
+  overflow: visible;
+  height: 300px;
+  width: 240px;
   display: flex;
   justify-content: center;
   align-items: center;
@@ -31,6 +31,8 @@
   width: 100%;
   height: 100%;
   object-fit: contain;
+  transform-origin: bottom center;
+  transform: scale(1.4);
 }
 
 /* Character-specific styling for custom effects */

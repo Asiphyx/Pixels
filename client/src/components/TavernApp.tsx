@@ -21,14 +21,25 @@ const TavernApp: FC = () => {
             <span className="hidden md:inline-block font-['VT323'] text-xl text-[#E8D6B3]">
               {user ? `Welcome, ${user.username}!` : 'Welcome, Adventurer!'}
             </span>
-            <Button 
-              variant="outline" 
-              size="sm"
-              className="bg-[#8B4513] text-[#E8D6B3] border-none hover:bg-[#9B5523] font-['VT323']"
-              onClick={() => document.getElementById('character-select')?.classList.remove('hidden')}
-            >
-              <Heading6 className="h-5 w-5" />
-            </Button>
+            {user ? (
+              <Button 
+                variant="outline" 
+                size="sm"
+                className="bg-[#8B4513] text-[#E8D6B3] border-none hover:bg-[#9B5523] font-['VT323']"
+                onClick={toggleMenu} // Use menu button for logged in users
+              >
+                <Heading6 className="h-5 w-5" />
+              </Button>
+            ) : (
+              <Button 
+                variant="outline" 
+                size="sm"
+                className="bg-[#8B4513] text-[#E8D6B3] border-none hover:bg-[#9B5523] font-['VT323']"
+                disabled // Disable button if not logged in, character selection already shows automatically
+              >
+                <Heading6 className="h-5 w-5" />
+              </Button>
+            )}
           </div>
         </div>
       </header>

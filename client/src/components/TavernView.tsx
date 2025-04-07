@@ -73,60 +73,26 @@ const TavernView: FC = () => {
       
       {/* Tavern Interior */}
       <div className="tavern-interior relative w-full h-full">
-        {/* Bar Counter */}
-        <div className="bar-counter absolute bottom-16 left-0 right-0 h-16 bg-[#8B4513]"></div>
+        {/* Bar Counter - make it visually subtle but still interactive to give depth */}
+        <div className="bar-counter absolute bottom-20 left-0 right-0 h-8 bg-[#8B4513] opacity-70 shadow-md"></div>
         
-        {/* Shelves */}
-        <div className="shelves absolute top-8 left-0 right-0 h-24 bg-[#4A3429] opacity-90 flex justify-around px-4">
-          {/* Bottles on shelves */}
-          {[
-            '#4A8F26', '#8F4A26', '#26648F', '#8F2626', 
-            '#7A268F', '#8F7A26', '#26418F', '#8F266E'
-          ].map((color, index) => (
-            <div 
-              key={index}
-              className="bottle mx-1 mt-auto" 
-              style={{ 
-                backgroundColor: color,
-                height: `${10 + Math.random() * 6}px`,
-                width: '6px'
-              }}
-            ></div>
-          ))}
-        </div>
-        
-        {/* Lights */}
-        <div className="lights absolute top-0 left-0 right-0 flex justify-around">
-          {[1, 2, 3].map((num) => (
-            <div 
-              key={num}
-              className="light w-8 h-16 bg-[#FFD700] opacity-60 rounded-full blur-md animate-pulse"
-              style={{ animationDelay: `${num * 0.3}s` }}
-            ></div>
-          ))}
-        </div>
-        
-        {/* Bartenders */}
-        <div className="bartenders absolute bottom-16 left-0 right-0 h-56 flex justify-around">
+        {/* Bartenders - positioned to appear behind counter */}
+        <div className="bartenders absolute bottom-0 left-0 right-0 h-72 flex justify-around">
           {bartenders.map((bartender, index) => (
             <div 
               key={bartender.id}
               className={`bartender relative ${index > 0 ? 'hidden md:block' : ''} ${index > 1 ? 'md:hidden lg:block' : ''}`}
+              style={{ 
+                transform: 'translateY(30%)', // Move sprites down to appear behind counter
+                zIndex: 0
+              }}
             >
-              <BartenderSprite sprite={bartender.sprite} />
-              <div className="name-tag absolute -bottom-6 left-1/2 transform -translate-x-1/2 bg-[#8B4513] px-2 py-1 text-xs rounded text-[#E8D6B3] font-['VT323'] whitespace-nowrap shadow-md">
+              <div className="name-tag absolute -top-10 left-1/2 transform -translate-x-1/2 bg-[#4A3429] bg-opacity-80 px-3 py-1 text-sm rounded text-[#E8D6B3] font-['VT323'] whitespace-nowrap shadow-md">
                 {bartender.name}
               </div>
+              <BartenderSprite sprite={bartender.sprite} />
             </div>
           ))}
-        </div>
-        
-        {/* Stools */}
-        <div className="stools absolute bottom-0 left-0 right-0 h-16 flex justify-around px-8">
-          <div className="stool w-10 h-10 rounded-full bg-[#4A3429]"></div>
-          <div className="stool w-10 h-10 rounded-full bg-[#4A3429]"></div>
-          <div className="stool w-10 h-10 rounded-full bg-[#4A3429] hidden md:block"></div>
-          <div className="stool w-10 h-10 rounded-full bg-[#4A3429] hidden lg:block"></div>
         </div>
       </div>
     </div>

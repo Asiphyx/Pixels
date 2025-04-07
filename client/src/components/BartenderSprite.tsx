@@ -12,7 +12,7 @@ const BartenderSprite: FC<BartenderSpriteProps> = ({ sprite }) => {
   const SpriteComponent = BartenderSpriteMap[lowerSprite as keyof typeof BartenderSpriteMap] || BartenderSpriteMap.sapphire;
   
   return (
-    <div className="flex items-center justify-center h-52">
+    <div className="flex items-end justify-center h-72">
       <SpriteComponent />
     </div>
   );

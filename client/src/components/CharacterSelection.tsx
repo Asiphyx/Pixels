@@ -3,7 +3,7 @@ import { useWebSocketStore } from '@/lib/websocket';
 import { CharacterAvatar, AvatarIconMap } from '@/assets/svgs/avatars';
 
 const CharacterSelection: FC = () => {
-  const { connect } = useWebSocketStore();
+  const { connect, user } = useWebSocketStore();
   const [selectedAvatar, setSelectedAvatar] = useState<string>('thorgrim');
   const [username, setUsername] = useState<string>('');
   
@@ -11,9 +11,6 @@ const CharacterSelection: FC = () => {
     if (username.trim()) {
       // Connect to WebSocket with selected character
       connect(username, selectedAvatar);
-      
-      // Hide modal
-      document.getElementById('character-select')?.classList.add('hidden');
     }
   };
   
@@ -26,10 +23,12 @@ const CharacterSelection: FC = () => {
     { name: 'Ranger', avatar: 'ranger' }
   ];
   
+  // Only show character selection if user is not connected
+  // This prevents the patron screen from staying visible after connection
   return (
     <div 
       id="character-select"
-      className="hidden fixed inset-0 flex items-center justify-center z-50 bg-black bg-opacity-50"
+      className={`${user ? 'hidden' : 'flex'} fixed inset-0 items-center justify-center z-50 bg-black bg-opacity-50`}
     >
       <div className="character-modal w-5/6 max-w-md z-10 bg-[#4A3429] rounded-sm overflow-hidden
                       shadow-[0_-4px_0_0px_#2C1810,0_4px_0_0px_#2C1810,-4px_0_0_0px_#2C1810,4px_0_0_0px_#2C1810,0_0_0_4px_#8B4513]">
