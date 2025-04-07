@@ -14,10 +14,11 @@ const TavernApp: FC = () => {
   return (
     <div className="tavern-app min-h-screen flex flex-col">
       {/* Header */}
-      <header className="bg-[#2C1810] py-4 px-6 border-b-4 border-[#8B4513]">
+      <header className="bg-[#2C1810] py-4 px-6 border-b-4 border-[#8B4513] relative z-50">
         <div className="container mx-auto flex justify-between items-center">
           <h1 className="font-['Press_Start_2P'] text-xl text-[#FFD700]">PIXEL TAVERN</h1>
           <div className="user-info flex items-center gap-3">
+            <OnlineUsers />
             <span className="hidden md:inline-block font-['VT323'] text-xl text-[#E8D6B3]">
               {user ? `Welcome, ${user.username}!` : 'Welcome, Adventurer!'}
             </span>
@@ -52,9 +53,6 @@ const TavernApp: FC = () => {
         {/* Chat & Interaction Panel */}
         <ChatPanel />
       </main>
-      
-      {/* Animated Patrons Sliding Menu */}
-      <OnlineUsers />
       
       {/* Modals */}
       <CharacterSelection />
