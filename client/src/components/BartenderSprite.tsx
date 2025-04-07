@@ -9,12 +9,43 @@ const BartenderSprite: FC<BartenderSpriteProps> = ({ sprite }) => {
   const lowerSprite = sprite.toLowerCase();
   const imagePath = BartenderImageMap[lowerSprite as keyof typeof BartenderImageMap] || BartenderImageMap.sapphire;
   
+  // Different style for each bartender to handle the specific image
+  let imageStyle = {};
+  
+  if (lowerSprite === 'sapphire') {
+    imageStyle = {
+      background: `url(${imagePath}) no-repeat center center`,
+      backgroundSize: 'contain',
+      width: '250px',
+      height: '400px',
+      imageRendering: 'pixelated'
+    };
+  } 
+  else if (lowerSprite === 'amethyst') {
+    imageStyle = {
+      background: `url(${imagePath}) no-repeat center center`,
+      backgroundSize: 'contain',
+      width: '250px',
+      height: '400px',
+      imageRendering: 'pixelated'
+    };
+  }
+  else if (lowerSprite === 'indigo') {
+    imageStyle = {
+      background: `url(${imagePath}) no-repeat center center`,
+      backgroundSize: 'contain',
+      width: '250px',
+      height: '400px',
+      imageRendering: 'pixelated'
+    };
+  }
+  
   return (
-    <div className="sprite-container w-[200px] h-[400px] flex items-center justify-center">
-      <img 
-        src={imagePath} 
-        alt={`Bartender ${sprite}`}
-        className="max-h-full max-w-full object-contain"
+    <div className="sprite-container flex items-center justify-center">
+      <div 
+        style={imageStyle}
+        className="mix-blend-multiply" 
+        title={`Bartender ${sprite}`}
       />
     </div>
   );

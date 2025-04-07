@@ -24,13 +24,18 @@ export const BartenderAvatar: FC<BartenderAvatarProps> = ({ name, size = 32 }) =
   
   return (
     <div 
-      className="bg-dark-wood rounded-full overflow-hidden"
+      className="rounded-full overflow-hidden bg-tavern-gold/50"
       style={{ width: size, height: size }}
     >
-      <img 
-        src={imagePath} 
-        alt={`Bartender ${name}`} 
-        className="w-full h-full object-cover object-top"
+      <div 
+        style={{ 
+          background: `url(${imagePath}) no-repeat center top`,
+          backgroundSize: 'cover',
+          width: '100%',
+          height: '100%',
+          imageRendering: 'pixelated',
+        }}
+        className="mix-blend-multiply" 
       />
     </div>
   );
