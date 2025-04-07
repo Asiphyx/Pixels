@@ -9,11 +9,19 @@ const ChatInput: FC = () => {
   const handleSendMessage = () => {
     if (!message.trim()) return;
     
+    const trimmedMessage = message.trim();
+    
     // Check for commands
-    if (message.trim() === '/menu') {
+    if (trimmedMessage === '/menu') {
       toggleMenu();
+    } else if (trimmedMessage.startsWith('/emote ')) {
+      // Extract the emote action
+      const emoteAction = trimmedMessage.substring(7).trim();
+      if (emoteAction) {
+        sendMessage(emoteAction, 'emote');
+      }
     } else {
-      sendMessage(message);
+      sendMessage(trimmedMessage);
     }
     
     setMessage('');

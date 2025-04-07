@@ -47,6 +47,16 @@ const ChatMessages: FC = () => {
           </div>
         );
         
+      case 'emote':
+        // Special styling for emote messages
+        return (
+          <div className="chat-message emote text-center">
+            <div className="chat-bubble p-2 max-w-[80%] mx-auto bg-transparent text-[#FFB6C1] italic">
+              {message.content}
+            </div>
+          </div>
+        );
+        
       case 'bartender':
         return (
           <div className="chat-message bartender flex">

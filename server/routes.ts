@@ -205,6 +205,28 @@ async function handleMessage(client: ConnectedClient, rawMessage: string) {
           const validatedPayload = insertMessageSchema.parse(payload);
           validatedPayload.roomId = client.roomId; // Ensure message goes to current room
           
+          // Handle emote messages
+          if (validatedPayload.type === 'emote') {
+            const user = await storage.getUser(client.userId);
+            const username = user?.username || 'Someone';
+            
+            // Create the emote message
+            const emoteMessage = await storage.createMessage({
+              userId: client.userId,
+              roomId: client.roomId,
+              content: `${username} ${validatedPayload.content}`,
+              type: "emote"
+            });
+            
+            // Broadcast the emote to everyone in the room
+            broadcastToRoom(client.roomId, {
+              type: WebSocketMessageType.NEW_MESSAGE,
+              payload: { message: emoteMessage }
+            });
+            
+            return;
+          }
+          
           // Process commands
           if (validatedPayload.content.startsWith("/")) {
             if (validatedPayload.content.startsWith("/menu")) {
