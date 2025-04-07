@@ -1,6 +1,7 @@
 import { FC, useEffect, useRef } from 'react';
 import BartenderSprite from './BartenderSprite';
 import { useWebSocketStore } from '@/lib/websocket';
+import { tavernBg } from '@/assets/images/tavern';
 
 const TavernView: FC = () => {
   const tavernRef = useRef<HTMLDivElement>(null);
@@ -56,15 +57,17 @@ const TavernView: FC = () => {
   return (
     <div 
       ref={tavernRef}
-      className="tavern-view relative h-[300px] md:h-auto md:flex-1 overflow-hidden 
+      className="tavern-view relative h-[400px] md:h-auto md:flex-1 overflow-hidden 
                  bg-[#2C1810] border-b-4 md:border-b-0 md:border-r-4 border-[#8B4513]"
     >
-      {/* Tavern Background Pattern */}
+      {/* Tavern Background Image */}
       <div 
-        className="tavern-bg absolute inset-0 opacity-90"
+        className="tavern-bg absolute inset-0"
         style={{
-          backgroundImage: `url("data:image/svg+xml,%3Csvg width='20' height='20' viewBox='0 0 20 20' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='%23594A42' fill-opacity='0.4'%3E%3Cpath d='M0 0h20v20H0V0zm10 17a7 7 0 1 0 0-14 7 7 0 0 0 0 14zm0-4a3 3 0 1 1 0-6 3 3 0 0 1 0 6z'/%3E%3C/g%3E%3C/svg%3E")`,
-          backgroundSize: '10px 10px'
+          backgroundImage: `url(${tavernBg})`,
+          backgroundSize: 'cover',
+          backgroundPosition: 'center',
+          opacity: '0.9'
         }}
       ></div>
       
@@ -104,14 +107,14 @@ const TavernView: FC = () => {
         </div>
         
         {/* Bartenders */}
-        <div className="bartenders absolute bottom-16 left-0 right-0 h-32 flex justify-around">
+        <div className="bartenders absolute bottom-16 left-0 right-0 h-56 flex justify-around">
           {bartenders.map((bartender, index) => (
             <div 
               key={bartender.id}
               className={`bartender relative ${index > 0 ? 'hidden md:block' : ''} ${index > 1 ? 'md:hidden lg:block' : ''}`}
             >
               <BartenderSprite sprite={bartender.sprite} />
-              <div className="name-tag absolute -bottom-6 left-1/2 transform -translate-x-1/2 bg-[#8B4513] px-2 py-1 text-xs rounded text-[#E8D6B3] font-['VT323']">
+              <div className="name-tag absolute -bottom-6 left-1/2 transform -translate-x-1/2 bg-[#8B4513] px-2 py-1 text-xs rounded text-[#E8D6B3] font-['VT323'] whitespace-nowrap shadow-md">
                 {bartender.name}
               </div>
             </div>

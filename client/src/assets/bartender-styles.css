@@ -5,7 +5,6 @@
   position: relative;
   overflow: hidden;
   border-radius: 50%;
-  background-color: #4A3429;
   display: flex;
   justify-content: center;
   align-items: center;
@@ -15,15 +14,14 @@
   width: 100%;
   height: 100%;
   object-fit: cover;
-  mix-blend-mode: multiply;
 }
 
 /* Base styling for all bartender sprites */
 .bartender-sprite {
   position: relative;
   overflow: hidden;
-  height: 100px;
-  width: 80px;
+  height: 200px;
+  width: 160px;
   display: flex;
   justify-content: center;
   align-items: center;
@@ -33,18 +31,29 @@
   width: 100%;
   height: 100%;
   object-fit: contain;
-  mix-blend-mode: multiply;
 }
 
-/* Character-specific backgrounds for better visibility */
+/* Character-specific styling for custom effects */
 .bartender-sapphire {
-  background-color: rgba(0, 100, 200, 0.1);
+  /* Style for Sapphire - pink-haired character */
 }
 
 .bartender-amethyst {
-  background-color: rgba(138, 43, 226, 0.1);
+  /* Style for Amethyst - redhead character */
 }
 
 .bartender-indigo {
-  background-color: rgba(75, 0, 130, 0.1);
+  /* Style for Indigo - blue-haired character with beer */
+}
+
+.bartender-ruby {
+  /* Style for Ruby - black-haired character with beer */
+}
+
+.bartender-emerald {
+  /* Style for Emerald - purple-haired character with beer */
+}
+
+.bartender-jade {
+  /* Style for Jade - purple-haired character with beer */
 }

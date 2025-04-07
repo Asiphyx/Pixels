@@ -1,13 +1,16 @@
 import { FC } from 'react';
 
-// Import bartender images from attached assets
-import { sapphire, amethyst, indigo } from '@/assets/images/bartenders';
+// Import bartender images from backgroundless assets
+import { sapphire, amethyst, indigo, ruby, emerald, jade } from '@/assets/images/backgroundless';
 
 // Map bartender names to their image paths
 export const BartenderImageMap = {
   sapphire,
   amethyst,
-  indigo
+  indigo,
+  ruby,
+  emerald,
+  jade
 };
 
 export interface BartenderAvatarProps {
@@ -65,9 +68,42 @@ export const IndigoSprite: FC = () => (
   </div>
 );
 
+export const RubySprite: FC = () => (
+  <div className="bartender-sprite bartender-ruby">
+    <img 
+      src={ruby}
+      alt="Bartender Ruby"
+      loading="lazy" 
+    />
+  </div>
+);
+
+export const EmeraldSprite: FC = () => (
+  <div className="bartender-sprite bartender-emerald">
+    <img 
+      src={emerald}
+      alt="Bartender Emerald"
+      loading="lazy" 
+    />
+  </div>
+);
+
+export const JadeSprite: FC = () => (
+  <div className="bartender-sprite bartender-jade">
+    <img 
+      src={jade}
+      alt="Bartender Jade"
+      loading="lazy" 
+    />
+  </div>
+);
+
 // Map of sprite components for easy access
 export const BartenderSpriteMap = {
   sapphire: SapphireSprite,
   amethyst: AmethystSprite,
-  indigo: IndigoSprite
+  indigo: IndigoSprite,
+  ruby: RubySprite,
+  emerald: EmeraldSprite,
+  jade: JadeSprite
 };
