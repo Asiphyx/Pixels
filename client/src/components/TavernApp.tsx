@@ -51,10 +51,10 @@ const TavernApp: FC = () => {
         
         {/* Chat & Interaction Panel */}
         <ChatPanel />
-        
-        {/* Online Users Sidebar (Hidden on Mobile) */}
-        <OnlineUsers />
       </main>
+      
+      {/* Animated Patrons Sliding Menu */}
+      <OnlineUsers />
       
       {/* Modals */}
       <CharacterSelection />

@@ -16,16 +16,17 @@ export const BartenderImageMap = {
 export interface BartenderAvatarProps {
   name: string;
   size?: number;
+  className?: string;
 }
 
 // Bartender avatar component - used for chat messages and small displays
-export const BartenderAvatar: FC<BartenderAvatarProps> = ({ name, size = 32 }) => {
+export const BartenderAvatar: FC<BartenderAvatarProps> = ({ name, size = 32, className = "" }) => {
   const lowerName = name.toLowerCase();
   const imagePath = BartenderImageMap[lowerName as keyof typeof BartenderImageMap] || BartenderImageMap.sapphire;
   
   return (
     <div 
-      className="bartender-avatar"
+      className={`bartender-avatar ${className}`}
       style={{ width: size, height: size }}
     >
       <img 

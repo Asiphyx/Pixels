@@ -59,3 +59,76 @@
 .bartender-jade {
   /* Style for Jade - purple-haired character with beer */
 }
+
+/* Tavern Sign Styling - Animated sliding menu */
+.tavern-sign {
+  transform: perspective(1000px) rotateY(-5deg);
+  transition: transform 0.3s ease;
+  box-shadow: 5px 5px 10px rgba(0, 0, 0, 0.3);
+}
+
+.tavern-sign:hover {
+  transform: perspective(1000px) rotateY(-15deg);
+}
+
+.sign-board {
+  box-shadow: 
+    inset 0 0 10px rgba(0,0,0,0.5),
+    0 0 5px rgba(255, 215, 0, 0.3);
+  background-image: linear-gradient(45deg, #3A2419 25%, #4A3429 25%, #4A3429 50%, #3A2419 50%, #3A2419 75%, #4A3429 75%, #4A3429 100%);
+  background-size: 10px 10px;
+}
+
+.sign-board::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(255, 215, 0, 0.05);
+  pointer-events: none;
+}
+
+.sign-chains {
+  pointer-events: none;
+}
+
+.chain {
+  border-radius: 1px;
+  box-shadow: 0 0 3px rgba(0, 0, 0, 0.5);
+}
+
+.patrons-menu {
+  position: relative;
+  box-shadow: 5px 5px 15px rgba(0, 0, 0, 0.4);
+  background-image: linear-gradient(to bottom, #3A2419, #4A3429);
+}
+
+.user-item {
+  cursor: pointer;
+  border-bottom: 1px solid rgba(139, 69, 19, 0.3);
+  transition: all 0.2s ease;
+}
+
+.user-item:last-child {
+  border-bottom: none;
+}
+
+.user-item:hover {
+  background-color: rgba(139, 69, 19, 0.5);
+  transform: translateX(3px);
+}
+
+/* Add some glow for highlight effect */
+.patrons-menu::before {
+  content: '';
+  position: absolute;
+  top: -2px;
+  left: 0;
+  right: 0;
+  height: 4px;
+  background: linear-gradient(to right, transparent, rgba(255, 215, 0, 0.6), transparent);
+  pointer-events: none;
+  border-radius: 2px;
+}
