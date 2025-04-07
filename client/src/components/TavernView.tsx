@@ -86,10 +86,10 @@ const TavernView: FC = () => {
                 zIndex: 0
               }}
             >
-              <div className="name-tag absolute -top-12 left-1/2 transform -translate-x-1/2 bg-[#2C1810] bg-opacity-75 px-3 py-1 text-sm rounded text-[#FFD700] font-['VT323'] whitespace-nowrap shadow-md border border-[#8B4513]">
+              <BartenderSprite sprite={bartender.sprite} />
+              <div className="name-tag absolute top-40 left-1/2 transform -translate-x-1/2 bg-[#2C1810] bg-opacity-75 px-3 py-1 text-sm rounded text-[#FFD700] font-['VT323'] whitespace-nowrap shadow-md border border-[#8B4513]">
                 {bartender.name}
               </div>
-              <BartenderSprite sprite={bartender.sprite} />
             </div>
           ))}
         </div>
