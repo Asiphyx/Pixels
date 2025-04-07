@@ -75,14 +75,14 @@ const TavernView: FC = () => {
       <div className="tavern-interior relative w-full h-full">
         {/* We'll skip the counter visual since we want the sprites positioned at the tavern table */}
         
-        {/* Bartenders - positioned at the tavern table */}
-        <div className="bartenders absolute bottom-28 left-0 right-0 h-72 flex justify-around">
+        {/* Bartenders - positioned directly at the tavern table with no gap */}
+        <div className="bartenders absolute bottom-32 left-0 right-0 h-72 flex justify-around">
           {bartenders.map((bartender, index) => (
             <div 
               key={bartender.id}
               className={`bartender relative ${index > 0 ? 'hidden md:block' : ''} ${index > 1 ? 'md:hidden lg:block' : ''}`}
               style={{ 
-                transform: 'translateY(-10%)', // Adjust to position sprites at the tavern table
+                transform: 'translateY(0%)', // No vertical adjustment needed
                 zIndex: 0
               }}
             >
