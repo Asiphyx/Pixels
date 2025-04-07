@@ -67,15 +67,6 @@ export class MemStorage implements IStorage {
   }
 
   private initializeDefaultData() {
-    // Create default rooms
-    const defaultRooms: InsertRoom[] = [
-      { name: "Main Hall", description: "The main gathering area of the tavern." },
-      { name: "Ale Corner", description: "A cozy corner for ale enthusiasts." },
-      { name: "Bard's Stage", description: "Where tales are told and songs are sung." }
-    ];
-    
-    defaultRooms.forEach(room => this.createRoom(room));
-    
     // Create default bartenders - the three sisters
     const defaultBartenders: InsertBartender[] = [
       { 
@@ -98,7 +89,17 @@ export class MemStorage implements IStorage {
       }
     ];
     
+    // Create bartenders first so we have their IDs
     defaultBartenders.forEach(bartender => this.createBartender(bartender));
+    
+    // Create default rooms - one for each sister
+    const defaultRooms: InsertRoom[] = [
+      { name: "The Hearth", description: "A warm and lively area with Sapphire's cheerful service." },
+      { name: "The Midnight Nook", description: "A dimly lit corner where Amethyst shares mystical insights." },
+      { name: "The Scholar's Rest", description: "A quiet section where Indigo offers wisdom and calm reflection." }
+    ];
+    
+    defaultRooms.forEach(room => this.createRoom(room));
     
     // Create default menu items
     const defaultDrinks: InsertMenuItem[] = [

@@ -88,12 +88,26 @@ async function handleBartenderResponse(message: string, roomId: number) {
   const shouldRespond = Math.random() > 0.6; // 40% chance to respond
   
   if (shouldRespond) {
-    // Get a random bartender
-    const bartenders = await storage.getBartenders();
-    const randomBartender = bartenders[Math.floor(Math.random() * bartenders.length)];
+    // Get the bartender for this specific room
+    // Room 1 = Sapphire, Room 2 = Amethyst, Room 3 = Indigo
+    let bartenderId = 1; // Default to Sapphire (first room)
+    
+    if (roomId === 1) {
+      bartenderId = 1; // Sapphire for The Hearth
+    } else if (roomId === 2) {
+      bartenderId = 2; // Amethyst for The Midnight Nook
+    } else if (roomId === 3) {
+      bartenderId = 3; // Indigo for The Scholar's Rest
+    }
+    
+    const bartender = await storage.getBartender(bartenderId);
+    
+    if (!bartender) {
+      return false;
+    }
     
     // Generate a response
-    const response = await getBartenderResponse(message, randomBartender.id);
+    const response = await getBartenderResponse(message, bartender.id);
     
     // Create and store the bartender message
     const bartenderMessage = await storage.createMessage({
@@ -101,7 +115,7 @@ async function handleBartenderResponse(message: string, roomId: number) {
       roomId,
       content: response,
       type: "bartender",
-      bartenderId: randomBartender.id
+      bartenderId: bartender.id
     });
     
     // Broadcast the bartender's message
@@ -109,7 +123,7 @@ async function handleBartenderResponse(message: string, roomId: number) {
       type: WebSocketMessageType.BARTENDER_RESPONSE,
       payload: {
         message: bartenderMessage,
-        bartender: randomBartender
+        bartender: bartender
       }
     });
     
@@ -274,22 +288,34 @@ async function handleMessage(client: ConnectedClient, rawMessage: string) {
               setTimeout(async () => {
                 await handleBartenderResponse(`/order ${item}`, client.roomId);
                 
-                // After a delay, show serving animation
+                // After a delay, show serving animation with the appropriate bartender
                 setTimeout(async () => {
-                  const bartenders = await storage.getBartenders();
-                  const randomBartender = bartenders[Math.floor(Math.random() * bartenders.length)];
+                  // Get the bartender for this specific room
+                  let bartenderId = 1; // Default to Sapphire (first room)
                   
-                  const serveMessage = await storage.createMessage({
-                    userId: null,
-                    roomId: client.roomId,
-                    content: `${randomBartender.name} slides a fresh ${item} across the counter to you.`,
-                    type: "system"
-                  });
+                  if (client.roomId === 1) {
+                    bartenderId = 1; // Sapphire for The Hearth
+                  } else if (client.roomId === 2) {
+                    bartenderId = 2; // Amethyst for The Midnight Nook
+                  } else if (client.roomId === 3) {
+                    bartenderId = 3; // Indigo for The Scholar's Rest
+                  }
                   
-                  broadcastToRoom(client.roomId, {
-                    type: WebSocketMessageType.NEW_MESSAGE,
-                    payload: { message: serveMessage }
-                  });
+                  const bartender = await storage.getBartender(bartenderId);
+                  
+                  if (bartender) {
+                    const serveMessage = await storage.createMessage({
+                      userId: null,
+                      roomId: client.roomId,
+                      content: `${bartender.name} slides a fresh ${item} across the counter to you.`,
+                      type: "system"
+                    });
+                    
+                    broadcastToRoom(client.roomId, {
+                      type: WebSocketMessageType.NEW_MESSAGE,
+                      payload: { message: serveMessage }
+                    });
+                  }
                 }, 2000);
               }, 1000);
               
@@ -345,25 +371,40 @@ async function handleMessage(client: ConnectedClient, rawMessage: string) {
         
         // Trigger bartender response
         setTimeout(async () => {
-          const bartenders = await storage.getBartenders();
-          const randomBartender = bartenders[Math.floor(Math.random() * bartenders.length)];
+          // Get the bartender for this specific room
+          // Room 1 = Sapphire, Room 2 = Amethyst, Room 3 = Indigo
+          let bartenderId = 1; // Default to Sapphire (first room)
+          
+          if (client.roomId === 1) {
+            bartenderId = 1; // Sapphire for The Hearth
+          } else if (client.roomId === 2) {
+            bartenderId = 2; // Amethyst for The Midnight Nook
+          } else if (client.roomId === 3) {
+            bartenderId = 3; // Indigo for The Scholar's Rest
+          }
+          
+          const bartender = await storage.getBartender(bartenderId);
+          
+          if (!bartender) {
+            return;
+          }
           
           // Get personalized response from the bartender
-          const response = await getBartenderResponse(`/order ${menuItem.name}`, randomBartender.id);
+          const response = await getBartenderResponse(`/order ${menuItem.name}`, bartender.id);
           
           const responseMessage = await storage.createMessage({
             userId: null,
             roomId: client.roomId,
             content: response,
             type: "bartender",
-            bartenderId: randomBartender.id
+            bartenderId: bartender.id
           });
           
           broadcastToRoom(client.roomId, {
             type: WebSocketMessageType.BARTENDER_RESPONSE,
             payload: {
               message: responseMessage,
-              bartender: randomBartender
+              bartender: bartender
             }
           });
           
@@ -372,7 +413,7 @@ async function handleMessage(client: ConnectedClient, rawMessage: string) {
             const serveMessage = await storage.createMessage({
               userId: null,
               roomId: client.roomId,
-              content: `${randomBartender.name} slides a fresh ${menuItem.name} across the counter to you.`,
+              content: `${bartender.name} slides a fresh ${menuItem.name} across the counter to you.`,
               type: "system"
             });
             
@@ -544,25 +585,37 @@ export async function registerRoutes(app: Express): Promise<Server> {
                   payload: { message: systemMessage }
                 });
                 
-                // Send welcome message from a random bartender
-                const bartenders = await storage.getBartenders();
-                const randomBartender = bartenders[Math.floor(Math.random() * bartenders.length)];
+                // Send welcome message from the appropriate bartender for this room
+                // Room 1 = Sapphire, Room 2 = Amethyst, Room 3 = Indigo
+                let bartenderId = 1; // Default to Sapphire (first room)
                 
-                const welcomeMessage = await storage.createMessage({
-                  userId: null,
-                  roomId: user.roomId,
-                  content: `Greetings, traveler! I'm ${randomBartender.name}, what can I get for ya today?`,
-                  type: "bartender",
-                  bartenderId: randomBartender.id
-                });
+                if (user.roomId === 1) {
+                  bartenderId = 1; // Sapphire for The Hearth
+                } else if (user.roomId === 2) {
+                  bartenderId = 2; // Amethyst for The Midnight Nook
+                } else if (user.roomId === 3) {
+                  bartenderId = 3; // Indigo for The Scholar's Rest
+                }
                 
-                broadcastToRoom(user.roomId, {
-                  type: WebSocketMessageType.BARTENDER_RESPONSE,
-                  payload: {
-                    message: welcomeMessage,
-                    bartender: randomBartender
-                  }
-                });
+                const bartender = await storage.getBartender(bartenderId);
+                
+                if (bartender) {
+                  const welcomeMessage = await storage.createMessage({
+                    userId: null,
+                    roomId: user.roomId,
+                    content: `Greetings, traveler! I'm ${bartender.name}, what can I get for ya today?`,
+                    type: "bartender",
+                    bartenderId: bartender.id
+                  });
+                  
+                  broadcastToRoom(user.roomId, {
+                    type: WebSocketMessageType.BARTENDER_RESPONSE,
+                    payload: {
+                      message: welcomeMessage,
+                      bartender: bartender
+                    }
+                  });
+                }
                 
                 // Update user list
                 const onlineUsers = await storage.getOnlineUsers(user.roomId);
