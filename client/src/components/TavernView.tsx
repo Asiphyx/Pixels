@@ -73,17 +73,19 @@ const TavernView: FC = () => {
       
       {/* Tavern Interior */}
       <div className="tavern-interior relative w-full h-full">
-        {/* We'll skip the counter visual since we want the sprites positioned at the tavern table */}
+        {/* Add a counter visual that aligns with where we're clipping the sprites */}
+        <div className="bar-counter absolute bottom-24 left-0 right-0 h-3 bg-[#8B4513] shadow-md z-10"></div>
         
-        {/* Bartenders - positioned exactly at the tavern table */}
+        {/* Bartenders - positioned behind the counter with lower bodies hidden */}
         <div className="bartenders absolute bottom-24 left-0 right-0 h-72 flex justify-around">
           {bartenders.map((bartender, index) => (
             <div 
               key={bartender.id}
-              className={`bartender relative ${index > 0 ? 'hidden md:block' : ''} ${index > 1 ? 'md:hidden lg:block' : ''}`}
+              className={`bartender relative overflow-hidden ${index > 0 ? 'hidden md:block' : ''} ${index > 1 ? 'md:hidden lg:block' : ''}`}
               style={{ 
-                transform: 'translateY(0%)', // Positioned exactly at the table level
-                zIndex: 0
+                transform: 'translateY(20%)', // Move down to align with counter
+                zIndex: 0,
+                clipPath: 'polygon(0 0, 100% 0, 100% 60%, 0 60%)' // Cut off at the red line (counter)
               }}
             >
               <div className="name-tag absolute -top-12 left-1/2 transform -translate-x-1/2 bg-[#2C1810] bg-opacity-75 px-3 py-1 text-sm rounded text-[#FFD700] font-['VT323'] whitespace-nowrap shadow-md border border-[#8B4513]">
