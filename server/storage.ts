@@ -76,25 +76,25 @@ export class MemStorage implements IStorage {
     
     defaultRooms.forEach(room => this.createRoom(room));
     
-    // Create default bartenders
+    // Create default bartenders - the three sisters
     const defaultBartenders: InsertBartender[] = [
       { 
-        name: "Ruby", 
-        sprite: "ruby", 
-        avatar: "ruby", 
-        personality: "Friendly and energetic, knows all the local gossip."
+        name: "Sapphire", 
+        sprite: "sapphire", 
+        avatar: "sapphire", 
+        personality: "The blue-haired sister. Friendly and energetic, knows all the local gossip."
       },
       { 
-        name: "Azure", 
-        sprite: "azure", 
-        avatar: "azure", 
-        personality: "Calm and collected, excellent listener with sage advice."
+        name: "Amethyst", 
+        sprite: "amethyst", 
+        avatar: "amethyst", 
+        personality: "The purple-haired sister. Mysterious and witty, knows secrets of the magical realm."
       },
       { 
-        name: "Violet", 
-        sprite: "violet", 
-        avatar: "violet", 
-        personality: "Mysterious and witty, knows secrets of the magical realm."
+        name: "Indigo", 
+        sprite: "indigo", 
+        avatar: "indigo", 
+        personality: "The sister with dark blue-purple hair. Calm and collected, excellent listener with sage advice."
       }
     ];
     

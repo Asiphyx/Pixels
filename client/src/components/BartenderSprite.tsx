@@ -7,7 +7,7 @@ interface BartenderSpriteProps {
 
 const BartenderSprite: FC<BartenderSpriteProps> = ({ sprite }) => {
   const lowerSprite = sprite.toLowerCase();
-  const SpriteComponent = BartenderSpriteMap[lowerSprite as keyof typeof BartenderSpriteMap] || BartenderSpriteMap.ruby;
+  const SpriteComponent = BartenderSpriteMap[lowerSprite as keyof typeof BartenderSpriteMap] || BartenderSpriteMap.sapphire;
   
   return (
     <div className="sprite-container w-[100px] h-[200px]">

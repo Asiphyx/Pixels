@@ -20,30 +20,67 @@ interface ConnectedClient {
 
 const connectedClients: Map<WebSocket, ConnectedClient> = new Map();
 
-// Simple bartender AI logic
-function getBartenderResponse(message: string, bartenderId: number): string {
-  // Process commands
+// Bartender AI logic for the three sisters
+async function getBartenderResponse(message: string, bartenderId: number): Promise<string> {
+  // Get the bartender to determine which sister is responding
+  const bartender = await storage.getBartender(bartenderId);
+  
+  // Process orders
   if (message.startsWith("/order")) {
     const item = message.substring(7).trim();
-    return `Coming right up! One ${item} for ya!`;
+    
+    // Different responses based on which sister
+    if (bartender?.name === "Sapphire") {
+      return `Coming right up! One ${item} for ya! Want anything else with that?`;
+    } else if (bartender?.name === "Amethyst") {
+      return `Ah, the ${item}... an interesting choice. Your aura suggests you'll enjoy it.`;
+    } else {
+      return `One ${item}, prepared with care. Take your time enjoying it.`;
+    }
   }
   
-  // Generic responses
-  const genericResponses = [
-    "Need a refill on that drink?",
-    "You haven't heard about the dragon sightings, have ya?",
-    "Keep it down, some patrons are trying to enjoy their meals!",
-    "Interesting tale, traveler! Got any more stories to share?",
-    "The innkeeper's been lookin' for help with some odd jobs. Interested?",
-    "Have ya tried our Dragon's Breath Ale? It's our specialty!",
-    "Been seeing some strange folk around these parts lately...",
-    "Did ya hear about the treasure in the mountains? Just rumors, I'm sure.",
-    "Mind yer manners in here, we don't want any trouble tonight.",
-    "That's quite the weapon you've got there. Hope you don't need to use it.",
-    "Weather's been strange lately. Some say it's magical in nature."
+  // Personality-specific responses for each sister
+  const sapphireResponses = [
+    "Need a refill? Just give me a shout!",
+    "Did you hear about the dragon sightings? So exciting!",
+    "You should try our Dragon's Breath Ale - it's our specialty!",
+    "The locals say there's treasure in the mountains! We should go looking sometime!",
+    "I love meeting new travelers! Where are you from?",
+    "My sisters and I have been running this tavern since our parents retired to the coast",
+    "Weather's perfect for an adventure, don't you think?",
+    "You look like someone with some amazing stories - care to share one?"
   ];
   
-  return genericResponses[Math.floor(Math.random() * genericResponses.length)];
+  const amethystResponses = [
+    "I sense an interesting aura about you...",
+    "The stars are aligned strangely tonight. Be cautious in your travels.",
+    "Some say the forest whispers secrets at midnight. I've heard them.",
+    "This tavern stands on ancient grounds. Sometimes the past bleeds through.",
+    "Have you tried our Midnight Whiskey? It reveals hidden truths...",
+    "Your future is... hmm, unclear. The paths diverge in interesting ways.",
+    "That weapon you carry has seen blood, hasn't it? It remembers.",
+    "My tattoos? Each one tells a story of power gained or secrets learned."
+  ];
+  
+  const indigoResponses = [
+    "Take your time. Good drinks, like good advice, shouldn't be rushed.",
+    "If you're seeking information, you'd be wise to speak with the merchants by the east gate.",
+    "The guild is recruiting skilled hands. I could put in a good word.",
+    "Mind your coin purse. Not everyone in here is as honest as they appear.",
+    "My sisters are excellent company, but I notice what others miss.",
+    "Need a quiet place to rest? The rooms upstairs are well-kept and private.",
+    "That injury looks fresh. We have healing potions if you require one.",
+    "The trouble up north has brought many refugees to our doors lately."
+  ];
+  
+  // Select responses based on bartender
+  if (bartender?.name === "Sapphire") {
+    return sapphireResponses[Math.floor(Math.random() * sapphireResponses.length)];
+  } else if (bartender?.name === "Amethyst") {
+    return amethystResponses[Math.floor(Math.random() * amethystResponses.length)];
+  } else {
+    return indigoResponses[Math.floor(Math.random() * indigoResponses.length)];
+  }
 }
 
 // Handles the AI bartender response logic
@@ -56,7 +93,7 @@ async function handleBartenderResponse(message: string, roomId: number) {
     const randomBartender = bartenders[Math.floor(Math.random() * bartenders.length)];
     
     // Generate a response
-    const response = getBartenderResponse(message, randomBartender.id);
+    const response = await getBartenderResponse(message, randomBartender.id);
     
     // Create and store the bartender message
     const bartenderMessage = await storage.createMessage({
@@ -289,10 +326,13 @@ async function handleMessage(client: ConnectedClient, rawMessage: string) {
           const bartenders = await storage.getBartenders();
           const randomBartender = bartenders[Math.floor(Math.random() * bartenders.length)];
           
+          // Get personalized response from the bartender
+          const response = await getBartenderResponse(`/order ${menuItem.name}`, randomBartender.id);
+          
           const responseMessage = await storage.createMessage({
             userId: null,
             roomId: client.roomId,
-            content: `Coming right up! One ${menuItem.name} for ya!`,
+            content: response,
             type: "bartender",
             bartenderId: randomBartender.id
           });
