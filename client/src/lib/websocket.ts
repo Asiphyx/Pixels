@@ -45,21 +45,13 @@ export const useWebSocketStore = create<WebSocketState>((set, get) => ({
       // Create a new WebSocket connection
       const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
       const host = window.location.host; // Use the current host for both dev and prod
-      const wsUrl = `${protocol}//${host}/ws`;
+      const wsUrl = `${protocol}//${host}/ws?token=${encodeURIComponent(username)}&avatar=${encodeURIComponent(avatar)}`;
       console.log('Connecting to WebSocket URL:', wsUrl);
       const socket = new WebSocket(wsUrl);
       
       socket.onopen = () => {
-        // Send user information
-        socket.send(JSON.stringify({
-          type: WebSocketMessageType.USER_JOINED,
-          payload: {
-            username,
-            avatar,
-            roomId: 1,
-            online: true
-          }
-        }));
+        // No need to send user info as we already included it in the URL query parameters
+        console.log('WebSocket connection established');
         
         set({ 
           socket,

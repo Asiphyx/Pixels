@@ -597,9 +597,179 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Setup WebSocket server
   const wss = new WebSocketServer({ server: httpServer, path: '/ws' });
   
-  wss.on('connection', async (socket) => {
+  wss.on('connection', async (socket, request) => {
     try {
-      // Wait for initial authentication/registration message
+      // Support both query parameter authentication and message-based auth
+      const url = new URL(request.url || '', `http://${request.headers.host}`);
+      const token = url.searchParams.get('token');
+      const avatar = url.searchParams.get('avatar');
+      
+      // If we have query parameters, use them for direct authentication
+      if (token && avatar) {
+        try {
+          const userData = {
+            username: token,
+            avatar: avatar,
+            roomId: 1,
+            online: true
+          };
+          
+          // Check if username is taken
+          const existingUser = await storage.getUserByUsername(userData.username);
+          if (existingUser) {
+            if (existingUser.online) {
+              socket.send(JSON.stringify({
+                type: WebSocketMessageType.ERROR,
+                payload: { message: "Username already taken" }
+              }));
+              socket.close();
+              return;
+            } else {
+              // User exists but is offline, update to online
+              await storage.updateUserStatus(existingUser.id, true);
+              
+              // Add client to connected clients
+              connectedClients.set(socket, {
+                socket,
+                userId: existingUser.id,
+                roomId: existingUser.roomId
+              });
+              
+              // Send welcome back message
+              socket.send(JSON.stringify({
+                type: WebSocketMessageType.USER_JOINED,
+                payload: { 
+                  user: existingUser,
+                  rooms: await storage.getRooms(),
+                  bartenders: await storage.getBartenders() 
+                }
+              }));
+              
+              // Create system message for welcome back
+              const systemMessage = await storage.createMessage({
+                userId: null,
+                roomId: existingUser.roomId,
+                content: `${existingUser.username} returned to the tavern.`,
+                type: "system"
+              });
+              
+              broadcastToRoom(existingUser.roomId, {
+                type: WebSocketMessageType.NEW_MESSAGE,
+                payload: { message: systemMessage }
+              });
+              
+              // Update user list
+              const onlineUsers = await storage.getOnlineUsers(existingUser.roomId);
+              broadcastToRoom(existingUser.roomId, {
+                type: WebSocketMessageType.ROOM_USERS,
+                payload: { users: onlineUsers }
+              });
+            }
+          } else {
+            // Create new user
+            const user = await storage.createUser(userData);
+            
+            // Add client to connected clients
+            connectedClients.set(socket, {
+              socket,
+              userId: user.id,
+              roomId: user.roomId
+            });
+            
+            // Send welcome message
+            socket.send(JSON.stringify({
+              type: WebSocketMessageType.USER_JOINED,
+              payload: { 
+                user,
+                rooms: await storage.getRooms(),
+                bartenders: await storage.getBartenders() 
+              }
+            }));
+            
+            // Create system message for new user
+            const systemMessage = await storage.createMessage({
+              userId: null,
+              roomId: user.roomId,
+              content: `${user.username} entered the tavern.`,
+              type: "system"
+            });
+            
+            // Broadcast to all users in the room
+            broadcastToRoom(user.roomId, {
+              type: WebSocketMessageType.NEW_MESSAGE,
+              payload: { message: systemMessage }
+            });
+            
+            // Update online users
+            const onlineUsers = await storage.getOnlineUsers(user.roomId);
+            broadcastToRoom(user.roomId, {
+              type: WebSocketMessageType.ROOM_USERS,
+              payload: { users: onlineUsers }
+            });
+            
+            // Send historical messages
+            const messages = await storage.getMessagesByRoom(user.roomId);
+            socket.send(JSON.stringify({
+              type: WebSocketMessageType.JOIN_ROOM,
+              payload: { 
+                room: await storage.getRoom(user.roomId),
+                messages
+              }
+            }));
+          }
+          
+          // Set up message handling for authenticated user
+          socket.on('message', (data) => {
+            const client = connectedClients.get(socket);
+            if (client) {
+              handleMessage(client, data.toString());
+            }
+          });
+          
+          // Handle disconnection
+          socket.on('close', async () => {
+            const client = connectedClients.get(socket);
+            if (client) {
+              // Update user status to offline
+              await storage.updateUserStatus(client.userId, false);
+              
+              // Get user info before removing from connected clients
+              const user = await storage.getUser(client.userId);
+              
+              // Remove from connected clients
+              connectedClients.delete(socket);
+              
+              if (user) {
+                // Create system message for user leaving
+                const systemMessage = await storage.createMessage({
+                  userId: null,
+                  roomId: client.roomId,
+                  content: `${user.username} left the tavern.`,
+                  type: "system"
+                });
+                
+                broadcastToRoom(client.roomId, {
+                  type: WebSocketMessageType.NEW_MESSAGE,
+                  payload: { message: systemMessage }
+                });
+                
+                // Update user list
+                const onlineUsers = await storage.getOnlineUsers(client.roomId);
+                broadcastToRoom(client.roomId, {
+                  type: WebSocketMessageType.ROOM_USERS,
+                  payload: { users: onlineUsers }
+                });
+              }
+            }
+          });
+          
+          return;
+        } catch (error) {
+          console.error('Error processing query parameters:', error);
+        }
+      }
+    
+      // If query parameter authentication failed, fall back to message-based auth
       socket.once('message', async (data) => {
         try {
           const message = JSON.parse(data.toString());

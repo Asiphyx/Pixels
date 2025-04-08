@@ -2,6 +2,13 @@ import { createRoot } from "react-dom/client";
 import App from "./App";
 import "./index.css";
 
+// Global error handler for unhandled promise rejections
+window.addEventListener('unhandledrejection', (event) => {
+  console.warn('Unhandled promise rejection:', event.reason);
+  // Prevent the default browser behavior that logs to console
+  event.preventDefault();
+});
+
 // Import fonts
 const preloadFonts = () => {
   const link1 = document.createElement('link');
