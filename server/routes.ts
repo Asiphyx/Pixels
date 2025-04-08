@@ -62,7 +62,7 @@ async function getBartenderResponse(message: string, bartenderId: number): Promi
     "My tattoos? Each one tells a story of power gained or secrets learned."
   ];
   
-  const indigoResponses = [
+  const rubyResponses = [
     "Take your time. Good drinks, like good advice, shouldn't be rushed.",
     "If you're seeking information, you'd be wise to speak with the merchants by the east gate.",
     "The guild is recruiting skilled hands. I could put in a good word.",
@@ -78,8 +78,11 @@ async function getBartenderResponse(message: string, bartenderId: number): Promi
     return sapphireResponses[Math.floor(Math.random() * sapphireResponses.length)];
   } else if (bartender?.name === "Amethyst") {
     return amethystResponses[Math.floor(Math.random() * amethystResponses.length)];
+  } else if (bartender?.name === "Ruby") {
+    return rubyResponses[Math.floor(Math.random() * rubyResponses.length)];
   } else {
-    return indigoResponses[Math.floor(Math.random() * indigoResponses.length)];
+    // Default response for unknown bartender
+    return "Welcome to the tavern! How can I help you today?";
   }
 }
 
@@ -89,15 +92,17 @@ async function handleBartenderResponse(message: string, roomId: number) {
   
   if (shouldRespond) {
     // Get the bartender for this specific room
-    // Room 1 = Sapphire, Room 2 = Amethyst, Room 3 = Indigo
-    let bartenderId = 1; // Default to Sapphire (first room)
+    // Room 1 = Amethyst (The Rose Garden)
+    // Room 2 = Sapphire (The Ocean View)
+    // Room 3 = Ruby (The Dragon's Den)
+    let bartenderId = 1; // Default to Amethyst (first room)
     
     if (roomId === 1) {
-      bartenderId = 1; // Sapphire for The Hearth
+      bartenderId = 1; // Amethyst for The Rose Garden
     } else if (roomId === 2) {
-      bartenderId = 2; // Amethyst for The Midnight Nook
+      bartenderId = 2; // Sapphire for The Ocean View
     } else if (roomId === 3) {
-      bartenderId = 3; // Indigo for The Scholar's Rest
+      bartenderId = 3; // Ruby for The Dragon's Den
     }
     
     const bartender = await storage.getBartender(bartenderId);
@@ -291,14 +296,17 @@ async function handleMessage(client: ConnectedClient, rawMessage: string) {
                 // After a delay, show serving animation with the appropriate bartender
                 setTimeout(async () => {
                   // Get the bartender for this specific room
-                  let bartenderId = 1; // Default to Sapphire (first room)
+                  // Room 1 = Amethyst (The Rose Garden)
+                  // Room 2 = Sapphire (The Ocean View)
+                  // Room 3 = Ruby (The Dragon's Den)
+                  let bartenderId = 1; // Default to Amethyst (first room)
                   
                   if (client.roomId === 1) {
-                    bartenderId = 1; // Sapphire for The Hearth
+                    bartenderId = 1; // Amethyst for The Rose Garden
                   } else if (client.roomId === 2) {
-                    bartenderId = 2; // Amethyst for The Midnight Nook
+                    bartenderId = 2; // Sapphire for The Ocean View
                   } else if (client.roomId === 3) {
-                    bartenderId = 3; // Indigo for The Scholar's Rest
+                    bartenderId = 3; // Ruby for The Dragon's Den
                   }
                   
                   const bartender = await storage.getBartender(bartenderId);
@@ -372,15 +380,17 @@ async function handleMessage(client: ConnectedClient, rawMessage: string) {
         // Trigger bartender response
         setTimeout(async () => {
           // Get the bartender for this specific room
-          // Room 1 = Sapphire, Room 2 = Amethyst, Room 3 = Indigo
-          let bartenderId = 1; // Default to Sapphire (first room)
+          // Room 1 = Amethyst (The Rose Garden)
+          // Room 2 = Sapphire (The Ocean View)
+          // Room 3 = Ruby (The Dragon's Den)
+          let bartenderId = 1; // Default to Amethyst (first room)
           
           if (client.roomId === 1) {
-            bartenderId = 1; // Sapphire for The Hearth
+            bartenderId = 1; // Amethyst for The Rose Garden
           } else if (client.roomId === 2) {
-            bartenderId = 2; // Amethyst for The Midnight Nook
+            bartenderId = 2; // Sapphire for The Ocean View
           } else if (client.roomId === 3) {
-            bartenderId = 3; // Indigo for The Scholar's Rest
+            bartenderId = 3; // Ruby for The Dragon's Den
           }
           
           const bartender = await storage.getBartender(bartenderId);
@@ -586,15 +596,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 });
                 
                 // Send welcome message from the appropriate bartender for this room
-                // Room 1 = Sapphire, Room 2 = Amethyst, Room 3 = Indigo
-                let bartenderId = 1; // Default to Sapphire (first room)
+                // Room 1 = Amethyst (The Rose Garden)
+                // Room 2 = Sapphire (The Ocean View)
+                // Room 3 = Ruby (The Dragon's Den)
+                let bartenderId = 1; // Default to Amethyst (first room)
                 
                 if (user.roomId === 1) {
-                  bartenderId = 1; // Sapphire for The Hearth
+                  bartenderId = 1; // Amethyst for The Rose Garden
                 } else if (user.roomId === 2) {
-                  bartenderId = 2; // Amethyst for The Midnight Nook
+                  bartenderId = 2; // Sapphire for The Ocean View
                 } else if (user.roomId === 3) {
-                  bartenderId = 3; // Indigo for The Scholar's Rest
+                  bartenderId = 3; // Ruby for The Dragon's Den
                 }
                 
                 const bartender = await storage.getBartender(bartenderId);
