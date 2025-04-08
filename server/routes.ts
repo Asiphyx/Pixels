@@ -329,6 +329,53 @@ async function handleMessage(client: ConnectedClient, rawMessage: string) {
         break;
       }
       
+      case WebSocketMessageType.ORDER_ITEM: {
+        try {
+          // Check action type
+          if (payload.action === 'open_menu') {
+            // Fetch menu items from storage
+            const menuItems = await storage.getMenuItems();
+            
+            // Send menu items to the client
+            client.socket.send(JSON.stringify({
+              type: WebSocketMessageType.ORDER_ITEM,
+              payload: {
+                action: 'open_menu',
+                menuItems
+              }
+            }));
+          } else if (payload.itemId) {
+            // Handle ordering a specific item
+            const itemId = z.number().parse(payload.itemId);
+            const item = await storage.getMenuItem(itemId);
+            
+            if (item) {
+              // Create a system message about the order
+              const orderMessage = await storage.createMessage({
+                userId: client.userId,
+                roomId: client.roomId,
+                content: `${client.username} ordered a ${item.name}.`,
+                type: "system"
+              });
+              
+              // Broadcast the order to the room
+              broadcastToRoom(client.roomId, {
+                type: WebSocketMessageType.NEW_MESSAGE,
+                payload: { message: orderMessage }
+              });
+            }
+          }
+        } catch (error) {
+          console.error('Error handling order:', error);
+          // Send error back to the client
+          client.socket.send(JSON.stringify({
+            type: WebSocketMessageType.ERROR,
+            payload: { message: "Error processing order" }
+          }));
+        }
+        break;
+      }
+      
       default:
         console.log(`[websocket] Unknown message type: ${type}`);
     }

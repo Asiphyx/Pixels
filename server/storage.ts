@@ -463,8 +463,17 @@ export class MemStorage implements IStorage {
     // Parse existing memories, add new one, then stringify back to JSON
     let memories: MemoryEntry[] = [];
     try {
-      memories = JSON.parse(memory.memories as string) as MemoryEntry[];
+      // Handle null, undefined, or invalid JSON
+      if (memory.memories && typeof memory.memories === 'string') {
+        memories = JSON.parse(memory.memories) as MemoryEntry[];
+      }
+      
+      // If memories is not an array after parsing, initialize it
+      if (!Array.isArray(memories)) {
+        memories = [];
+      }
     } catch (error) {
+      console.error('Error parsing memory entries in MemStorage:', error);
       // If there's an error parsing, start with an empty array
       memories = [];
     }
@@ -497,38 +506,62 @@ export class MemStorage implements IStorage {
     }
     
     try {
-      const memories: MemoryEntry[] = JSON.parse(memory.memories as string) as MemoryEntry[];
+      // Handle null, undefined, or invalid JSON
+      let memories: MemoryEntry[] = [];
+      if (memory.memories && typeof memory.memories === 'string') {
+        memories = JSON.parse(memory.memories) as MemoryEntry[];
+      }
+      
+      // If memories is not an array after parsing, initialize it
+      if (!Array.isArray(memories)) {
+        memories = [];
+        return [];
+      }
       
       // Sort by timestamp (newest first) and limit
-      return memories
-        .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
-        .slice(0, limit);
+      memories.sort((a, b) => {
+        const timeA = a.timestamp ? new Date(a.timestamp).getTime() : 0;
+        const timeB = b.timestamp ? new Date(b.timestamp).getTime() : 0;
+        return timeB - timeA;
+      });
+      
+      return memories.slice(0, limit);
     } catch (error) {
-      console.error('Error parsing memory entries:', error);
+      console.error('Error parsing memory entries in MemStorage:', error);
       return [];
     }
   }
 
   async getSummarizedMemories(userId: number, bartenderId: number, maxEntries = 5): Promise<string> {
-    const entries = await this.getMemoryEntries(userId, bartenderId, maxEntries);
-    
-    if (entries.length === 0) {
-      return "This customer is new. No previous interactions.";
-    }
-    
-    // Generate a summarized format for each memory
-    const memorySummaries = entries.map(entry => {
-      const dateStr = new Date(entry.timestamp).toLocaleDateString();
-      let summary = `[${dateStr}, ${entry.type}${entry.importance ? `, importance: ${entry.importance}` : ''}] ${entry.content}`;
+    try {
+      const entries = await this.getMemoryEntries(userId, bartenderId, maxEntries);
       
-      if (entry.context) {
-        summary += ` (Context: ${entry.context})`;
+      if (!entries || entries.length === 0) {
+        return "This customer is new. No previous interactions.";
       }
       
-      return summary;
-    });
-    
-    return memorySummaries.join('\n');
+      // Generate a summarized format for each memory with error handling
+      const memorySummaries = entries.map(entry => {
+        try {
+          const dateStr = entry.timestamp ? new Date(entry.timestamp).toLocaleDateString() : 'Unknown date';
+          let summary = `[${dateStr}, ${entry.type || 'interaction'}${entry.importance ? `, importance: ${entry.importance}` : ''}] ${entry.content || 'Interaction recorded'}`;
+          
+          if (entry.context) {
+            summary += ` (Context: ${entry.context})`;
+          }
+          
+          return summary;
+        } catch (error) {
+          // Fallback for any problematic memory entry
+          return `- Past interaction recorded`;
+        }
+      });
+      
+      return memorySummaries.join('\n');
+    } catch (error) {
+      console.error('Error processing memories for summary in MemStorage:', error);
+      return "Unable to retrieve previous interactions.";
+    }
   }
 }
 
@@ -754,8 +787,23 @@ export class DatabaseStorage implements IStorage {
       });
     }
     
-    // Parse existing memories
-    const memories = JSON.parse(memory.memories as string) as MemoryEntry[];
+    // Parse existing memories with error handling
+    let memories: MemoryEntry[] = [];
+    try {
+      // Handle null, undefined, or invalid JSON
+      if (memory.memories && typeof memory.memories === 'string') {
+        memories = JSON.parse(memory.memories) as MemoryEntry[];
+      }
+      
+      // If memories is not an array after parsing, initialize it
+      if (!Array.isArray(memories)) {
+        memories = [];
+      }
+    } catch (error) {
+      console.error('Error parsing memory entries:', error);
+      // Initialize as empty array if parsing fails
+      memories = [];
+    }
     
     // Validate entry with zod schema
     memoryEntrySchema.parse(entry);
@@ -789,9 +837,24 @@ export class DatabaseStorage implements IStorage {
     }
     
     try {
-      // Parse memories and sort by timestamp (most recent first)
-      const memories = JSON.parse(memory.memories as string) as MemoryEntry[];
-      memories.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+      // Handle null, undefined, or invalid JSON
+      let memories: MemoryEntry[] = [];
+      if (memory.memories && typeof memory.memories === 'string') {
+        memories = JSON.parse(memory.memories) as MemoryEntry[];
+      }
+      
+      // If memories is not an array after parsing, initialize it
+      if (!Array.isArray(memories)) {
+        memories = [];
+        return [];
+      }
+      
+      // Sort by timestamp (most recent first)
+      memories.sort((a, b) => {
+        const timeA = a.timestamp ? new Date(a.timestamp).getTime() : 0;
+        const timeB = b.timestamp ? new Date(b.timestamp).getTime() : 0;
+        return timeB - timeA;
+      });
       
       // Return limited number of entries
       return memories.slice(0, limit);
@@ -802,25 +865,44 @@ export class DatabaseStorage implements IStorage {
   }
   
   async getSummarizedMemories(userId: number, bartenderId: number, maxEntries = 5): Promise<string> {
-    const memories = await this.getMemoryEntries(userId, bartenderId, maxEntries);
-    
-    if (memories.length === 0) {
-      return "No previous interactions recorded.";
-    }
-    
-    // Sort by importance (highest first) and then by recency (most recent first)
-    memories.sort((a, b) => {
-      if (b.importance !== a.importance) {
-        return b.importance - a.importance;
+    try {
+      const memories = await this.getMemoryEntries(userId, bartenderId, maxEntries);
+      
+      if (!memories || memories.length === 0) {
+        return "No previous interactions recorded.";
       }
-      return new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime();
-    });
-    
-    // Create a summarized string of memories
-    return memories.map(memory => {
-      const date = new Date(memory.timestamp);
-      return `- ${memory.content} (${date.toLocaleDateString()})`;
-    }).join("\n");
+      
+      // Sort by importance (highest first) and then by recency (most recent first)
+      memories.sort((a, b) => {
+        // Check if importance exists before comparing
+        const importanceA = a.importance || 0;
+        const importanceB = b.importance || 0;
+        
+        if (importanceB !== importanceA) {
+          return importanceB - importanceA;
+        }
+        
+        // Safely handle timestamps
+        const timeA = a.timestamp ? new Date(a.timestamp).getTime() : 0;
+        const timeB = b.timestamp ? new Date(b.timestamp).getTime() : 0;
+        return timeB - timeA;
+      });
+      
+      // Create a summarized string of memories with error handling
+      return memories.map(memory => {
+        try {
+          const date = memory.timestamp ? new Date(memory.timestamp) : new Date();
+          return `- ${memory.content || 'Interaction recorded'} (${date.toLocaleDateString()})`;
+        } catch (error) {
+          // Provide a fallback for any problematic memory entry
+          return `- Past interaction recorded`;
+        }
+      }).join("\n");
+      
+    } catch (error) {
+      console.error('Error processing memories for summary:', error);
+      return "Unable to retrieve previous interactions.";
+    }
   }
 }
 

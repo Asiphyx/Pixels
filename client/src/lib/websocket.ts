@@ -274,14 +274,11 @@ export const useWebSocketStore = create<WebSocketState>((set, get) => ({
     if (showMenu) {
       set({ showMenu: false });
     } else if (socket) {
-      // Request menu items from the server
+      // Request menu items directly with ORDER_ITEM type
       socket.send(JSON.stringify({
-        type: WebSocketMessageType.CHAT_MESSAGE,
+        type: WebSocketMessageType.ORDER_ITEM,
         payload: {
-          userId: get().user?.id,
-          roomId: get().roomId,
-          message: '/menu',
-          type: 'user'
+          action: 'open_menu'
         }
       }));
     }
