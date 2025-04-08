@@ -3,7 +3,8 @@ import {
   rooms, type Room, type InsertRoom,
   messages, type Message, type InsertMessage,
   bartenders, type Bartender, type InsertBartender,
-  menuItems, type MenuItem, type InsertMenuItem
+  menuItems, type MenuItem, type InsertMenuItem,
+  bartenderMoods, type BartenderMood, type InsertBartenderMood
 } from "@shared/schema";
 
 export interface IStorage {
@@ -34,6 +35,12 @@ export interface IStorage {
   getMenuItems(category?: string): Promise<MenuItem[]>;
   getMenuItem(id: number): Promise<MenuItem | undefined>;
   createMenuItem(menuItem: InsertMenuItem): Promise<MenuItem>;
+
+  // Bartender Mood operations
+  getBartenderMood(userId: number, bartenderId: number): Promise<BartenderMood | undefined>;
+  createBartenderMood(mood: InsertBartenderMood): Promise<BartenderMood>;
+  updateBartenderMood(userId: number, bartenderId: number, moodChange: number): Promise<BartenderMood>;
+  getAllBartenderMoodsForUser(userId: number): Promise<BartenderMood[]>;
 }
 
 export class MemStorage implements IStorage {
@@ -42,12 +49,14 @@ export class MemStorage implements IStorage {
   private messages: Map<number, Message>;
   private bartenders: Map<number, Bartender>;
   private menuItems: Map<number, MenuItem>;
+  private bartenderMoods: Map<string, BartenderMood>; // key: "userId-bartenderId"
   
   private userId: number;
   private roomId: number;
   private messageId: number;
   private bartenderId: number;
   private menuItemId: number;
+  private moodId: number;
 
   constructor() {
     this.users = new Map();
@@ -55,12 +64,14 @@ export class MemStorage implements IStorage {
     this.messages = new Map();
     this.bartenders = new Map();
     this.menuItems = new Map();
+    this.bartenderMoods = new Map();
     
     this.userId = 1;
     this.roomId = 1;
     this.messageId = 1;
     this.bartenderId = 1;
     this.menuItemId = 1;
+    this.moodId = 1;
     
     // Initialize with default data
     this.initializeDefaultData();
@@ -338,6 +349,65 @@ export class MemStorage implements IStorage {
     const menuItem: MenuItem = { ...insertMenuItem, id };
     this.menuItems.set(id, menuItem);
     return menuItem;
+  }
+
+  // Bartender Mood operations
+  async getBartenderMood(userId: number, bartenderId: number): Promise<BartenderMood | undefined> {
+    const key = `${userId}-${bartenderId}`;
+    return this.bartenderMoods.get(key);
+  }
+
+  async createBartenderMood(mood: InsertBartenderMood): Promise<BartenderMood> {
+    const id = this.moodId++;
+    const timestamp = new Date();
+    const bartenderMood: BartenderMood = { 
+      ...mood, 
+      id, 
+      updatedAt: timestamp 
+    };
+    
+    const key = `${mood.userId}-${mood.bartenderId}`;
+    this.bartenderMoods.set(key, bartenderMood);
+    return bartenderMood;
+  }
+
+  async updateBartenderMood(userId: number, bartenderId: number, moodChange: number): Promise<BartenderMood> {
+    const key = `${userId}-${bartenderId}`;
+    let mood = this.bartenderMoods.get(key);
+    
+    if (!mood) {
+      // Create a new mood entry with default neutral mood
+      mood = await this.createBartenderMood({ 
+        userId, 
+        bartenderId, 
+        mood: 50 // Neutral mood by default
+      });
+    }
+    
+    // Calculate new mood value, clamped between 0 and 100
+    const newMoodValue = Math.max(0, Math.min(100, mood.mood + moodChange));
+    
+    // Update mood
+    const updatedMood: BartenderMood = { 
+      ...mood, 
+      mood: newMoodValue,
+      updatedAt: new Date()
+    };
+    
+    this.bartenderMoods.set(key, updatedMood);
+    return updatedMood;
+  }
+
+  async getAllBartenderMoodsForUser(userId: number): Promise<BartenderMood[]> {
+    const userMoods: BartenderMood[] = [];
+    
+    for (const [key, mood] of this.bartenderMoods.entries()) {
+      if (key.startsWith(`${userId}-`)) {
+        userMoods.push(mood);
+      }
+    }
+    
+    return userMoods;
   }
 }
 

@@ -11,6 +11,7 @@ import {
 } from "@shared/schema";
 import { z } from "zod";
 import { getOpenRouterResponse, checkForBartenderMention, extractQueryFromMention } from "./openRouter";
+import { analyzeSentiment, adjustResponseBasedOnMood } from "./sentiment";
 
 // Store connected clients with their user info
 interface ConnectedClient {
@@ -107,7 +108,7 @@ async function getBartenderResponse(message: string, bartenderId: number, userna
 }
 
 // Handles the AI bartender response logic
-async function handleBartenderResponse(message: string, roomId: number, username: string = 'Guest', forcedBartenderName?: string) {
+async function handleBartenderResponse(message: string, roomId: number, username: string = 'Guest', forcedBartenderName?: string, userId?: number) {
   // Force a response if a specific bartender is mentioned or if the random chance is met
   const shouldRespond = forcedBartenderName ? true : Math.random() > 0.6; // 40% chance to respond if not forced
   
@@ -143,7 +144,36 @@ async function handleBartenderResponse(message: string, roomId: number, username
     }
     
     // Generate a response
-    const response = await getBartenderResponse(message, bartender.id, username);
+    let response = await getBartenderResponse(message, bartender.id, username);
+    
+    // If we have a user ID, process mood changes and adjust response
+    if (userId) {
+      // Analyze sentiment to see if this message should affect the bartender's mood
+      const sentimentScore = analyzeSentiment(message);
+      
+      // Only apply mood changes for non-empty sentiment scores
+      if (sentimentScore !== 0) {
+        // Get current mood or create it if it doesn't exist
+        const updatedMood = await storage.updateBartenderMood(userId, bartender.id, sentimentScore);
+        
+        // Adjust the response based on the updated mood
+        response = adjustResponseBasedOnMood(response, updatedMood.mood, bartender.name);
+        
+        // Send the updated mood to the client
+        const userMoods = await storage.getAllBartenderMoodsForUser(userId);
+        
+        // Only send to the specific user who triggered the mood change
+        const userClient = Array.from(connectedClients.values()).find(client => client.userId === userId);
+        if (userClient && userClient.socket.readyState === WebSocket.OPEN) {
+          userClient.socket.send(JSON.stringify({
+            type: WebSocketMessageType.BARTENDER_MOOD_UPDATE,
+            payload: {
+              bartenderMoods: userMoods
+            }
+          }));
+        }
+      }
+    }
     
     // Create and store the bartender message
     const bartenderMessage = await storage.createMessage({
@@ -381,7 +411,7 @@ async function handleMessage(client: ConnectedClient, rawMessage: string) {
               
               // Trigger bartender response
               setTimeout(async () => {
-                await handleBartenderResponse(`/order ${item}`, client.roomId);
+                await handleBartenderResponse(`/order ${item}`, client.roomId, 'Guest', undefined, client.userId);
                 
                 // After a delay, show serving animation with the appropriate bartender
                 setTimeout(async () => {
@@ -444,12 +474,12 @@ async function handleMessage(client: ConnectedClient, rawMessage: string) {
             
             // Force the bartender to respond immediately
             setTimeout(async () => {
-              await handleBartenderResponse(query, client.roomId, username, mentionedBartender);
+              await handleBartenderResponse(query, client.roomId, username, mentionedBartender, client.userId);
             }, 800); // Slight delay for realism
           } else {
             // Sometimes trigger a random bartender response if no specific bartender was mentioned
             setTimeout(async () => {
-              await handleBartenderResponse(validatedPayload.content, client.roomId, username);
+              await handleBartenderResponse(validatedPayload.content, client.roomId, username, undefined, client.userId);
             }, 1000 + Math.random() * 2000);
           }
         } catch (err) {
@@ -513,7 +543,21 @@ async function handleMessage(client: ConnectedClient, rawMessage: string) {
           const username = user?.username || 'Guest';
           
           // Get personalized response from the bartender
-          const response = await getBartenderResponse(`/order ${menuItem.name}`, bartender.id, username);
+          let response = await getBartenderResponse(`/order ${menuItem.name}`, bartender.id, username);
+          
+          // Apply mood-based modifications to the response
+          // Orders generally make bartenders slightly happier (+1)
+          const updatedMood = await storage.updateBartenderMood(client.userId, bartender.id, 1);
+          response = adjustResponseBasedOnMood(response, updatedMood.mood, bartender.name);
+          
+          // Send updated moods to the client
+          const userMoods = await storage.getAllBartenderMoodsForUser(client.userId);
+          client.socket.send(JSON.stringify({
+            type: WebSocketMessageType.BARTENDER_MOOD_UPDATE,
+            payload: {
+              bartenderMoods: userMoods
+            }
+          }));
           
           const responseMessage = await storage.createMessage({
             userId: null,

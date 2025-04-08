@@ -71,6 +71,20 @@ export const insertMenuItemSchema = createInsertSchema(menuItems).omit({
   id: true
 });
 
+// Bartender Mood model - tracks the mood of each bartender for each user
+export const bartenderMoods = pgTable("bartender_moods", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull(),
+  bartenderId: integer("bartender_id").notNull(),
+  mood: integer("mood").notNull().default(50), // 0-100 scale, 50 is neutral
+  updatedAt: timestamp("updated_at").defaultNow()
+});
+
+export const insertBartenderMoodSchema = createInsertSchema(bartenderMoods).omit({
+  id: true,
+  updatedAt: true
+});
+
 // Type definitions
 export type User = typeof users.$inferSelect;
 export type InsertUser = z.infer<typeof insertUserSchema>;
@@ -87,6 +101,9 @@ export type InsertBartender = z.infer<typeof insertBartenderSchema>;
 export type MenuItem = typeof menuItems.$inferSelect;
 export type InsertMenuItem = z.infer<typeof insertMenuItemSchema>;
 
+export type BartenderMood = typeof bartenderMoods.$inferSelect;
+export type InsertBartenderMood = z.infer<typeof insertBartenderMoodSchema>;
+
 // Websocket message types
 export enum WebSocketMessageType {
   JOIN_ROOM = 'join_room',
@@ -98,6 +115,7 @@ export enum WebSocketMessageType {
   ORDER_ITEM = 'order_item',
   BARTENDER_RESPONSE = 'bartender_response',
   ROOM_USERS = 'room_users',
+  BARTENDER_MOOD_UPDATE = 'bartender_mood_update',
   ERROR = 'error'
 }
 

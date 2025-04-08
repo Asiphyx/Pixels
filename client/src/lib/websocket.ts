@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { WebSocketMessageType, WebSocketMessage, User, Room, Message, Bartender, MenuItem } from '@shared/schema';
+import { WebSocketMessageType, WebSocketMessage, User, Room, Message, Bartender, MenuItem, BartenderMood } from '@shared/schema';
 
 // Define the websocket store state
 interface WebSocketState {
@@ -13,6 +13,7 @@ interface WebSocketState {
   onlineUsers: User[];
   menuItems: MenuItem[];
   showMenu: boolean;
+  bartenderMoods: BartenderMood[];
   
   // Actions
   connect: (username: string, avatar: string) => void;
@@ -34,6 +35,7 @@ export const useWebSocketStore = create<WebSocketState>((set, get) => ({
   onlineUsers: [],
   menuItems: [],
   showMenu: false,
+  bartenderMoods: [],
   
   connect: (username, avatar) => {
     try {
@@ -107,6 +109,10 @@ export const useWebSocketStore = create<WebSocketState>((set, get) => ({
             case WebSocketMessageType.ERROR:
               console.error('WebSocket error:', data.payload.message);
               // Could add toast notification for errors
+              break;
+              
+            case WebSocketMessageType.BARTENDER_MOOD_UPDATE:
+              set({ bartenderMoods: data.payload.bartenderMoods });
               break;
               
             default:
