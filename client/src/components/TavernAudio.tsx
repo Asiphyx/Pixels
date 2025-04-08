@@ -281,18 +281,21 @@ const TavernAudio: React.FC = () => {
   const audioCtxRef = useRef<AudioContext | null>(null);
   const soundBuffers = useRef<Record<string, AudioBuffer>>({});
   const [soundsLoaded, setSoundsLoaded] = useState(false);
+  const [audioEnabled, setAudioEnabled] = useState(false);
   
-  // Initialize audio context and load sounds
+  // Initialize audio context and load sounds - but don't auto-start
   useEffect(() => {
     const initAudio = async () => {
       try {
-        // Create audio context
+        // Create audio context - but don't autostart it
+        // This addresses browser autoplay policies
         const AudioContext = window.AudioContext || window.webkitAudioContext;
         if (!AudioContext) {
           console.error('Web Audio API is not supported by this browser');
           return;
         }
         
+        // Create audio context in suspended state (will be resumed on user interaction)
         audioCtxRef.current = new AudioContext();
         
         // Generate sound buffers
@@ -336,7 +339,26 @@ const TavernAudio: React.FC = () => {
     
     initAudio();
     
+    // Add a one-time click handler to the document to start audio
+    const enableAudio = () => {
+      if (audioCtxRef.current?.state === 'suspended') {
+        console.log('Resuming audio context on user interaction');
+        audioCtxRef.current.resume().then(() => {
+          console.log('Audio context resumed successfully');
+        }).catch(err => {
+          console.error('Failed to resume audio context:', err);
+        });
+      }
+      document.removeEventListener('click', enableAudio);
+      document.removeEventListener('touchstart', enableAudio);
+    };
+    
+    document.addEventListener('click', enableAudio);
+    document.addEventListener('touchstart', enableAudio);
+    
     return () => {
+      document.removeEventListener('click', enableAudio);
+      document.removeEventListener('touchstart', enableAudio);
       if (audioCtxRef.current?.state !== 'closed') {
         audioCtxRef.current?.close();
       }
@@ -480,44 +502,73 @@ const TavernAudio: React.FC = () => {
   // Wake up AudioContext if it's suspended (needed for some browsers)
   const resumeAudioContext = () => {
     if (audioCtxRef.current?.state === 'suspended') {
-      audioCtxRef.current.resume();
+      audioCtxRef.current.resume().then(() => {
+        console.log('Audio context resumed successfully');
+        setAudioEnabled(true);
+        
+        // Test sound to confirm audio is working
+        playSound('glass-clink');
+      }).catch(err => {
+        console.error('Failed to resume audio context:', err);
+      });
+    } else if (audioCtxRef.current?.state === 'running') {
+      setAudioEnabled(true);
     }
   };
   
+  // Check if audio needs to be enabled first
+  const needsAudioActivation = audioCtxRef.current?.state === 'suspended' && !audioEnabled;
+  
   return (
-    <div className="fixed bottom-4 right-4 z-50" onClick={resumeAudioContext}>
-      <button 
-        onClick={() => setIsMuted(!isMuted)}
-        className="bg-background/80 border border-border rounded-full p-2 shadow-md hover:bg-background transition-colors"
-        aria-label={isMuted ? "Unmute" : "Mute"}
-      >
-        {isMuted ? (
-          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-primary">
-            <line x1="3" y1="3" x2="21" y2="21"></line>
-            <path d="M18.36 18.36a9.9 9.9 0 0 1-5.36 1.64 10 10 0 0 1-10-10 9.9 9.9 0 0 1 1.64-5.36"></path>
-            <path d="M16 16a6 6 0 0 1-6-6"></path>
-          </svg>
-        ) : (
-          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-primary">
-            <path d="M19.07 4.93a10 10 0 0 1 0 14.14"></path>
-            <path d="M15.54 8.46a5 5 0 0 1 0 7.07"></path>
-            <polygon points="12 2 8 6 3 6 3 18 8 18 12 22 12 2"></polygon>
-          </svg>
-        )}
-      </button>
-      
-      {!isMuted && (
-        <div className="mt-2 bg-background/80 border border-border rounded-lg p-2 shadow-md">
-          <input 
-            type="range" 
-            min="0" 
-            max="1" 
-            step="0.01" 
-            value={volume} 
-            onChange={(e) => setVolume(parseFloat(e.target.value))}
-            className="w-full"
-            aria-label="Volume"
-          />
+    <div className="fixed bottom-4 right-4 z-50">
+      {needsAudioActivation ? (
+        <div className="flex flex-col items-center">
+          <button 
+            onClick={resumeAudioContext}
+            className="bg-primary text-primary-foreground px-4 py-2 rounded-md shadow-md hover:bg-primary/90 transition-colors mb-2 text-sm font-medium animate-pulse"
+          >
+            Click to Enable Sound
+          </button>
+          <div className="bg-background/80 border border-border rounded-lg p-2 text-xs text-center max-w-[200px]">
+            Browser security requires user interaction to play audio
+          </div>
+        </div>
+      ) : (
+        <div>
+          <button 
+            onClick={() => setIsMuted(!isMuted)}
+            className="bg-background/80 border border-border rounded-full p-2 shadow-md hover:bg-background transition-colors"
+            aria-label={isMuted ? "Unmute" : "Mute"}
+          >
+            {isMuted ? (
+              <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-primary">
+                <line x1="3" y1="3" x2="21" y2="21"></line>
+                <path d="M18.36 18.36a9.9 9.9 0 0 1-5.36 1.64 10 10 0 0 1-10-10 9.9 9.9 0 0 1 1.64-5.36"></path>
+                <path d="M16 16a6 6 0 0 1-6-6"></path>
+              </svg>
+            ) : (
+              <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-primary">
+                <path d="M19.07 4.93a10 10 0 0 1 0 14.14"></path>
+                <path d="M15.54 8.46a5 5 0 0 1 0 7.07"></path>
+                <polygon points="12 2 8 6 3 6 3 18 8 18 12 22 12 2"></polygon>
+              </svg>
+            )}
+          </button>
+          
+          {!isMuted && (
+            <div className="mt-2 bg-background/80 border border-border rounded-lg p-2 shadow-md">
+              <input 
+                type="range" 
+                min="0" 
+                max="1" 
+                step="0.01" 
+                value={volume} 
+                onChange={(e) => setVolume(parseFloat(e.target.value))}
+                className="w-full"
+                aria-label="Volume"
+              />
+            </div>
+          )}
         </div>
       )}
     </div>
