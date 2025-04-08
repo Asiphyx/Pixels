@@ -1,0 +1,35 @@
+Fantasy Tavern Project Handoff
+Project Overview
+The Fantasy Tavern is a real-time chat application featuring AI-powered bartenders with distinct personalities in a pixel art medieval fantasy setting. Users can interact with bartenders and other users in themed rooms.
+
+Core Components & Architecture
+Frontend: React with Zustand state management and WebSocket for real-time communication
+Backend: Express server with WebSocket API for real-time messaging
+Database: PostgreSQL with Drizzle ORM for data persistence
+AI: OpenRouter API integration for bartender conversations using llama-4-scout model
+Key Features Implemented
+WebSocket Communication: Secure, robust real-time messaging with automatic reconnection
+Bartender Personality System: Three unique AI bartenders with personality-driven dialogue
+Mood & Memory System: Each bartender remembers past interactions with users and maintains user-specific mood values (0-100)
+Room System: Three themed tavern rooms, each with a default bartender
+Food & Drink Menu: In-tavern ordering system with themed menu items
+Sentiment Analysis: User messages analyzed to adjust bartender mood values
+Technical Implementation Details
+Data Schema: Fully implemented with Drizzle ORM with proper relations
+Storage Layer: Complete implementation of DatabaseStorage replacing in-memory storage
+WebSocket Protocol: Message typing with specialized handlers for each message type
+Error Handling: Robust error capture with graceful fallbacks
+Session Management: User persistence using localStorage combined with database tracking
+Troubleshooting Done
+Fixed WebSocket upgrade protocol issues with proper path verification
+Enhanced error handling for binary messages and parsing failures
+Implemented automatic reconnection with exponential backoff
+Addressed LSP typing issues in storage implementation
+Corrected parameter passing to OpenRouter API for AI responses
+Current Limitations & Next Steps
+Add user badge/achievement system (partially implemented)
+Build WebSocket reconnection system with session resume capability
+Implement WebSocket heartbeat to detect stale connections
+Add more bartender personalities and rooms
+Introduce ambient sound effects for different rooms
+The code is well-structured, thoroughly commented, and includes extensive error handling. The database schema is designed for easy extension with new features.
