@@ -215,6 +215,40 @@ async function handleMessage(client: ConnectedClient, rawMessage: string) {
             type: WebSocketMessageType.ROOM_USERS,
             payload: { users: onlineUsers }
           });
+          
+          // Send welcome message from the appropriate bartender for this room
+          // Room 1 = Amethyst (The Rose Garden)
+          // Room 2 = Sapphire (The Ocean View)
+          // Room 3 = Ruby (The Dragon's Den)
+          let bartenderId = 1; // Default to Amethyst (first room)
+          
+          if (roomId === 1) {
+            bartenderId = 1; // Amethyst for The Rose Garden
+          } else if (roomId === 2) {
+            bartenderId = 2; // Sapphire for The Ocean View
+          } else if (roomId === 3) {
+            bartenderId = 3; // Ruby for The Dragon's Den
+          }
+          
+          const bartender = await storage.getBartender(bartenderId);
+          
+          if (bartender) {
+            const welcomeMessage = await storage.createMessage({
+              userId: null,
+              roomId: roomId,
+              content: `Greetings, traveler! I'm ${bartender.name}, what can I get for ya today?`,
+              type: "bartender",
+              bartenderId: bartender.id
+            });
+            
+            broadcastToRoom(roomId, {
+              type: WebSocketMessageType.BARTENDER_RESPONSE,
+              payload: {
+                message: welcomeMessage,
+                bartender: bartender
+              }
+            });
+          }
         }
         break;
       }
