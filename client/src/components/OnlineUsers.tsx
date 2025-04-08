@@ -1,8 +1,8 @@
 import { FC, useState } from 'react';
 import { useWebSocketStore } from '@/lib/websocket';
-import { CharacterAvatar } from '@/assets/svgs/avatars';
 import { motion } from 'framer-motion';
 import { Users } from 'lucide-react';
+import { CustomAvatar, deserializeAvatarOptions, defaultAvatarOptions } from '@/assets/svgs/avatar-creator';
 
 const OnlineUsers: FC = () => {
   const { onlineUsers } = useWebSocketStore();
@@ -45,15 +45,18 @@ const OnlineUsers: FC = () => {
                 No other patrons in this room yet...
               </div>
             ) : (
-              onlineUsers.map((user) => (
-                <div 
-                  key={user.id}
-                  className="user-item flex items-center gap-2 mb-2 p-2 rounded-sm hover:bg-[#8B4513] transition-colors"
-                >
-                  <CharacterAvatar name={user.avatar} size={32} />
-                  <div className="user-name text-[#E8D6B3] font-['VT323'] text-lg">{user.username}</div>
-                </div>
-              ))
+              onlineUsers.map((user) => {
+                const avatarOptions = deserializeAvatarOptions(user.avatar || '');
+                return (
+                  <div 
+                    key={user.id}
+                    className="user-item flex items-center gap-2 mb-2 p-2 rounded-sm hover:bg-[#8B4513] transition-colors"
+                  >
+                    <CustomAvatar options={avatarOptions} size={32} />
+                    <div className="user-name text-[#E8D6B3] font-['VT323'] text-lg">{user.username}</div>
+                  </div>
+                );
+              })
             )}
           </div>
         </motion.div>

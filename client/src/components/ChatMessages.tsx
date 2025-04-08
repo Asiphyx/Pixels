@@ -1,12 +1,24 @@
-import { FC, useEffect, useRef } from 'react';
+import { FC, useEffect, useRef, useState } from 'react';
 import { useWebSocketStore } from '@/lib/websocket';
-import { Message } from '@shared/schema';
+import { Message, User } from '@shared/schema';
 import { BartenderAvatar } from '@/assets/svgs/bartenders';
-import { CharacterAvatar } from '@/assets/svgs/avatars';
+import { CustomAvatar, deserializeAvatarOptions, defaultAvatarOptions } from '@/assets/svgs/avatar-creator';
 
 const ChatMessages: FC = () => {
-  const { messages, user } = useWebSocketStore();
+  const { messages, user, onlineUsers } = useWebSocketStore();
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const [userAvatars, setUserAvatars] = useState<Record<number, string>>({});
+  
+  // Maintain a cache of user avatars
+  useEffect(() => {
+    const newUserAvatars: Record<number, string> = { ...userAvatars };
+    onlineUsers.forEach(user => {
+      if (!newUserAvatars[user.id]) {
+        newUserAvatars[user.id] = user.avatar;
+      }
+    });
+    setUserAvatars(newUserAvatars);
+  }, [onlineUsers]);
   
   // Auto scroll to bottom on new messages
   useEffect(() => {
@@ -16,14 +28,20 @@ const ChatMessages: FC = () => {
   const renderMessage = (message: Message) => {
     switch (message.type) {
       case 'user':
-        // Get the user that sent this message (this is a simplification, the server should provide this)
+        // Get the user that sent this message
         const isCurrentUser = message.userId === user?.id;
+        // Get the avatar options for this user
+        const avatarString = isCurrentUser ? 
+          user?.avatar : 
+          (message.userId ? userAvatars[message.userId] : '');
+        
+        const avatarOptions = deserializeAvatarOptions(avatarString || '');
         
         return (
           <div className={`chat-message ${isCurrentUser ? 'user flex justify-end' : 'flex'}`}>
-            {!isCurrentUser && (
-              <CharacterAvatar 
-                name="thorgrim" // This should be dynamic based on the sender
+            {!isCurrentUser && message.userId && (
+              <CustomAvatar 
+                options={avatarOptions}
                 size={32}
                 className="mr-2"
               />
