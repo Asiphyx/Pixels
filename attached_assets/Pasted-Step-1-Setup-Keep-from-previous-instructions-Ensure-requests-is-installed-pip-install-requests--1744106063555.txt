@@ -1,0 +1,151 @@
+Step 1: Setup (Keep from previous instructions)
+
+Ensure requests is installed (pip install requests).
+Store your OPEN_ROUTER_API key in Replit Secrets.
+Make sure your web framework (Flask, Flask-SocketIO, Django, etc.) is installed.
+Step 2: Define Personalities & API Config (Keep from previous instructions)
+
+Place this near the top of your main Python backend file (e.g., main.py or app.py) or in a dedicated configuration file.
+
+Python
+
+import os
+import requests
+import json
+from flask import Flask, request, jsonify # Example for Flask
+
+# --- Flask App Initialization (Example) ---
+app = Flask(__name__)
+# If using WebSockets (e.g., Flask-SocketIO), initialize it here too
+# from flask_socketio import SocketIO, emit
+# app.config['SECRET_KEY'] = 'your_very_secret_key_here!' # Needed for SocketIO
+# socketio = SocketIO(app)
+
+# --- Define Bartender Personalities ---
+# TODO: Replace these descriptions with the actual personalities you want!
+BARTENDER_PERSONALITIES = {
+    "Amethyst": "You are Amethyst, a wise and enigmatic bartender...",
+    "Sapphire": "You are Sapphire, a bubbly and cheerful bartender...",
+    "Ruby": "You are Ruby, a fiery and passionate bartender..."
+}
+
+# --- OpenRouter API Configuration ---
+OPENROUTER_API_KEY = os.environ.get('OPEN_ROUTER_API')
+OPENROUTER_API_URL = "https://openrouter.ai/api/v1/chat/completions"
+OPENROUTER_MODEL = "openai/gpt-3.5-turbo" # TODO: Replace if desired
+
+if not OPENROUTER_API_KEY:
+    print("ERROR: OPEN_ROUTER_API secret not found!")
+
+# --- (Keep the get_bartender_response function from previous instructions here) ---
+def get_bartender_response(bartender_name, user_query, user_name="Guest"):
+    # ... (same function as before: checks API key, defines headers/data, makes POST request, handles response/errors) ...
+    if not OPENROUTER_API_KEY:
+        return "Sorry, I can't connect to my thoughts right now (API key missing)."
+
+    personality = BARTENDER_PERSONALITIES.get(bartender_name, "You are a helpful assistant.")
+
+    headers = {
+        "Authorization": f"Bearer {OPENROUTER_API_KEY}",
+        "Content-Type": "application/json"
+    }
+    data = {
+        "model": OPENROUTER_MODEL,
+        "messages": [
+            {"role": "system", "content": personality},
+            {"role": "user", "content": f"{user_name} says: {user_query}"}
+        ]
+    }
+    try:
+        response = requests.post(OPENROUTER_API_URL, headers=headers, json=data, timeout=30)
+        response.raise_for_status()
+        result = response.json()
+        if result.get("choices") and len(result["choices"]) > 0:
+            ai_message = result["choices"][0].get("message", {}).get("content")
+            return ai_message.strip() if ai_message else "I seem to be at a loss for words..."
+        else:
+            print("Error: Unexpected response format:", result)
+            return "Sorry, received a strange response."
+    except requests.exceptions.RequestException as e:
+        print(f"Error calling OpenRouter API: {e}")
+        return f"Sorry, API Error: {e}"
+    except Exception as e:
+        print(f"An unexpected error occurred: {e}")
+        return "An unexpected error occurred."
+Step 3: Integrate into Chat Message Handling
+
+This is where your website's backend receives a new message sent by a user in the chatroom.
+
+If using standard HTTP POST requests: You might have a Flask route like /send_message.
+If using WebSockets (e.g., with Flask-SocketIO): You'll have an event handler for incoming messages.
+Here's a conceptual example using Flask-SocketIO:
+
+Python
+
+# Assuming you have initialized Flask-SocketIO as 'socketio'
+# pip install Flask-SocketIO eventlet # (or gevent)
+
+# This function checks for mentions and gets the response
+# It's slightly adapted to return the bartender name too
+def check_and_get_ai_response(user_message_content, user_name="Guest"):
+    mentioned_bartender = None
+    for name in BARTENDER_PERSONALITIES.keys():
+        if f"@{name.lower()}" in user_message_content.lower():
+            mentioned_bartender = name
+            break
+
+    if mentioned_bartender:
+        print(f"Bartender {mentioned_bartender} mentioned by {user_name}. Getting AI response...")
+        query = user_message_content.replace(f"@{mentioned_bartender}", "", 1).strip() # Replace only first instance
+        ai_text = get_bartender_response(mentioned_bartender, query, user_name)
+        # Return both the name and the response text
+        return {"bartender_name": mentioned_bartender, "ai_text": ai_text}
+    else:
+        return None
+
+# WebSocket event handler for receiving chat messages from the frontend
+@socketio.on('new_message') # 'new_message' is an example event name from your frontend JS
+def handle_new_message(data):
+    # data likely contains {'username': 'Alice', 'message': 'Hi @Sapphire! How are you?'}
+    username = data.get('username', 'Guest')
+    message_text = data.get('message', '')
+
+    print(f"Received message from {username}: {message_text}")
+
+    # --- Crucial Integration Point ---
+    # 1. Broadcast the original user message so everyone sees it
+    #    (Your existing chat likely already does this)
+    emit('display_message', {'username': username, 'message': message_text}, broadcast=True)
+
+    # 2. Check if a bartender was mentioned and get AI response
+    ai_response_data = check_and_get_ai_response(message_text, username)
+
+    # 3. If AI responded, broadcast its message
+    if ai_response_data:
+        # Send the AI response back to *all* clients in the chatroom
+        # The frontend JS needs to know how to display this (e.g., show it as coming from 'Sapphire')
+        emit('display_message', {
+            'username': ai_response_data['bartender_name'], # Send bartender name as username
+            'message': ai_response_data['ai_text'],
+            'is_ai': True # Add a flag so frontend can style it differently if needed
+             }, broadcast=True)
+
+# --- Standard Flask route (for testing or non-WebSocket parts) ---
+@app.route('/')
+def index():
+    # Serve your main chatroom HTML page
+    return "Welcome to the Bartender Chatroom!" # Replace with rendering your HTML template
+
+# --- Run the App (Example for Flask-SocketIO) ---
+if __name__ == '__main__':
+    print("Starting Flask-SocketIO server...")
+    # socketio.run(app, host='0.0.0.0', port=8080) # Common Replit setup
+    # If not using SocketIO, use: app.run(host='0.0.0.0', port=8080)
+Step 4: Frontend Integration (Conceptual)
+
+Your website's frontend JavaScript needs to:
+
+Send new chat messages typed by the user to the backend (e.g., using socket.emit('new_message', {username: 'Bob', message: 'Hello @Amethyst'}) if using Flask-SocketIO).
+Listen for messages broadcast from the backend (e.g., socket.on('display_message', function(data) { ... })).
+When receiving a message, check if it's from the AI (e.g., using the is_ai: True flag).
+Display the message in the chat window, potentially styling AI messages differently or showing them under the bartender's name (data.username would be "Amethyst", "Sapphire", or "Ruby" in this case).
