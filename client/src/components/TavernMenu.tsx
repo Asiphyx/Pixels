@@ -2,6 +2,7 @@ import { FC, useState } from 'react';
 import { useWebSocketStore } from '@/lib/websocket';
 import { MenuItemIcon } from '@/assets/svgs/menu-items';
 import { XIcon } from 'lucide-react';
+import { useTavernAudio } from '@/hooks/use-tavern-audio';
 
 interface TavernMenuProps {
   onClose: () => void;
@@ -9,9 +10,23 @@ interface TavernMenuProps {
 
 const TavernMenu: FC<TavernMenuProps> = ({ onClose }) => {
   const { menuItems, orderMenuItem } = useWebSocketStore();
+  const { playSound } = useTavernAudio();
   const [activeCategory, setActiveCategory] = useState<string>('drinks');
   
   const filteredItems = menuItems.filter(item => item.category === activeCategory);
+  
+  // Handle ordering items
+  const handleOrderItem = (itemId: number, category: string) => {
+    // Play appropriate sound based on category
+    if (category === 'drinks') {
+      playSound('drink-pour');
+    } else {
+      playSound('coin-drop');
+    }
+    
+    // Order the item via websocket
+    orderMenuItem(itemId);
+  };
   
   return (
     <div className="fixed inset-0 flex items-center justify-center z-50 bg-black bg-opacity-50">
@@ -21,7 +36,11 @@ const TavernMenu: FC<TavernMenuProps> = ({ onClose }) => {
       >
         <div className="menu-header bg-[#8B4513] p-3 flex justify-between items-center">
           <h2 className="font-['Press_Start_2P'] text-[#FFD700] text-xl">TAVERN MENU</h2>
-          <button onClick={onClose} className="text-[#E8D6B3] hover:text-[#FFD700] text-2xl">×</button>
+          <button 
+            onClick={onClose} 
+            className="text-[#E8D6B3] hover:text-[#FFD700] text-2xl"
+            aria-label="Close menu"
+          >×</button>
         </div>
         
         <div className="menu-tabs flex border-b border-[#8B4513]">
@@ -70,7 +89,9 @@ const TavernMenu: FC<TavernMenuProps> = ({ onClose }) => {
               <div 
                 key={item.id}
                 className="menu-item mb-4 flex gap-3 p-2 border border-transparent hover:border-[#FFD700] rounded-sm cursor-pointer transition-all hover:scale-[1.03] hover:bg-[rgba(255,215,0,0.1)]"
-                onClick={() => orderMenuItem(item.id)}
+                onClick={() => handleOrderItem(item.id, item.category)}
+                role="button"
+                aria-label={`Order ${item.name}`}
               >
                 <div className="item-icon w-16 h-16 bg-[#2C1810] flex items-center justify-center rounded-sm">
                   <MenuItemIcon 

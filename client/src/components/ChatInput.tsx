@@ -1,10 +1,12 @@
 import { FC, useState, KeyboardEvent } from 'react';
 import { useWebSocketStore } from '@/lib/websocket';
 import { SendIcon } from 'lucide-react';
+import { useTavernAudio } from '@/hooks/use-tavern-audio';
 
 const ChatInput: FC = () => {
   const [message, setMessage] = useState<string>('');
   const { sendMessage, toggleMenu } = useWebSocketStore();
+  const { playSound } = useTavernAudio();
   
   const handleSendMessage = () => {
     if (!message.trim()) return;
@@ -14,14 +16,26 @@ const ChatInput: FC = () => {
     // Check for commands
     if (trimmedMessage === '/menu') {
       toggleMenu();
+      playSound('door-open'); // Menu opening sound like a cabinet
     } else if (trimmedMessage.startsWith('/emote ')) {
       // Extract the emote action
       const emoteAction = trimmedMessage.substring(7).trim();
       if (emoteAction) {
         sendMessage(emoteAction, 'emote');
+        playSound('chair-move'); // Subtle sound for emotes
       }
-    } else {
+    } else if (trimmedMessage.toLowerCase().includes('order') || 
+               trimmedMessage.toLowerCase().includes('drink') || 
+               trimmedMessage.toLowerCase().includes('food')) {
+      // If the message mentions ordering, drinks, or food
       sendMessage(trimmedMessage);
+      playSound('coin-drop'); // Sound of coins for ordering
+    } else {
+      // Regular message
+      sendMessage(trimmedMessage);
+      
+      // No sound effect for regular messages to avoid too much noise
+      // User will see their message appear in the chat
     }
     
     setMessage('');
@@ -43,10 +57,12 @@ const ChatInput: FC = () => {
           onKeyPress={handleKeyPress}
           className="flex-grow bg-[#2C1810] border-2 border-[#8B4513] text-[#E8D6B3] p-2 rounded-sm font-['VT323'] text-lg"
           placeholder="Say something or type /menu..."
+          aria-label="Chat message input"
         />
         <button 
           onClick={handleSendMessage}
           className="bg-[#8B4513] text-[#E8D6B3] p-2 rounded-sm transition hover:bg-[#9B5523] active:bg-[#7B3503] active:translate-y-[2px]"
+          aria-label="Send message"
         >
           <SendIcon className="h-6 w-6" />
         </button>

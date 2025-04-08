@@ -1,17 +1,54 @@
-import { FC, useEffect, useRef } from 'react';
+import { FC, useEffect, useRef, useState } from 'react';
 import { useWebSocketStore } from '@/lib/websocket';
 import { Message } from '@shared/schema';
 import { BartenderAvatar } from '@/assets/svgs/bartenders';
 import { PatronAvatar } from '@/assets/svgs/tavern-patrons';
+import { useTavernAudio } from '@/hooks/use-tavern-audio';
 
 const ChatMessages: FC = () => {
   const { messages, user, onlineUsers } = useWebSocketStore();
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const { playSound } = useTavernAudio();
+  const [lastMessageCount, setLastMessageCount] = useState(0);
   
   // Auto scroll to bottom on new messages
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages]);
+    
+    // Play sounds when new messages arrive
+    if (messages.length > lastMessageCount) {
+      // Get the latest message
+      const latestMessage = messages[messages.length - 1];
+      
+      // Play different sounds based on message type
+      if (latestMessage) {
+        if (latestMessage.type === 'bartender') {
+          // Play glass clink sound when bartender serves a drink (if message mentions drink or serving)
+          const content = latestMessage.content.toLowerCase();
+          if (content.includes('drink') || content.includes('serve') || 
+              content.includes('pour') || content.includes('here you go')) {
+            playSound('drink-serve');
+          } else {
+            // General bartender response
+            playSound('glass-clink');
+          }
+        } else if (latestMessage.type === 'system' && latestMessage.content.includes('joined')) {
+          // Door sound when users join
+          playSound('door-open');
+        } else if (latestMessage.type === 'user' && latestMessage.userId !== user?.id) {
+          // Chair movement sound for other users talking
+          playSound('chair-move');
+        } else if (latestMessage.content?.toLowerCase().includes('order') || 
+                  latestMessage.content?.toLowerCase().includes('coin')) {
+          // Coin sound for orders
+          playSound('coin-drop');
+        }
+      }
+      
+      // Update the message count
+      setLastMessageCount(messages.length);
+    }
+  }, [messages, lastMessageCount, playSound, user?.id]);
   
   const renderMessage = (message: Message) => {
     switch (message.type) {
@@ -63,14 +100,27 @@ const ChatMessages: FC = () => {
         );
         
       case 'bartender':
+        // Determine which bartender is speaking
+        const bartenderName = message.bartenderId === 1 
+          ? "amethyst" 
+          : message.bartenderId === 2 
+            ? "sapphire" 
+            : "ruby";
+            
         return (
           <div className="chat-message bartender flex">
             <BartenderAvatar 
-              name={message.bartenderId === 1 ? "amethyst" : message.bartenderId === 2 ? "sapphire" : "ruby"}
+              name={bartenderName}
               size={32}
               className="mr-2"
             />
-            <div className="chat-bubble p-2 rounded-md max-w-[80%] bg-[#8B4513] text-[#E8D6B3]">
+            <div className={`chat-bubble p-2 rounded-md max-w-[80%] ${
+              bartenderName === "amethyst"
+                ? "bg-[#9b59b6] text-white"
+                : bartenderName === "sapphire"
+                  ? "bg-[#3498db] text-white"
+                  : "bg-[#e74c3c] text-white" 
+            }`}>
               {message.content}
             </div>
           </div>
