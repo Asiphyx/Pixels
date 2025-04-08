@@ -66,7 +66,7 @@ const ChatMessages: FC = () => {
         return (
           <div className="chat-message bartender flex">
             <BartenderAvatar 
-              name={message.bartenderId === 1 ? "sapphire" : message.bartenderId === 2 ? "amethyst" : "indigo"}
+              name={message.bartenderId === 1 ? "amethyst" : message.bartenderId === 2 ? "sapphire" : "ruby"}
               size={32}
               className="mr-2"
             />

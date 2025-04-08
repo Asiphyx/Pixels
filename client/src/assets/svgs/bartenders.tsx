@@ -1,10 +1,10 @@
 import { FC } from 'react';
 
 // Import bartender images directly
-import amethyst from '@/assets/amethyst_new.png';
-import sapphire from '@/assets/sapphire_new.png';
-import ruby from '@/assets/ruby_new.png';
-import backgroundImage from '@/assets/background.png';
+import amethyst from '@assets/image_1744093440778.png';
+import sapphire from '@assets/image_1744093474735.png';
+import ruby from '@assets/image_1744093403034.png';
+import backgroundImage from '@assets/background.png';
 
 // Map bartender names to their image paths - using our new bartender images
 export const BartenderImageMap = {
