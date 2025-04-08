@@ -1,7 +1,7 @@
 // Import background and character images
 import backgroundImage from '@assets/background.png';
-import amethystImage from '@assets/download (5).png'; // Pink-haired character (left in background)
-import sapphireImage from '@assets/download (3).png'; // Blue-haired character (middle in background)
+import amethystImage from '@assets/amethyst_avatar.png'; // Pink-haired character (left in background)
+import sapphireImage from '@assets/sapphire_avatar.png'; // Blue-haired character (middle in background)
 import rubyImage from '@assets/ruby_avatar.png'; // Red-haired character (right in background)
 
 // Export the full tavern background
