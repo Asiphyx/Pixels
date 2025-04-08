@@ -1,16 +1,13 @@
 import { FC } from 'react';
 
-// Import bartender images from backgroundless assets
-import { sapphire, amethyst, indigo, ruby, emerald, jade } from '@/assets/images/backgroundless';
+// Import bartender images from new assets
+import { sapphire, amethyst, ruby } from '@/assets/images/new_assets';
 
-// Map bartender names to their image paths
+// Map bartender names to their image paths - using our new bartender images
 export const BartenderImageMap = {
-  sapphire,
-  amethyst,
-  indigo,
-  ruby,
-  emerald,
-  jade
+  sapphire, // Blue-haired (middle) bartender
+  amethyst, // Pink-haired (left) bartender
+  ruby     // Red-haired (right) bartender
 };
 
 export interface BartenderAvatarProps {
@@ -26,12 +23,21 @@ export const BartenderAvatar: FC<BartenderAvatarProps> = ({ name, size = 32, cla
   
   return (
     <div 
-      className={`bartender-avatar ${className}`}
-      style={{ width: size, height: size }}
+      className={`bartender-avatar rounded-full overflow-hidden ${className}`}
+      style={{ 
+        width: size, 
+        height: size,
+        border: '2px solid',
+        borderColor: 
+          lowerName === 'amethyst' ? '#FF69B4' : 
+          lowerName === 'sapphire' ? '#1E90FF' : 
+          lowerName === 'ruby' ? '#FF4500' : '#8B4513'
+      }}
     >
       <img 
         src={imagePath} 
         alt={`Bartender ${name}`} 
+        className="object-cover w-full h-full"
         loading="lazy"
       />
     </div>
@@ -39,6 +45,9 @@ export const BartenderAvatar: FC<BartenderAvatarProps> = ({ name, size = 32, cla
 };
 
 // Bartender sprite component with enhanced styling for each character
+// These sprite components are no longer needed for rendering in the tavern, 
+// but we'll keep them for avatar references in the chat
+
 export const SapphireSprite: FC = () => (
   <div className="bartender-sprite bartender-sapphire">
     <img 
@@ -59,16 +68,6 @@ export const AmethystSprite: FC = () => (
   </div>
 );
 
-export const IndigoSprite: FC = () => (
-  <div className="bartender-sprite bartender-indigo">
-    <img 
-      src={indigo}
-      alt="Bartender Indigo"
-      loading="lazy" 
-    />
-  </div>
-);
-
 export const RubySprite: FC = () => (
   <div className="bartender-sprite bartender-ruby">
     <img 
@@ -79,32 +78,9 @@ export const RubySprite: FC = () => (
   </div>
 );
 
-export const EmeraldSprite: FC = () => (
-  <div className="bartender-sprite bartender-emerald">
-    <img 
-      src={emerald}
-      alt="Bartender Emerald"
-      loading="lazy" 
-    />
-  </div>
-);
-
-export const JadeSprite: FC = () => (
-  <div className="bartender-sprite bartender-jade">
-    <img 
-      src={jade}
-      alt="Bartender Jade"
-      loading="lazy" 
-    />
-  </div>
-);
-
-// Map of sprite components for easy access
+// Map of sprite components for easy access - only including our three new bartenders
 export const BartenderSpriteMap = {
   sapphire: SapphireSprite,
   amethyst: AmethystSprite,
-  indigo: IndigoSprite,
-  ruby: RubySprite,
-  emerald: EmeraldSprite,
-  jade: JadeSprite
+  ruby: RubySprite
 };

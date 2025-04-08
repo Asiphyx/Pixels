@@ -1,21 +1,14 @@
 import { FC } from 'react';
-import { BartenderSpriteMap } from '@/assets/svgs/bartenders';
+import { sapphire, amethyst, ruby } from '@/assets/images/new_assets';
 
 interface BartenderSpriteProps {
   sprite: string;
 }
 
+// This component is no longer needed to display sprites as we're using a single background image
+// It's kept for compatibility with existing code but doesn't render anything visible
 const BartenderSprite: FC<BartenderSpriteProps> = ({ sprite }) => {
-  const lowerSprite = sprite.toLowerCase();
-  
-  // Get the appropriate sprite component that uses our CSS-based bartender sprites
-  const SpriteComponent = BartenderSpriteMap[lowerSprite as keyof typeof BartenderSpriteMap] || BartenderSpriteMap.sapphire;
-  
-  return (
-    <div className="flex items-center justify-center h-52 w-40" style={{ transform: "scale(1.5)" }}>
-      <SpriteComponent />
-    </div>
-  );
+  return null;
 };
 
 export default BartenderSprite;

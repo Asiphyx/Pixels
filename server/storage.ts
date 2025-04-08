@@ -67,36 +67,36 @@ export class MemStorage implements IStorage {
   }
 
   private initializeDefaultData() {
-    // Create default bartenders - the three sisters
+    // Create default bartenders - the three gems
     const defaultBartenders: InsertBartender[] = [
-      { 
-        name: "Sapphire", 
-        sprite: "sapphire", 
-        avatar: "sapphire", 
-        personality: "The blue-haired sister. Friendly and energetic, knows all the local gossip."
-      },
       { 
         name: "Amethyst", 
         sprite: "amethyst", 
         avatar: "amethyst", 
-        personality: "The purple-haired sister. Mysterious and witty, knows secrets of the magical realm."
+        personality: "The pink-haired sister on the left. Sweet and charming, always ready with a kind word."
       },
       { 
-        name: "Indigo", 
-        sprite: "indigo", 
-        avatar: "indigo", 
-        personality: "The sister with dark blue-purple hair. Calm and collected, excellent listener with sage advice."
+        name: "Sapphire", 
+        sprite: "sapphire", 
+        avatar: "sapphire", 
+        personality: "The blue-haired sister in the middle. Intelligent and witty, great at solving problems."
+      },
+      { 
+        name: "Ruby", 
+        sprite: "ruby", 
+        avatar: "ruby", 
+        personality: "The red-haired sister on the right. Fiery and passionate, tells amazing stories about adventures."
       }
     ];
     
     // Create bartenders first so we have their IDs
     defaultBartenders.forEach(bartender => this.createBartender(bartender));
     
-    // Create default rooms - one for each sister
+    // Create default rooms - one for each gem
     const defaultRooms: InsertRoom[] = [
-      { name: "The Hearth", description: "A warm and lively area with Sapphire's cheerful service." },
-      { name: "The Midnight Nook", description: "A dimly lit corner where Amethyst shares mystical insights." },
-      { name: "The Scholar's Rest", description: "A quiet section where Indigo offers wisdom and calm reflection." }
+      { name: "The Rose Garden", description: "A warm and inviting space with Amethyst's sweet service." },
+      { name: "The Ocean View", description: "A thoughtful atmosphere where Sapphire offers clever insights." },
+      { name: "The Dragon's Den", description: "An exciting corner where Ruby shares thrilling tales." }
     ];
     
     defaultRooms.forEach(room => this.createRoom(room));

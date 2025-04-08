@@ -1,7 +1,7 @@
 import { FC, useEffect, useRef } from 'react';
 import BartenderSprite from './BartenderSprite';
 import { useWebSocketStore } from '@/lib/websocket';
-import { tavernBg } from '@/assets/images/tavern';
+import { background as newTavernBg } from '@/assets/images/new_assets';
 
 const TavernView: FC = () => {
   const tavernRef = useRef<HTMLDivElement>(null);
@@ -64,34 +64,18 @@ const TavernView: FC = () => {
       <div 
         className="tavern-bg absolute inset-0"
         style={{
-          backgroundImage: `url(${tavernBg})`,
+          backgroundImage: `url(${newTavernBg})`,
           backgroundSize: 'cover',
           backgroundPosition: 'center',
-          opacity: '0.9'
+          opacity: '1'
         }}
       ></div>
       
-      {/* Tavern Interior */}
+      {/* Tavern Interior - Using the background image that already has all bartenders */}
       <div className="tavern-interior relative w-full h-full">
-        {/* We'll skip the counter visual since we want the sprites positioned at the tavern table */}
-        
-        {/* Bartenders - positioned directly at the tavern table with no gap */}
-        <div className="bartenders absolute bottom-32 left-0 right-0 h-72 flex justify-around">
-          {bartenders.map((bartender, index) => (
-            <div 
-              key={bartender.id}
-              className={`bartender relative ${index > 0 ? 'hidden md:block' : ''} ${index > 1 ? 'md:hidden lg:block' : ''}`}
-              style={{ 
-                transform: 'translateY(0%)', // No vertical adjustment needed
-                zIndex: 0
-              }}
-            >
-              <BartenderSprite sprite={bartender.sprite} />
-              <div className="name-tag absolute top-40 left-1/2 transform -translate-x-1/2 bg-[#2C1810] bg-opacity-75 px-3 py-1 text-sm rounded text-[#FFD700] font-['VT323'] whitespace-nowrap shadow-md border border-[#8B4513]">
-                {bartender.name}
-              </div>
-            </div>
-          ))}
+        {/* Tavern Name Display */}
+        <div className="absolute top-4 left-1/2 transform -translate-x-1/2 px-4 py-2 rounded-md">
+          <h1 className="font-['VT323'] text-3xl font-bold text-[#FFD700] text-shadow-md">The Hidden Gems</h1>
         </div>
       </div>
     </div>
