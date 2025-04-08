@@ -19,12 +19,31 @@ const CharacterSelection: FC = () => {
     localStorage.getItem(STORAGE_KEY_AUTO_CONNECT) === 'true'
   );
   
-  // Auto-connect if enabled and we have saved credentials
+  // Auto-connect if enabled and we have saved credentials from local storage
+  // We'll use a different approach to prevent auto-connecting during typing
+  const [shouldAutoConnect, setShouldAutoConnect] = useState<boolean>(false);
+  
   useEffect(() => {
-    if (!user && autoConnect && username.trim()) {
-      connect(username, selectedAvatar);
+    // Only attempt auto-connect once when component mounts, not on every username change
+    const savedUsername = localStorage.getItem(STORAGE_KEY_USERNAME);
+    if (!user && autoConnect && savedUsername && savedUsername.trim().length > 0 && !shouldAutoConnect) {
+      setShouldAutoConnect(true);
     }
-  }, [autoConnect, username, selectedAvatar, connect, user]);
+  }, [user, autoConnect, shouldAutoConnect]);
+  
+  useEffect(() => {
+    // Separate effect for the actual connection to avoid connecting during typing
+    if (shouldAutoConnect && !user) {
+      const savedUsername = localStorage.getItem(STORAGE_KEY_USERNAME);
+      if (savedUsername && savedUsername.trim().length > 0) {
+        // Small delay to ensure UI is ready
+        const timer = setTimeout(() => {
+          connect(savedUsername, selectedAvatar);
+        }, 500);
+        return () => clearTimeout(timer);
+      }
+    }
+  }, [shouldAutoConnect, selectedAvatar, connect, user]);
   
   const handleConfirm = () => {
     if (username.trim()) {

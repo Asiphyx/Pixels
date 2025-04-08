@@ -19,16 +19,22 @@ const TavernMenu: FC<TavernMenuProps> = ({ onClose }) => {
   const filteredItems = menuItems.filter(item => item.category === activeCategory);
   
   const handleSignOut = () => {
-    // Clear stored user data
-    localStorage.removeItem(STORAGE_KEY_USERNAME);
-    localStorage.removeItem(STORAGE_KEY_AVATAR);
-    localStorage.removeItem(STORAGE_KEY_AUTO_CONNECT);
-    
-    // Disconnect from the WebSocket
+    // First disconnect from the WebSocket
     disconnect();
     
-    // Close the menu
-    onClose();
+    // Small delay to ensure disconnect completes before clearing storage
+    setTimeout(() => {
+      // Clear stored user data
+      localStorage.removeItem(STORAGE_KEY_USERNAME);
+      localStorage.removeItem(STORAGE_KEY_AVATAR);
+      localStorage.removeItem(STORAGE_KEY_AUTO_CONNECT);
+      
+      // Close the menu
+      onClose();
+      
+      // Reload the page to ensure a clean state
+      window.location.reload();
+    }, 200);
   };
   
   const handleDisableAutoConnect = () => {
