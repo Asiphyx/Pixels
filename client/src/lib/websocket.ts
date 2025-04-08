@@ -44,8 +44,9 @@ export const useWebSocketStore = create<WebSocketState>((set, get) => ({
       
       // Create a new WebSocket connection
       const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
-      const host = process.env.NODE_ENV === "development" ? "0.0.0.0:5000" : window.location.host;
+      const host = window.location.host; // Use the current host for both dev and prod
       const wsUrl = `${protocol}//${host}/ws`;
+      console.log('Connecting to WebSocket URL:', wsUrl);
       const socket = new WebSocket(wsUrl);
       
       socket.onopen = () => {
@@ -133,14 +134,36 @@ export const useWebSocketStore = create<WebSocketState>((set, get) => ({
       
       socket.onerror = (error) => {
         console.error('WebSocket error:', error);
-        set({ 
+        // Add a message to help users understand the connection issue
+        set(state => ({ 
           socket: null,
-          connected: false
-        });
+          connected: false,
+          messages: [...state.messages, {
+            id: Date.now(),
+            content: "Connection error. Please try refreshing the page.",
+            type: 'system',
+            userId: null,
+            roomId: state.roomId,
+            bartenderId: null,
+            timestamp: new Date()
+          }]
+        }));
       };
       
     } catch (error) {
       console.error('Error connecting to WebSocket:', error);
+      // Display error message to the user
+      set(state => ({ 
+        messages: [...state.messages, {
+          id: Date.now(),
+          content: "Failed to connect to the tavern. Please try again later.",
+          type: 'system',
+          userId: null,
+          roomId: state.roomId || 1,
+          bartenderId: null,
+          timestamp: new Date()
+        }]
+      }));
     }
   },
   
