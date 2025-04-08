@@ -21,64 +21,107 @@ interface ConnectedClient {
 const connectedClients: Map<WebSocket, ConnectedClient> = new Map();
 
 // Bartender AI logic for the three sisters
+// Bartender personalities and backstories
+const bartenderBios = {
+  "Sapphire": {
+    bio: "Sapphire is a calm, wise sea-touched woman with azure skin and flowing blue hair. Born in a coastal village, she's deeply connected to the ocean and its mysteries. Her voice has a gentle, rhythmic quality like waves on the shore. She's intuitive, observant, and has an almost supernatural ability to read people's intentions. Sapphire collects tales from seafarers and treasures from shipwrecks, displaying some in The Ocean View room. While typically serene, she becomes stern when patrons disrespect her space or others.",
+    traits: ["wise", "calm", "mysterious", "observant", "protective"]
+  },
+  "Amethyst": {
+    bio: "Amethyst is a vibrant, passionate woman with striking pink hair and a collection of arcane tattoos. A former battle-mage, she now channels her energy into brewing potent concoctions and maintaining order in The Rose Garden. Her laugh is infectious but her temper legendary. The rose garden connected to her tavern room blooms at midnight with magical flowers that glow and sometimes whisper secrets. She's direct, sometimes abrasive, but fiercely loyal to regular patrons. Her powerful arms bear scars from adventures she rarely discusses fully.",
+    traits: ["passionate", "strong", "direct", "magical", "protective"]
+  },
+  "Ruby": {
+    bio: "Ruby is a shrewd, attentive woman with auburn hair and a network of information that rivals any royal spy. The Dragon's Den is her domain, where she serves drinks while collecting secrets. Raised in a merchant family, she has a head for business and an eye for detail. More soft-spoken than her sisters, Ruby notices everything and forgets nothing. She maintains a warm demeanor but keeps most at arm's length. Her specialty is connecting people who need each other's services, making her an invaluable ally for those she trusts.",
+    traits: ["perceptive", "intelligent", "strategic", "reserved", "detail-oriented"]
+  }
+};
+
 async function getBartenderResponse(message: string, bartenderId: number): Promise<string> {
   // Get the bartender to determine which sister is responding
   const bartender = await storage.getBartender(bartenderId);
+  if (!bartender) return "Welcome to the tavern! How can I help you today?";
   
   // Process orders
   if (message.startsWith("/order")) {
     const item = message.substring(7).trim();
     
-    // Different responses based on which sister
-    if (bartender?.name === "Sapphire") {
-      return `Coming right up! One ${item} for ya! Want anything else with that?`;
-    } else if (bartender?.name === "Amethyst") {
-      return `Ah, the ${item}... an interesting choice. Your aura suggests you'll enjoy it.`;
-    } else {
-      return `One ${item}, prepared with care. Take your time enjoying it.`;
-    }
+    // Different responses based on which sister with more personality
+    const orderResponses: Record<string, string[]> = {
+      "Sapphire": [
+        `One ${item} coming right up! The ocean's bounty provides many gifts, this being one of my favorites.`,
+        `Ah, ${item}! A fine choice. This reminds me of something sailors from the eastern isles would enjoy.`,
+        `I'll prepare your ${item} with care. The secret is in how the ingredients flow together, like tides.`
+      ],
+      "Amethyst": [
+        `One ${item} coming right up! Strong enough to put hair on a dwarf's chest, just how I like to make 'em!`,
+        `${item}? Excellent choice! I add a special kick to mine that'll warm you from the inside out.`,
+        `Your ${item} will be ready in a flash! My special blend might make your eyes water, but that's how you know it's good!`
+      ],
+      "Ruby": [
+        `One ${item} coming right up! I've perfected this recipe through careful observation of what my patrons enjoy most.`,
+        `${item} is an excellent choice. I recently refined the preparation after speaking with a merchant from the southern realms.`,
+        `I'll have your ${item} ready momentarily. Each ingredient measured precisely - details matter in good service.`
+      ]
+    };
+    
+    // Select a random response for the bartender
+    const responses = orderResponses[bartender.name] || [`One ${item} coming right up! Anything else I can get ya?`];
+    return responses[Math.floor(Math.random() * responses.length)];
   }
   
-  // Personality-specific responses for each sister
+  // Enhanced personality-specific responses for each sister
   const sapphireResponses = [
-    "Need a refill? Just give me a shout!",
-    "Did you hear about the dragon sightings? So exciting!",
-    "You should try our Dragon's Breath Ale - it's our specialty!",
-    "The locals say there's treasure in the mountains! We should go looking sometime!",
-    "I love meeting new travelers! Where are you from?",
-    "My sisters and I have been running this tavern since our parents retired to the coast",
-    "Weather's perfect for an adventure, don't you think?",
-    "You look like someone with some amazing stories - care to share one?"
+    "The ocean has secrets, stranger. Some worth knowing, some better left alone.",
+    "My drinks taste like the sea, cool and refreshing. Care to try the Blue Depths ale?",
+    "Been traveling far? The Ocean View welcomes all weary souls seeking peaceful waters.",
+    "Watch the patrons carefully. You might learn more from their silences than from my words.",
+    "The waves bring all sorts to our shore. Stay a while, why don't you?",
+    "These blue markings on my skin? Ancient magic from the deep. A story for another time, perhaps.",
+    "Keep your coin purse close. Not all here are honest folk, though the waters reveal all truths eventually.",
+    "My sisters and I keep this place running. Each room has its own... atmosphere, like currents in the sea.",
+    "The tides shift and change, much like the fortunes of those who visit us.",
+    "I can tell by your eyes you've seen the open water. There's always a sailor's look that never fades.",
+    "Some say the ocean speaks to me. Perhaps... but I don't share all its whispers.",
+    "This blue ale? It contains a single mermaid's tear, collected with permission during the full moon. Brings clarity of thought."
   ];
   
   const amethystResponses = [
-    "I sense an interesting aura about you...",
-    "The stars are aligned strangely tonight. Be cautious in your travels.",
-    "Some say the forest whispers secrets at midnight. I've heard them.",
-    "This tavern stands on ancient grounds. Sometimes the past bleeds through.",
-    "Have you tried our Midnight Whiskey? It reveals hidden truths...",
-    "Your future is... hmm, unclear. The paths diverge in interesting ways.",
-    "That weapon you carry has seen blood, hasn't it? It remembers.",
-    "My tattoos? Each one tells a story of power gained or secrets learned."
+    "Have you tried our special brew? It's got a real kick to it - cleared a troll's sinuses once!",
+    "The Rose Garden is my pride and joy. The flowers only bloom at midnight when my magic is strongest.",
+    "Some say I mix the strongest drinks in the realm. They'd be right - I don't do anything half-measure.",
+    "Looking for work? The guild always needs brave souls... or expendable ones. I can spot which you are.",
+    "My tattoos? Each tells a story of triumph... or warning. This one here? From the Battle of Crimson Vale.",
+    "Stay for the music later. The bard knows tales that'll chill your blood - I made sure of it.",
+    "That weapon you carry has seen blood, hasn't it? It remembers every life it's taken. I can sense it.",
+    "These scars? From when I was in the mage battalion. The northern campaign was brutal but necessary.",
+    "Another battle-mage passed through recently. I can always spot them by their stance and how they carry their scars.",
+    "The roses outside? Don't try picking them after dark. They have... defensive enchantments I personally placed.",
+    "I once punched a troll unconscious. That's how I got this tavern, believe it or not. Previous owner lost a bet.",
+    "You look like you could use something that burns going down. I've got just the thing - melts steel but goes down smooth."
   ];
   
   const rubyResponses = [
-    "Take your time. Good drinks, like good advice, shouldn't be rushed.",
-    "If you're seeking information, you'd be wise to speak with the merchants by the east gate.",
-    "The guild is recruiting skilled hands. I could put in a good word.",
-    "Mind your coin purse. Not everyone in here is as honest as they appear.",
-    "My sisters are excellent company, but I notice what others miss.",
-    "Need a quiet place to rest? The rooms upstairs are well-kept and private.",
-    "That injury looks fresh. We have healing potions if you require one.",
-    "The trouble up north has brought many refugees to our doors lately."
+    "Take your time. Good drinks, like good advice, shouldn't be rushed. Observation leads to quality.",
+    "If you're seeking information, you'd be wise to speak with the merchants by the east gate. Tell them Ruby sent you.",
+    "The guild is recruiting skilled hands. I could put in a good word, if I judge your talents worth recommending.",
+    "Mind your coin purse. Not everyone in here is as honest as they appear. Table by the window - especially watch him.",
+    "My sisters are excellent company, but I notice what others miss. It's the quiet details that tell the full story.",
+    "Need a quiet place to rest? The rooms upstairs are well-kept and private. Third door has the finest view.",
+    "That injury looks fresh. We have healing potions if you require one - specially imported from the elvish valleys.",
+    "The trouble up north has brought many refugees to our doors lately. Listen to their stories - there's profit in knowing.",
+    "I've heard whispers of a new trading route opening beyond the mountains. Profitable, if dangerous.",
+    "The quiet ones are always worth watching. They collect information without even trying, much like myself.",
+    "Three separate patrons mentioned the same dream last night. Coincidence? I think not. I record such patterns.",
+    "Your accent... northeastern provinces? Your secret's safe, but you might want to work on that if discretion matters."
   ];
   
   // Select responses based on bartender
-  if (bartender?.name === "Sapphire") {
+  if (bartender.name === "Sapphire") {
     return sapphireResponses[Math.floor(Math.random() * sapphireResponses.length)];
-  } else if (bartender?.name === "Amethyst") {
+  } else if (bartender.name === "Amethyst") {
     return amethystResponses[Math.floor(Math.random() * amethystResponses.length)];
-  } else if (bartender?.name === "Ruby") {
+  } else if (bartender.name === "Ruby") {
     return rubyResponses[Math.floor(Math.random() * rubyResponses.length)];
   } else {
     // Default response for unknown bartender
@@ -233,10 +276,33 @@ async function handleMessage(client: ConnectedClient, rawMessage: string) {
           const bartender = await storage.getBartender(bartenderId);
           
           if (bartender) {
+            // Different welcome messages based on bartender personality
+            const greetings: Record<string, string[]> = {
+              "Sapphire": [
+                `*Her blue eyes shimmer like the ocean as she turns to you* Welcome to The Ocean View. I'm Sapphire. The waters brought you to us for a reason, perhaps. What can I pour for you today?`,
+                `*Looks up from polishing a shell-encrusted goblet* Ah, a new face washed in by the tide. I'm Sapphire, keeper of The Ocean View. What brings you to our peaceful waters?`,
+                `*Her movements fluid like water as she approaches* Welcome, traveler. I'm Sapphire. The Ocean View offers respite for weary souls. What refreshment do you seek?`
+              ],
+              "Amethyst": [
+                `*Her arcane tattoos briefly glow as she notices you* Ha! Fresh blood! Welcome to The Rose Garden. I'm Amethyst, and my drinks pack a punch stronger than I do - and that's saying something! What'll it be?`,
+                `*Slams down a mug with surprising force* New face! About time! I'm Amethyst, and this is The Rose Garden - best drinks in the realm if you can handle them. What's your poison?`,
+                `*Eyes you with an appraising look* Well now, you look interesting. I'm Amethyst, mistress of The Rose Garden and former battle-mage. Let's see if your taste in drinks matches your aura!`
+              ],
+              "Ruby": [
+                `*Glances up with perceptive eyes that seem to memorize your features* Welcome to The Dragon's Den. I'm Ruby. *She speaks softly but clearly* I notice you've traveled far. Perhaps a drink to restore your spirits?`,
+                `*Making a subtle note in a small book before addressing you* The Dragon's Den welcomes you. I'm Ruby, purveyor of fine drinks and... information. What can I offer you today?`,
+                `*Her movements precise and measured as she arranges bottles* A new patron for The Dragon's Den. How intriguing. I'm Ruby. *She offers a small smile* Your timing is impeccable. What shall I prepare for you?`
+              ]
+            };
+            
+            // Select a random greeting for this bartender
+            const bartenderGreetings = greetings[bartender.name] || [`Greetings, traveler! I'm ${bartender.name}, what can I get for ya today?`];
+            const greeting = bartenderGreetings[Math.floor(Math.random() * bartenderGreetings.length)];
+            
             const welcomeMessage = await storage.createMessage({
               userId: null,
               roomId: roomId,
-              content: `Greetings, traveler! I'm ${bartender.name}, what can I get for ya today?`,
+              content: greeting,
               type: "bartender",
               bartenderId: bartender.id
             });
