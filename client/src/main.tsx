@@ -1,33 +1,10 @@
 import { createRoot } from "react-dom/client";
 import App from "./App";
 import "./index.css";
-import { registerServiceWorker } from "./lib/serviceWorkerRegistration";
-import { webVitals } from "web-vitals";
 
-// Register service worker for PWA support
-if (process.env.NODE_ENV === 'production') {
-  registerServiceWorker();
-}
-
-// Report web vitals
-webVitals({
-  reportHandler: (metric) => {
-    console.debug('Web Vitals:', metric);
-    // You could send these metrics to an analytics service
-  }
-});
-
-// Enhanced global error handler for unhandled promise rejections
+// Global error handler for unhandled promise rejections
 window.addEventListener('unhandledrejection', (event) => {
   console.warn('Unhandled promise rejection:', event.reason);
-  
-  // Log more detailed information for debugging
-  if (event.reason?.stack) {
-    console.warn('Stack trace:', event.reason.stack);
-  }
-  
-  // You could also report to an error tracking service here
-  
   // Prevent the default browser behavior that logs to console
   event.preventDefault();
 });
