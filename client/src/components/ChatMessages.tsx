@@ -1,24 +1,12 @@
-import { FC, useEffect, useRef, useState } from 'react';
+import { FC, useEffect, useRef } from 'react';
 import { useWebSocketStore } from '@/lib/websocket';
-import { Message, User } from '@shared/schema';
+import { Message } from '@shared/schema';
 import { BartenderAvatar } from '@/assets/svgs/bartenders';
-import { CustomAvatar, deserializeAvatarOptions, defaultAvatarOptions } from '@/assets/svgs/avatar-creator';
+import { PatronAvatar } from '@/assets/svgs/tavern-patrons';
 
 const ChatMessages: FC = () => {
   const { messages, user, onlineUsers } = useWebSocketStore();
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const [userAvatars, setUserAvatars] = useState<Record<number, string>>({});
-  
-  // Maintain a cache of user avatars
-  useEffect(() => {
-    const newUserAvatars: Record<number, string> = { ...userAvatars };
-    onlineUsers.forEach(user => {
-      if (!newUserAvatars[user.id]) {
-        newUserAvatars[user.id] = user.avatar;
-      }
-    });
-    setUserAvatars(newUserAvatars);
-  }, [onlineUsers]);
   
   // Auto scroll to bottom on new messages
   useEffect(() => {
@@ -30,18 +18,17 @@ const ChatMessages: FC = () => {
       case 'user':
         // Get the user that sent this message
         const isCurrentUser = message.userId === user?.id;
-        // Get the avatar options for this user
-        const avatarString = isCurrentUser ? 
-          user?.avatar : 
-          (message.userId ? userAvatars[message.userId] : '');
         
-        const avatarOptions = deserializeAvatarOptions(avatarString || '');
+        // Get the avatar for this user
+        const avatarString = isCurrentUser 
+          ? user?.avatar 
+          : onlineUsers.find(u => u.id === message.userId)?.avatar || 'bard';
         
         return (
           <div className={`chat-message ${isCurrentUser ? 'user flex justify-end' : 'flex'}`}>
             {!isCurrentUser && message.userId && (
-              <CustomAvatar 
-                options={avatarOptions}
+              <PatronAvatar 
+                name={avatarString}
                 size={32}
                 className="mr-2"
               />

@@ -1,19 +1,21 @@
 import { FC, useState } from 'react';
 import { useWebSocketStore } from '@/lib/websocket';
-import { defaultAvatarOptions, serializeAvatarOptions, deserializeAvatarOptions, CustomAvatar } from '@/assets/svgs/avatar-creator';
-import AvatarCustomizer from './AvatarCustomizer';
+import { PatronAvatar, PatronIconMap } from '@/assets/svgs/tavern-patrons';
 
 const CharacterSelection: FC = () => {
   const { connect, user } = useWebSocketStore();
-  const [avatarString, setAvatarString] = useState<string>(serializeAvatarOptions(defaultAvatarOptions));
+  const [selectedAvatar, setSelectedAvatar] = useState<string>('bard');
   const [username, setUsername] = useState<string>('');
   
   const handleConfirm = () => {
     if (username.trim()) {
-      // Connect to WebSocket with customized avatar
-      connect(username, avatarString);
+      // Connect to WebSocket with selected avatar
+      connect(username, selectedAvatar);
     }
   };
+  
+  // Available patron avatars
+  const avatarOptions = Object.keys(PatronIconMap);
   
   // Only show character selection if user is not connected
   // This prevents the patron screen from staying visible after connection
@@ -25,11 +27,28 @@ const CharacterSelection: FC = () => {
       <div className="character-modal w-5/6 max-w-xl z-10 bg-[#4A3429] rounded-sm overflow-hidden
                       shadow-[0_-4px_0_0px_#2C1810,0_4px_0_0px_#2C1810,-4px_0_0_0px_#2C1810,4px_0_0_0px_#2C1810,0_0_0_4px_#8B4513]">
         <div className="modal-header bg-[#8B4513] p-3">
-          <h2 className="font-['Press_Start_2P'] text-[#FFD700] text-center text-lg">CUSTOMIZE YOUR AVATAR</h2>
+          <h2 className="font-['Press_Start_2P'] text-[#FFD700] text-center text-lg">CHOOSE YOUR AVATAR</h2>
         </div>
         
         <div className="p-4">
-          <AvatarCustomizer onSelect={setAvatarString} />
+          <div className="avatars-grid grid grid-cols-3 gap-4">
+            {avatarOptions.map((avatar) => (
+              <div 
+                key={avatar}
+                className={`avatar-option cursor-pointer p-2 flex flex-col items-center transition-all ${
+                  selectedAvatar === avatar 
+                  ? 'bg-[#8B4513] rounded-md scale-110 shadow-lg' 
+                  : 'hover:bg-[#5A4439] rounded-md'
+                }`}
+                onClick={() => setSelectedAvatar(avatar)}
+              >
+                <PatronAvatar name={avatar} size={64} className="mb-2" />
+                <span className="font-['VT323'] text-[#E8D6B3] text-center capitalize">
+                  {avatar}
+                </span>
+              </div>
+            ))}
+          </div>
         </div>
         
         <div className="custom-name p-4 border-t border-[#8B4513]">
