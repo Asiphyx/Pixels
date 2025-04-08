@@ -4,7 +4,6 @@ import ChatPanel from './ChatPanel';
 import OnlineUsers from './OnlineUsers';
 import CharacterSelection from './CharacterSelection';
 import TavernMenu from './TavernMenu';
-import TavernAudio from './TavernAudio';
 import { useWebSocketStore } from '@/lib/websocket';
 import { Menu } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -82,9 +81,6 @@ const TavernApp: FC = () => {
       
       {/* Menu */}
       {showMenu && <TavernMenu onClose={toggleMenu} />}
-      
-      {/* Audio System - This remains mounted all the time */}
-      <TavernAudio />
     </div>
   );
 };
