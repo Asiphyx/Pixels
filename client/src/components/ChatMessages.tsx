@@ -7,23 +7,23 @@ import { PatronAvatar } from '@/assets/svgs/tavern-patrons';
 const ChatMessages: FC = () => {
   const { messages, user, onlineUsers } = useWebSocketStore();
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  
+
   // Auto scroll to bottom on new messages
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
-  
+
   const renderMessage = (message: Message) => {
     switch (message.type) {
       case 'user':
         // Get the user that sent this message
         const isCurrentUser = message.userId === user?.id;
-        
+
         // Get the avatar for this user
         const avatarString = isCurrentUser 
           ? user?.avatar 
           : onlineUsers.find(u => u.id === message.userId)?.avatar || 'bard';
-        
+
         return (
           <div className={`chat-message ${isCurrentUser ? 'user flex justify-end' : 'flex'}`}>
             {!isCurrentUser && message.userId && (
@@ -42,7 +42,7 @@ const ChatMessages: FC = () => {
             </div>
           </div>
         );
-        
+
       case 'system':
         return (
           <div className="chat-message system">
@@ -51,7 +51,7 @@ const ChatMessages: FC = () => {
             </div>
           </div>
         );
-        
+
       case 'emote':
         // Special styling for emote messages
         return (
@@ -61,7 +61,7 @@ const ChatMessages: FC = () => {
             </div>
           </div>
         );
-        
+
       case 'bartender':
         return (
           <div className="chat-message bartender flex">
@@ -75,12 +75,12 @@ const ChatMessages: FC = () => {
             </div>
           </div>
         );
-        
+
       default:
         return null;
     }
   };
-  
+
   return (
     <div 
       className="flex-grow p-4 overflow-y-auto font-['VT323'] text-lg text-[#E8D6B3]"
@@ -95,7 +95,7 @@ const ChatMessages: FC = () => {
         </div>
       ) : (
         messages.map((message, index) => (
-          <div key={index} className="mb-2">
+          <div key={index} className="mb-4 animate-fadeIn">
             {renderMessage(message)}
           </div>
         ))
