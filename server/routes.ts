@@ -42,7 +42,7 @@ const bartenderBios = {
   }
 };
 
-async function getBartenderResponse(message: string, bartenderId: number, username: string = 'Guest'): Promise<string> {
+async function getBartenderResponse(message: string, bartenderId: number, username: string = 'Guest', userId?: number): Promise<string> {
   // Get the bartender to determine which sister is responding
   const bartender = await storage.getBartender(bartenderId);
   if (!bartender) return "Welcome to the tavern! How can I help you today?";
@@ -77,8 +77,8 @@ async function getBartenderResponse(message: string, bartenderId: number, userna
   
   // For all other cases, use the OpenRouter API to generate a dynamic, personalized response
   try {
-    // Get a response from the OpenRouter API based on the bartender's personality
-    return await getOpenRouterResponse(bartender.name, message, username);
+    // Get a response from the OpenRouter API based on the bartender's personality and pass userId if available
+    return await getOpenRouterResponse(bartender.name, message, username, userId, bartender.id);
   } catch (error) {
     console.error('Error getting AI response from OpenRouter', error);
     
@@ -144,7 +144,7 @@ async function handleBartenderResponse(message: string, roomId: number, username
     }
     
     // Generate a response
-    let response = await getBartenderResponse(message, bartender.id, username);
+    let response = await getBartenderResponse(message, bartender.id, username, userId);
     
     // If we have a user ID, process mood changes and adjust response
     if (userId) {
@@ -543,7 +543,7 @@ async function handleMessage(client: ConnectedClient, rawMessage: string) {
           const username = user?.username || 'Guest';
           
           // Get personalized response from the bartender
-          let response = await getBartenderResponse(`/order ${menuItem.name}`, bartender.id, username);
+          let response = await getBartenderResponse(`/order ${menuItem.name}`, bartender.id, username, client.userId);
           
           // Apply mood-based modifications to the response
           // Orders generally make bartenders slightly happier (+1)

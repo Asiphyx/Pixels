@@ -27,13 +27,39 @@ const bartenderBios = {
 };
 
 /**
+ * Check if a user has interacted with a bartender before based on mood records
+ * @param userId - The user's ID
+ * @param bartenderId - The bartender's ID
+ * @returns Promise<boolean> - True if this is a returning user
+ */
+export async function isReturningCustomer(userId: number, bartenderId: number): Promise<boolean> {
+  try {
+    const { storage } = require('./storage');
+    // Check if we have a mood record for this user-bartender pair
+    const moodRecord = await storage.getBartenderMood(userId, bartenderId);
+    return moodRecord !== undefined;
+  } catch (error) {
+    console.error('Error checking returning customer status:', error);
+    return false;
+  }
+}
+
+/**
  * Get a response from the OpenRouter API based on the bartender's personality and the user message
  * @param bartenderName - Name of the bartender character
  * @param userMessage - The message from the user
  * @param username - The username of the user
+ * @param userId - Optional user ID to check if they're a returning customer
+ * @param bartenderId - Optional bartender ID to check if they're a returning customer
  * @returns Promise<string> - The AI-generated response
  */
-export async function getOpenRouterResponse(bartenderName: string, userMessage: string, username: string = "Guest"): Promise<string> {
+export async function getOpenRouterResponse(
+  bartenderName: string, 
+  userMessage: string, 
+  username: string = "Guest", 
+  userId?: number, 
+  bartenderId?: number
+): Promise<string> {
   if (!OPENROUTER_API_KEY) {
     console.warn("OPEN_ROUTER_API is not set. Using fallback responses.");
     throw new Error("OpenRouter API key is not configured");
@@ -204,6 +230,15 @@ BARTENDER SPECIALTIES:
 - Ruby: "Strategic Reserve" (mental clarity), "Information Network" (rare rumors), "Merchant's Fortune" (business luck), mathematical probability calculations
 
 You're currently working at your tavern, serving customers and engaging in casual conversation.
+${await (async () => {
+  if (userId && bartenderId) {
+    const returning = await isReturningCustomer(userId, bartenderId);
+    return returning 
+      ? `${username} has visited your tavern before. You recognize them as a returning customer who has interacted with you previously.` 
+      : `${username} appears to be a new customer who hasn't visited your tavern before.`;
+  }
+  return `${username} appears to be a new customer who hasn't visited your tavern before.`;
+})()}
       
 A patron named ${username} said: "${userMessage}"
 
@@ -215,11 +250,11 @@ If you're asked a question you don't know the answer to, respond in a way that f
 Always stay in character as a fantasy tavern bartender in a medieval world with some magic elements.`;
     }
 
-    // Make request to OpenRouter API using the meta-llama/llama-4-maverick:free model
+    // Make request to OpenRouter API using the meta-llama/llama-4-scout:free model
     const response = await axios.post(
       'https://openrouter.ai/api/v1/chat/completions',
       {
-        model: "meta-llama/llama-4-maverick:free",
+        model: "meta-llama/llama-4-scout:free",
         messages: [
           { role: "system", content: contextPrompt },
           { role: "user", content: userMessage }
