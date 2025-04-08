@@ -225,11 +225,11 @@ export const useWebSocketStore = create<WebSocketState>((set, get) => ({
     if (!socket || !user) return;
     
     const message = {
-      type: WebSocketMessageType.SEND_MESSAGE,
+      type: WebSocketMessageType.CHAT_MESSAGE,
       payload: {
         userId: user.id,
         roomId,
-        content,
+        message: content,
         type
       }
     };
@@ -276,11 +276,11 @@ export const useWebSocketStore = create<WebSocketState>((set, get) => ({
     } else if (socket) {
       // Request menu items from the server
       socket.send(JSON.stringify({
-        type: WebSocketMessageType.SEND_MESSAGE,
+        type: WebSocketMessageType.CHAT_MESSAGE,
         payload: {
           userId: get().user?.id,
           roomId: get().roomId,
-          content: '/menu',
+          message: '/menu',
           type: 'user'
         }
       }));
