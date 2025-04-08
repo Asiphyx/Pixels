@@ -2,6 +2,7 @@ import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
 import { seedDatabase } from "./seed";
+import { resetUserOnlineStatus } from "./storage";
 
 const app = express();
 app.use(express.json());
@@ -40,6 +41,9 @@ app.use((req, res, next) => {
 (async () => {
   // Seed the database with default data if needed
   await seedDatabase();
+  
+  // Reset all user online statuses to prevent "username already taken" errors on restart
+  await resetUserOnlineStatus();
   
   const server = await registerRoutes(app);
 

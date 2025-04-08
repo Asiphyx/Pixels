@@ -824,3 +824,16 @@ export class DatabaseStorage implements IStorage {
 
 // Use the database storage implementation
 export const storage = new DatabaseStorage();
+
+/**
+ * Resets all user online statuses to false
+ * This is useful when restarting the server to prevent "user already exists" errors
+ */
+export async function resetUserOnlineStatus() {
+  try {
+    await db.update(users).set({ online: false });
+    console.log("[database] Reset all user online statuses to offline");
+  } catch (error) {
+    console.error("[database] Error resetting user online statuses:", error);
+  }
+}
