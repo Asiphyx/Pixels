@@ -1,12 +1,10 @@
 import { useEffect, useRef, useState } from 'react';
 import { useWebSocketStore } from '@/lib/websocket';
 import { ActionSoundType } from '@/hooks/use-tavern-audio';
-import { getCachedSoundUrl, fallbackSoundUrls } from '@/utils/sound-utils';
 
 // Define sound types and their properties
 interface SoundEffect {
   id: string;
-  src: string;
   volume: number;
   loop: boolean;
   playbackRate?: number;
@@ -18,13 +16,11 @@ const roomSounds: Record<number, SoundEffect[]> = {
   1: [
     { 
       id: 'rose-garden-ambience', 
-      src: '/sounds/rose-garden-ambience.mp3', 
       volume: 0.3, 
       loop: true 
     },
     { 
       id: 'magical-chimes', 
-      src: '/sounds/magical-chimes.mp3', 
       volume: 0.1, 
       loop: true,
       playbackRate: 0.8
@@ -35,13 +31,11 @@ const roomSounds: Record<number, SoundEffect[]> = {
   2: [
     { 
       id: 'ocean-waves', 
-      src: '/sounds/ocean-waves.mp3', 
       volume: 0.3, 
       loop: true 
     },
     { 
       id: 'distant-seagulls', 
-      src: '/sounds/seagulls.mp3', 
       volume: 0.1, 
       loop: true 
     }
@@ -51,13 +45,11 @@ const roomSounds: Record<number, SoundEffect[]> = {
   3: [
     { 
       id: 'tavern-murmurs', 
-      src: '/sounds/tavern-murmurs.mp3',
       volume: 0.3, 
       loop: true 
     },
     { 
       id: 'crackling-fire', 
-      src: '/sounds/fire-crackling.mp3', 
       volume: 0.2, 
       loop: true 
     }
@@ -68,7 +60,6 @@ const roomSounds: Record<number, SoundEffect[]> = {
 const commonSounds: SoundEffect[] = [
   { 
     id: 'tavern-background', 
-    src: '/sounds/tavern-background.mp3', 
     volume: 0.15, 
     loop: true 
   }
@@ -77,41 +68,52 @@ const commonSounds: SoundEffect[] = [
 // Action sounds
 const actionSounds: Record<string, SoundEffect> = {
   'drink-pour': { 
-    id: 'drink-pour', 
-    src: '/sounds/drink-pour.mp3', 
+    id: 'drinkPour', 
     volume: 0.5, 
     loop: false 
   },
   'door-open': { 
-    id: 'door-open', 
-    src: '/sounds/door-open.mp3', 
+    id: 'doorOpen', 
     volume: 0.4, 
     loop: false 
   },
   'drink-serve': { 
-    id: 'drink-serve', 
-    src: '/sounds/glass-clink.mp3', 
+    id: 'glassClink', 
     volume: 0.4, 
     loop: false 
   },
   'coin-drop': {
-    id: 'coin-drop',
-    src: '/sounds/coin-drop.mp3',
+    id: 'coinDrop',
     volume: 0.4,
     loop: false
   },
   'chair-move': {
-    id: 'chair-move',
-    src: '/sounds/chair-move.mp3',
+    id: 'chairMove',
     volume: 0.3,
     loop: false
   },
   'glass-clink': {
-    id: 'glass-clink',
-    src: '/sounds/glass-clink.mp3',
+    id: 'glassClink',
     volume: 0.4,
     loop: false
   }
+};
+
+// Map our sound IDs to the sound generator's output keys
+const soundIdMapping: Record<string, string> = {
+  'rose-garden-ambience': 'tavernAmbience', 
+  'magical-chimes': 'glassClink',
+  'ocean-waves': 'tavernAmbience',
+  'distant-seagulls': 'tavernAmbience',
+  'tavern-murmurs': 'tavernAmbience',
+  'crackling-fire': 'tavernAmbience',
+  'tavern-background': 'tavernAmbience',
+  'drink-pour': 'drinkPour',
+  'door-open': 'doorOpen',
+  'drink-serve': 'glassClink',
+  'coin-drop': 'coinDrop',
+  'chair-move': 'chairMove',
+  'glass-clink': 'glassClink'
 };
 
 const TavernAudio: React.FC = () => {
@@ -120,81 +122,111 @@ const TavernAudio: React.FC = () => {
   const [volume, setVolume] = useState(0.5);
   const audioRefs = useRef<Record<string, HTMLAudioElement | null>>({});
   const [soundsLoaded, setSoundsLoaded] = useState(false);
+  const [generatedSounds, setGeneratedSounds] = useState<Record<string, string>>({});
   
-  // Preload all audio files
+  // Load the sound generator script
   useEffect(() => {
-    const loadSounds = async () => {
-      // Create audio elements for all sounds
-      const allSounds = [
-        ...commonSounds,
-        ...Object.values(actionSounds),
-        ...Object.values(roomSounds).flat()
-      ];
-      
-      // Process each sound and load with fallback if needed
-      for (const sound of allSounds) {
-        if (!audioRefs.current[sound.id]) {
-          try {
-            // Skip local file checks and directly use fallbacks
-            const sourceUrl = fallbackSoundUrls[sound.id];
-            
-            if (sourceUrl) {
-              console.log(`Loading sound: ${sound.id} from ${sourceUrl}`);
-              const audio = new Audio();
-              
-              // Set up event handlers first
-              const loadPromise = new Promise<void>((resolve) => {
-                audio.addEventListener('canplaythrough', () => {
-                  console.log(`Sound loaded successfully: ${sound.id}`);
-                  resolve();
-                }, { once: true });
-                
-                audio.addEventListener('error', (e) => {
-                  console.error(`Error loading sound ${sound.id}:`, e);
-                  resolve(); // Resolve anyway to not block other sounds
-                });
-              });
-              
-              // Then set the source
-              audio.src = sourceUrl;
-              audio.volume = sound.volume * volume;
-              audio.loop = sound.loop;
-              if (sound.playbackRate) {
-                audio.playbackRate = sound.playbackRate;
-              }
-              audio.preload = 'auto';
-              
-              // Store the audio element
-              audioRefs.current[sound.id] = audio;
-              
-              // Wait for this sound to load before continuing
-              await loadPromise;
-            } else {
-              console.warn(`No fallback found for sound: ${sound.id}`);
-            }
-          } catch (error) {
-            console.error(`Error setting up sound ${sound.id}:`, error);
-          }
-        }
+    // Create a script element for sound generator
+    const scriptEl = document.createElement('script');
+    scriptEl.src = '/sounds/sound-generator.js';
+    scriptEl.async = true;
+    
+    // Append the script to the document head
+    document.head.appendChild(scriptEl);
+    
+    // Clean up
+    return () => {
+      document.head.removeChild(scriptEl);
+    };
+  }, []);
+  
+  // Generate sounds when the script is loaded
+  useEffect(() => {
+    const generateSounds = async () => {
+      // Wait for the generateSounds function to be available
+      let attempts = 0;
+      while (!window.generateSounds && attempts < 10) {
+        await new Promise(resolve => setTimeout(resolve, 500));
+        attempts++;
       }
       
-      console.log("All sounds loaded");
-      setSoundsLoaded(true);
+      if (!window.generateSounds) {
+        console.error('Sound generator not loaded after multiple attempts');
+        return;
+      }
+      
+      try {
+        console.log('Generating sounds...');
+        const sounds = await window.generateSounds();
+        console.log('Generated sounds:', sounds);
+        
+        if (sounds) {
+          setGeneratedSounds(sounds);
+        } else {
+          console.error('Failed to generate sounds');
+        }
+      } catch (error) {
+        console.error('Error generating sounds:', error);
+      }
     };
     
-    loadSounds();
+    generateSounds();
+  }, []);
+  
+  // Create audio elements when sounds are generated
+  useEffect(() => {
+    if (Object.keys(generatedSounds).length === 0) return;
+    
+    console.log('Creating audio elements from generated sounds');
+    
+    // Create audio elements for all sounds
+    const allSounds = [
+      ...commonSounds,
+      ...Object.values(actionSounds),
+      ...Object.values(roomSounds).flat()
+    ];
+    
+    // Process each sound
+    allSounds.forEach(sound => {
+      if (!audioRefs.current[sound.id]) {
+        try {
+          // Get the URL mapping for this sound
+          const soundKey = soundIdMapping[sound.id] || sound.id;
+          const url = generatedSounds[soundKey];
+          
+          if (url) {
+            console.log(`Creating audio for ${sound.id} using ${soundKey}`);
+            const audio = new Audio(url);
+            audio.volume = sound.volume * volume;
+            audio.loop = sound.loop;
+            if (sound.playbackRate) {
+              audio.playbackRate = sound.playbackRate;
+            }
+            
+            // Store the audio element
+            audioRefs.current[sound.id] = audio;
+          } else {
+            console.warn(`No generated sound found for: ${sound.id}`);
+          }
+        } catch (error) {
+          console.error(`Error setting up sound ${sound.id}:`, error);
+        }
+      }
+    });
+    
+    console.log("All sounds loaded");
+    setSoundsLoaded(true);
     
     return () => {
       // Cleanup
       Object.values(audioRefs.current).forEach(audio => {
         if (audio) {
           audio.pause();
-          audio.src = '';
         }
       });
       audioRefs.current = {};
     };
-  }, [volume]);
+  }, [generatedSounds, volume]);
   
   // Handle room changes
   useEffect(() => {
@@ -233,10 +265,7 @@ const TavernAudio: React.FC = () => {
             try {
               console.log(`Playing room sound: ${sound.id}`);
               audio.currentTime = 0;
-              const playPromise = audio.play();
-              if (playPromise) {
-                playPromise.catch(e => console.error(`Error playing ${sound.id}:`, e));
-              }
+              audio.play().catch(e => console.error(`Error playing ${sound.id}:`, e));
             } catch (e) {
               console.warn(`Error with room sound ${sound.id}:`, e);
             }
@@ -251,10 +280,7 @@ const TavernAudio: React.FC = () => {
           try {
             console.log(`Playing common sound: ${sound.id}`);
             audio.currentTime = 0;
-            const playPromise = audio.play();
-            if (playPromise) {
-              playPromise.catch(e => console.error(`Error playing ${sound.id}:`, e));
-            }
+            audio.play().catch(e => console.error(`Error playing ${sound.id}:`, e));
           } catch (e) {
             console.warn(`Error with common sound ${sound.id}:`, e);
           }
@@ -284,6 +310,8 @@ const TavernAudio: React.FC = () => {
           const soundDef = allSounds.find(s => s.id === soundId);
           if (soundDef) {
             audio.volume = isMuted ? 0 : soundDef.volume * volume;
+          } else {
+            audio.volume = isMuted ? 0 : 0.3 * volume; // Default volume
           }
         }
       }
@@ -331,32 +359,30 @@ const TavernAudio: React.FC = () => {
       const audio = audioRefs.current[sound.id];
       if (audio) {
         try {
-          audio.currentTime = 0;
-          const playPromise = audio.play();
-          if (playPromise) {
-            playPromise.catch(e => {
-              console.error(`Error playing ${sound.id}:`, e);
-              
-              // Try to recreate the audio element and play it
-              if (fallbackSoundUrls[sound.id]) {
-                console.log(`Retrying with new audio element for ${sound.id}`);
-                const newAudio = new Audio(fallbackSoundUrls[sound.id]);
-                newAudio.volume = sound.volume * volume;
-                newAudio.play().catch(e2 => console.error(`Second attempt failed for ${sound.id}:`, e2));
-              }
-            });
-          }
+          // Create a clone of the audio to allow overlapping sounds
+          const clone = new Audio(audio.src);
+          clone.volume = audio.volume;
+          clone.play().catch(e => console.error(`Error playing ${sound.id}:`, e));
         } catch (e) {
           console.warn(`Error with action sound ${sound.id}:`, e);
+          
+          // Try direct playback with the original
+          try {
+            audio.currentTime = 0;
+            audio.play().catch(e2 => console.error(`Original playback failed for ${sound.id}:`, e2));
+          } catch (e2) {
+            console.warn(`Error with original audio for ${sound.id}:`, e2);
+          }
         }
       }
     } else {
       console.warn(`Sound not found or not loaded: ${soundId}`);
       
-      // Try to play directly from fallback
-      if (fallbackSoundUrls[soundId]) {
-        console.log(`Attempting direct playback of ${soundId}`);
-        const directAudio = new Audio(fallbackSoundUrls[soundId]);
+      // Try to play the raw generated sound if available
+      const mappedId = soundIdMapping[soundId];
+      if (mappedId && generatedSounds[mappedId]) {
+        console.log(`Attempting direct playback of ${soundId} using ${mappedId}`);
+        const directAudio = new Audio(generatedSounds[mappedId]);
         directAudio.volume = 0.4 * volume; // Default volume
         directAudio.play().catch(e => console.error(`Direct playback failed for ${soundId}:`, e));
       }
@@ -402,5 +428,12 @@ const TavernAudio: React.FC = () => {
     </div>
   );
 };
+
+// Add the generateSounds function to the Window interface
+declare global {
+  interface Window {
+    generateSounds: () => Promise<Record<string, string>>;
+  }
+}
 
 export default TavernAudio;
