@@ -10,6 +10,7 @@ import {
   insertRoomSchema
 } from "@shared/schema";
 import { z } from "zod";
+import { getOpenRouterResponse, checkForBartenderMention, extractQueryFromMention } from "./openRouter";
 
 // Store connected clients with their user info
 interface ConnectedClient {
@@ -37,12 +38,12 @@ const bartenderBios = {
   }
 };
 
-async function getBartenderResponse(message: string, bartenderId: number): Promise<string> {
+async function getBartenderResponse(message: string, bartenderId: number, username: string = 'Guest'): Promise<string> {
   // Get the bartender to determine which sister is responding
   const bartender = await storage.getBartender(bartenderId);
   if (!bartender) return "Welcome to the tavern! How can I help you today?";
   
-  // Process orders
+  // Process orders using preset responses for better performance with order commands
   if (message.startsWith("/order")) {
     const item = message.substring(7).trim();
     
@@ -70,82 +71,66 @@ async function getBartenderResponse(message: string, bartenderId: number): Promi
     return responses[Math.floor(Math.random() * responses.length)];
   }
   
-  // Enhanced personality-specific responses for each sister
-  const sapphireResponses = [
-    "The ocean has secrets, stranger. Some worth knowing, some better left alone.",
-    "My drinks taste like the sea, cool and refreshing. Care to try the Blue Depths ale?",
-    "Been traveling far? The Ocean View welcomes all weary souls seeking peaceful waters.",
-    "Watch the patrons carefully. You might learn more from their silences than from my words.",
-    "The waves bring all sorts to our shore. Stay a while, why don't you?",
-    "These blue markings on my skin? Ancient magic from the deep. A story for another time, perhaps.",
-    "Keep your coin purse close. Not all here are honest folk, though the waters reveal all truths eventually.",
-    "My sisters and I keep this place running. Each room has its own... atmosphere, like currents in the sea.",
-    "The tides shift and change, much like the fortunes of those who visit us.",
-    "I can tell by your eyes you've seen the open water. There's always a sailor's look that never fades.",
-    "Some say the ocean speaks to me. Perhaps... but I don't share all its whispers.",
-    "This blue ale? It contains a single mermaid's tear, collected with permission during the full moon. Brings clarity of thought."
-  ];
-  
-  const amethystResponses = [
-    "Have you tried our special brew? It's got a real kick to it - cleared a troll's sinuses once!",
-    "The Rose Garden is my pride and joy. The flowers only bloom at midnight when my magic is strongest.",
-    "Some say I mix the strongest drinks in the realm. They'd be right - I don't do anything half-measure.",
-    "Looking for work? The guild always needs brave souls... or expendable ones. I can spot which you are.",
-    "My tattoos? Each tells a story of triumph... or warning. This one here? From the Battle of Crimson Vale.",
-    "Stay for the music later. The bard knows tales that'll chill your blood - I made sure of it.",
-    "That weapon you carry has seen blood, hasn't it? It remembers every life it's taken. I can sense it.",
-    "These scars? From when I was in the mage battalion. The northern campaign was brutal but necessary.",
-    "Another battle-mage passed through recently. I can always spot them by their stance and how they carry their scars.",
-    "The roses outside? Don't try picking them after dark. They have... defensive enchantments I personally placed.",
-    "I once punched a troll unconscious. That's how I got this tavern, believe it or not. Previous owner lost a bet.",
-    "You look like you could use something that burns going down. I've got just the thing - melts steel but goes down smooth."
-  ];
-  
-  const rubyResponses = [
-    "Take your time. Good drinks, like good advice, shouldn't be rushed. Observation leads to quality.",
-    "If you're seeking information, you'd be wise to speak with the merchants by the east gate. Tell them Ruby sent you.",
-    "The guild is recruiting skilled hands. I could put in a good word, if I judge your talents worth recommending.",
-    "Mind your coin purse. Not everyone in here is as honest as they appear. Table by the window - especially watch him.",
-    "My sisters are excellent company, but I notice what others miss. It's the quiet details that tell the full story.",
-    "Need a quiet place to rest? The rooms upstairs are well-kept and private. Third door has the finest view.",
-    "That injury looks fresh. We have healing potions if you require one - specially imported from the elvish valleys.",
-    "The trouble up north has brought many refugees to our doors lately. Listen to their stories - there's profit in knowing.",
-    "I've heard whispers of a new trading route opening beyond the mountains. Profitable, if dangerous.",
-    "The quiet ones are always worth watching. They collect information without even trying, much like myself.",
-    "Three separate patrons mentioned the same dream last night. Coincidence? I think not. I record such patterns.",
-    "Your accent... northeastern provinces? Your secret's safe, but you might want to work on that if discretion matters."
-  ];
-  
-  // Select responses based on bartender
-  if (bartender.name === "Sapphire") {
-    return sapphireResponses[Math.floor(Math.random() * sapphireResponses.length)];
-  } else if (bartender.name === "Amethyst") {
-    return amethystResponses[Math.floor(Math.random() * amethystResponses.length)];
-  } else if (bartender.name === "Ruby") {
-    return rubyResponses[Math.floor(Math.random() * rubyResponses.length)];
-  } else {
-    // Default response for unknown bartender
-    return "Welcome to the tavern! How can I help you today?";
+  // For all other cases, use the OpenRouter API to generate a dynamic, personalized response
+  try {
+    // Get a response from the OpenRouter API based on the bartender's personality
+    return await getOpenRouterResponse(bartender.name, message, username);
+  } catch (error) {
+    console.error('Error getting AI response from OpenRouter', error);
+    
+    // Fallback to predefined responses if OpenRouter fails
+    const fallbackResponses = {
+      "Sapphire": [
+        "The ocean has secrets, stranger. Some worth knowing, some better left alone.",
+        "My drinks taste like the sea, cool and refreshing. Care to try the Blue Depths ale?",
+        "Been traveling far? The Ocean View welcomes all weary souls seeking peaceful waters."
+      ],
+      "Amethyst": [
+        "Have you tried our special brew? It's got a real kick to it - cleared a troll's sinuses once!",
+        "The Rose Garden is my pride and joy. The flowers only bloom at midnight when my magic is strongest.",
+        "Some say I mix the strongest drinks in the realm. They'd be right - I don't do anything half-measure."
+      ],
+      "Ruby": [
+        "Take your time. Good drinks, like good advice, shouldn't be rushed. Observation leads to quality.",
+        "If you're seeking information, you'd be wise to speak with the merchants by the east gate. Tell them Ruby sent you.",
+        "The guild is recruiting skilled hands. I could put in a good word, if I judge your talents worth recommending."
+      ]
+    };
+    
+    // Select a random fallback response for the bartender
+    const responses = fallbackResponses[bartender.name as keyof typeof fallbackResponses] || ["Welcome to the tavern! How can I help you today?"];
+    return responses[Math.floor(Math.random() * responses.length)];
   }
 }
 
 // Handles the AI bartender response logic
-async function handleBartenderResponse(message: string, roomId: number) {
-  const shouldRespond = Math.random() > 0.6; // 40% chance to respond
+async function handleBartenderResponse(message: string, roomId: number, username: string = 'Guest', forcedBartenderName?: string) {
+  // Force a response if a specific bartender is mentioned or if the random chance is met
+  const shouldRespond = forcedBartenderName ? true : Math.random() > 0.6; // 40% chance to respond if not forced
   
   if (shouldRespond) {
-    // Get the bartender for this specific room
-    // Room 1 = Amethyst (The Rose Garden)
-    // Room 2 = Sapphire (The Ocean View)
-    // Room 3 = Ruby (The Dragon's Den)
+    // If a specific bartender is mentioned, use that one instead of the room's default
     let bartenderId = 1; // Default to Amethyst (first room)
     
-    if (roomId === 1) {
-      bartenderId = 1; // Amethyst for The Rose Garden
-    } else if (roomId === 2) {
-      bartenderId = 2; // Sapphire for The Ocean View
-    } else if (roomId === 3) {
-      bartenderId = 3; // Ruby for The Dragon's Den
+    if (forcedBartenderName) {
+      // Find the bartender by name
+      const bartenders = await storage.getBartenders();
+      const foundBartender = bartenders.find(b => b.name.toLowerCase() === forcedBartenderName.toLowerCase());
+      if (foundBartender) {
+        bartenderId = foundBartender.id;
+      }
+    } else {
+      // Get the default bartender for this specific room
+      // Room 1 = Amethyst (The Rose Garden)
+      // Room 2 = Sapphire (The Ocean View)
+      // Room 3 = Ruby (The Dragon's Den)
+      if (roomId === 1) {
+        bartenderId = 1; // Amethyst for The Rose Garden
+      } else if (roomId === 2) {
+        bartenderId = 2; // Sapphire for The Ocean View
+      } else if (roomId === 3) {
+        bartenderId = 3; // Ruby for The Dragon's Den
+      }
     }
     
     const bartender = await storage.getBartender(bartenderId);
@@ -155,7 +140,7 @@ async function handleBartenderResponse(message: string, roomId: number) {
     }
     
     // Generate a response
-    const response = await getBartenderResponse(message, bartender.id);
+    const response = await getBartenderResponse(message, bartender.id, username);
     
     // Create and store the bartender message
     const bartenderMessage = await storage.createMessage({
@@ -183,7 +168,9 @@ async function handleBartenderResponse(message: string, roomId: number) {
 
 // Broadcast a message to all clients in a room
 function broadcastToRoom(roomId: number, message: WebSocketMessage) {
-  for (const client of connectedClients.values()) {
+  // Convert to array to avoid iterator issues
+  const clients = Array.from(connectedClients.values());
+  for (const client of clients) {
     if (client.roomId === roomId && client.socket.readyState === WebSocket.OPEN) {
       client.socket.send(JSON.stringify(message));
     }
@@ -431,6 +418,9 @@ async function handleMessage(client: ConnectedClient, rawMessage: string) {
             }
           }
           
+          // Check for @mentions of bartenders
+          const mentionedBartender = checkForBartenderMention(validatedPayload.content);
+          
           // Store and broadcast regular message
           const newMessage = await storage.createMessage(validatedPayload);
           
@@ -439,10 +429,26 @@ async function handleMessage(client: ConnectedClient, rawMessage: string) {
             payload: { message: newMessage }
           });
           
-          // Sometimes trigger a bartender response
-          setTimeout(async () => {
-            await handleBartenderResponse(validatedPayload.content, client.roomId);
-          }, 1000 + Math.random() * 2000);
+          const user = await storage.getUser(client.userId);
+          const username = user?.username || 'Guest';
+          
+          // If a bartender is mentioned, get a direct response
+          if (mentionedBartender) {
+            console.log(`Bartender ${mentionedBartender} was mentioned by ${username}`);
+            
+            // Extract the actual query without the @mention
+            const query = extractQueryFromMention(validatedPayload.content, mentionedBartender);
+            
+            // Force the bartender to respond immediately
+            setTimeout(async () => {
+              await handleBartenderResponse(query, client.roomId, username, mentionedBartender);
+            }, 800); // Slight delay for realism
+          } else {
+            // Sometimes trigger a random bartender response if no specific bartender was mentioned
+            setTimeout(async () => {
+              await handleBartenderResponse(validatedPayload.content, client.roomId, username);
+            }, 1000 + Math.random() * 2000);
+          }
         } catch (err) {
           client.socket.send(JSON.stringify({
             type: WebSocketMessageType.ERROR,
@@ -499,8 +505,12 @@ async function handleMessage(client: ConnectedClient, rawMessage: string) {
             return;
           }
           
+          // Get the user who made the order
+          const user = await storage.getUser(client.userId);
+          const username = user?.username || 'Guest';
+          
           // Get personalized response from the bartender
-          const response = await getBartenderResponse(`/order ${menuItem.name}`, bartender.id);
+          const response = await getBartenderResponse(`/order ${menuItem.name}`, bartender.id, username);
           
           const responseMessage = await storage.createMessage({
             userId: null,
