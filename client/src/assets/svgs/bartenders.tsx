@@ -1,7 +1,10 @@
 import { FC } from 'react';
 
-// Import bartender images from new assets
-import { sapphire, amethyst, ruby } from '@/assets/images/new_assets';
+// Import bartender images directly
+import amethyst from '@/assets/amethyst_new.png';
+import sapphire from '@/assets/sapphire_new.png';
+import ruby from '@/assets/ruby_new.png';
+import backgroundImage from '@/assets/background.png';
 
 // Map bartender names to their image paths - using our new bartender images
 export const BartenderImageMap = {
@@ -9,6 +12,9 @@ export const BartenderImageMap = {
   amethyst, // Pink-haired (left) bartender
   ruby     // Red-haired (right) bartender
 };
+
+// Export background for use in TavernView
+export const background = backgroundImage;
 
 export interface BartenderAvatarProps {
   name: string;

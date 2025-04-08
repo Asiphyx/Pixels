@@ -1,7 +1,6 @@
 import { FC, useEffect, useRef } from 'react';
-import BartenderSprite from './BartenderSprite';
 import { useWebSocketStore } from '@/lib/websocket';
-import { background as newTavernBg } from '@/assets/images/new_assets';
+import { background as newTavernBg } from '@/assets/svgs/bartenders';
 
 const TavernView: FC = () => {
   const tavernRef = useRef<HTMLDivElement>(null);
