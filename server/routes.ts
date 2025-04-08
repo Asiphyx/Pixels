@@ -159,6 +159,20 @@ async function handleBartenderResponse(message: string, roomId: number, username
         // Adjust the response based on the updated mood
         response = adjustResponseBasedOnMood(response, updatedMood.mood, bartender.name);
         
+        // Determine the importance of this interaction based on sentiment strength
+        const importance = Math.min(5, Math.max(1, Math.abs(Math.floor(sentimentScore * 5))));
+        
+        // Store the interaction as a memory if it's significant enough
+        if (importance >= 2) {
+          // Store a memory of this interaction
+          await storage.addMemoryEntry(userId, bartender.id, {
+            timestamp: new Date(),
+            content: `${username} said: "${message}" (sentiment: ${sentimentScore > 0 ? 'positive' : 'negative'})`,
+            type: 'conversation',
+            importance: importance
+          });
+        }
+        
         // Send the updated mood to the client
         const userMoods = await storage.getAllBartenderMoodsForUser(userId);
         
@@ -173,6 +187,17 @@ async function handleBartenderResponse(message: string, roomId: number, username
           }));
         }
       }
+    }
+    
+    // Always record orders as memories (they're important social interactions)
+    if (userId && message.startsWith("/order")) {
+      const item = message.substring(7).trim();
+      await storage.addMemoryEntry(userId, bartender.id, {
+        timestamp: new Date(),
+        content: `${username} ordered ${item}`,
+        type: 'preference',
+        importance: 3
+      });
     }
     
     // Create and store the bartender message
@@ -549,6 +574,14 @@ async function handleMessage(client: ConnectedClient, rawMessage: string) {
           // Orders generally make bartenders slightly happier (+1)
           const updatedMood = await storage.updateBartenderMood(client.userId, bartender.id, 1);
           response = adjustResponseBasedOnMood(response, updatedMood.mood, bartender.name);
+          
+          // Store this order as a memory for the bartender
+          await storage.addMemoryEntry(client.userId, bartender.id, {
+            timestamp: new Date(),
+            content: `${username} ordered ${menuItem.name}`,
+            type: 'preference',
+            importance: 3
+          });
           
           // Send updated moods to the client
           const userMoods = await storage.getAllBartenderMoodsForUser(client.userId);

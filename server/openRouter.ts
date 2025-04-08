@@ -34,6 +34,38 @@ const bartenderBios = {
  * @returns Promise<boolean> - True if this is a returning user
  */
 
+/**
+ * Check if a user has interacted with a bartender before based on mood records
+ * and return past interaction details if available
+ * @param userId - The user's ID
+ * @param bartenderId - The bartender's ID 
+ * @returns Promise<{returning: boolean, memories: string}> - Returning status and memories
+ */
+export async function getCustomerContext(userId: number, bartenderId: number): Promise<{returning: boolean, memories: string}> {
+  try {
+    // Check if we have a mood record for this user-bartender pair
+    const moodRecord = await storage.getBartenderMood(userId, bartenderId);
+    const memories = await storage.getSummarizedMemories(userId, bartenderId);
+    
+    return {
+      returning: moodRecord !== undefined,
+      memories
+    };
+  } catch (error) {
+    console.error('Error getting customer context:', error);
+    return {
+      returning: false,
+      memories: "No previous interactions recorded."
+    };
+  }
+}
+
+/**
+ * Check if a user has interacted with a bartender before based on mood records
+ * @param userId - The user's ID
+ * @param bartenderId - The bartender's ID
+ * @returns Promise<boolean> - True if this is a returning user
+ */
 export async function isReturningCustomer(userId: number, bartenderId: number): Promise<boolean> {
   try {
     // Check if we have a mood record for this user-bartender pair
@@ -233,10 +265,16 @@ BARTENDER SPECIALTIES:
 You're currently working at your tavern, serving customers and engaging in casual conversation.
 ${await (async () => {
   if (userId && bartenderId) {
-    const returning = await isReturningCustomer(userId, bartenderId);
-    return returning 
-      ? `${username} has visited your tavern before. You recognize them as a returning customer who has interacted with you previously.` 
-      : `${username} appears to be a new customer who hasn't visited your tavern before.`;
+    const customerContext = await getCustomerContext(userId, bartenderId);
+    
+    if (customerContext.returning) {
+      return `${username} has visited your tavern before. You recognize them as a returning customer who has interacted with you previously.
+      
+Previous interactions with this customer:
+${customerContext.memories}`;
+    } else {
+      return `${username} appears to be a new customer who hasn't visited your tavern before.`;
+    }
   }
   return `${username} appears to be a new customer who hasn't visited your tavern before.`;
 })()}

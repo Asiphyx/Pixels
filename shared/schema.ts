@@ -1,4 +1,4 @@
-import { pgTable, text, serial, integer, timestamp, boolean } from "drizzle-orm/pg-core";
+import { pgTable, text, serial, integer, timestamp, boolean, jsonb } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
@@ -85,6 +85,32 @@ export const insertBartenderMoodSchema = createInsertSchema(bartenderMoods).omit
   updatedAt: true
 });
 
+// Bartender Memory model - tracks significant interactions between users and bartenders
+export const bartenderMemories = pgTable("bartender_memories", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull(),
+  bartenderId: integer("bartender_id").notNull(),
+  // Store an array of memory entries with timestamps
+  memories: jsonb("memories").notNull().default('[]'),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow()
+});
+
+export const insertBartenderMemorySchema = createInsertSchema(bartenderMemories).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true
+});
+
+// Define memory entry type for better type safety
+export const memoryEntrySchema = z.object({
+  timestamp: z.date(),
+  content: z.string(),
+  context: z.string().optional(),
+  type: z.enum(['preference', 'event', 'conversation', 'personal']),
+  importance: z.number().min(1).max(5) // 1-5 scale of importance
+});
+
 // Type definitions
 export type User = typeof users.$inferSelect;
 export type InsertUser = z.infer<typeof insertUserSchema>;
@@ -104,6 +130,10 @@ export type InsertMenuItem = z.infer<typeof insertMenuItemSchema>;
 export type BartenderMood = typeof bartenderMoods.$inferSelect;
 export type InsertBartenderMood = z.infer<typeof insertBartenderMoodSchema>;
 
+export type BartenderMemory = typeof bartenderMemories.$inferSelect;
+export type InsertBartenderMemory = z.infer<typeof insertBartenderMemorySchema>;
+export type MemoryEntry = z.infer<typeof memoryEntrySchema>;
+
 // Websocket message types
 export enum WebSocketMessageType {
   JOIN_ROOM = 'join_room',
@@ -116,6 +146,8 @@ export enum WebSocketMessageType {
   BARTENDER_RESPONSE = 'bartender_response',
   ROOM_USERS = 'room_users',
   BARTENDER_MOOD_UPDATE = 'bartender_mood_update',
+  BARTENDER_MEMORY_UPDATE = 'bartender_memory_update',
+  BARTENDER_MEMORY_RECOLLECTION = 'bartender_memory_recollection',
   ERROR = 'error'
 }
 
