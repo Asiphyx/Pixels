@@ -83,16 +83,25 @@
 .hanging-sign > div:first-child {
   position: relative;
   box-shadow: 
-    inset 0 0 5px rgba(0,0,0,0.5),
-    0 3px 5px rgba(0, 0, 0, 0.3),
-    0 8px 15px rgba(0, 0, 0, 0.2);
+    inset 0 0 8px rgba(0,0,0,0.7),
+    0 4px 8px rgba(0, 0, 0, 0.4),
+    0 12px 20px rgba(0, 0, 0, 0.3);
   background-image: 
-    linear-gradient(45deg, #3A2419 25%, #4A3429 25%, #4A3429 50%, #3A2419 50%, #3A2419 75%, #4A3429 75%, #4A3429 100%),
+    linear-gradient(45deg, #2C1810 25%, #3A2419 25%, #3A2419 50%, #2C1810 50%, #2C1810 75%, #3A2419 75%, #3A2419 100%),
     var(--wood-grain);
-  background-size: 8px 8px, 100px 100px;
-  border: 2px solid var(--rustic-brown);
+  background-size: 10px 10px, 100px 100px;
+  border: 3px solid #8B4513;
   transform-style: preserve-3d;
-  transition: transform 0.3s ease;
+  transition: all 0.3s ease;
+  padding: 1rem;
+}
+
+.hanging-sign > div:first-child:hover {
+  transform: translateY(-2px);
+  box-shadow: 
+    inset 0 0 8px rgba(0,0,0,0.7),
+    0 6px 12px rgba(0, 0, 0, 0.5),
+    0 16px 24px rgba(0, 0, 0, 0.4);
 }
 
 .hanging-sign > div:first-child:before {

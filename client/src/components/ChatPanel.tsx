@@ -5,7 +5,7 @@ import ChatInput from './ChatInput';
 
 const ChatPanel: FC = () => {
   const { rooms, roomId, joinRoom } = useWebSocketStore();
-  
+
   return (
     <div className="chat-panel md:w-1/2 lg:w-2/5 bg-[#2C1810] flex flex-col">
       {/* Room selection tabs */}
@@ -21,10 +21,10 @@ const ChatPanel: FC = () => {
           </button>
         ))}
       </div>
-      
+
       {/* Chat Messages */}
       <ChatMessages />
-      
+
       {/* Chat Input Area */}
       <ChatInput />
     </div>
