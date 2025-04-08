@@ -24,6 +24,15 @@ interface ConnectedClient {
 
 const connectedClients: Map<WebSocket, ConnectedClient> = new Map();
 
+/**
+ * Clear all connected clients when the server starts
+ * This ensures we don't have stale client connections after restart
+ */
+export function clearConnectedClients() {
+  connectedClients.clear();
+  console.log("[websocket] Cleared connected clients on server start");
+}
+
 // Bartender AI logic for the three sisters
 // Bartender personalities and backstories
 const bartenderBios = {

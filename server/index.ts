@@ -1,5 +1,5 @@
 import express, { type Request, Response, NextFunction } from "express";
-import { registerRoutes } from "./routes";
+import { registerRoutes, clearConnectedClients } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
 import { seedDatabase } from "./seed";
 import { resetUserOnlineStatus } from "./storage";
@@ -44,6 +44,9 @@ app.use((req, res, next) => {
   
   // Reset all user online statuses to prevent "username already taken" errors on restart
   await resetUserOnlineStatus();
+  
+  // Clear any connected clients that might be lingering in memory
+  clearConnectedClients();
   
   const server = await registerRoutes(app);
 
