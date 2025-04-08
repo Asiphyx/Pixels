@@ -1,0 +1,22 @@
+
+{
+  "name": "Pixel Tavern",
+  "short_name": "Tavern",
+  "description": "A virtual fantasy tavern with interactive elements",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#2C1810",
+  "theme_color": "#8B4513",
+  "icons": [
+    {
+      "src": "/assets/tavern-icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/assets/tavern-icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
