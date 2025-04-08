@@ -1,5 +1,6 @@
 import axios from 'axios';
 import { bartenders } from "@shared/schema";
+import { storage } from './storage';
 
 // Load the API key from environment variables
 const OPENROUTER_API_KEY = process.env.OPEN_ROUTER_API;
@@ -32,9 +33,9 @@ const bartenderBios = {
  * @param bartenderId - The bartender's ID
  * @returns Promise<boolean> - True if this is a returning user
  */
+
 export async function isReturningCustomer(userId: number, bartenderId: number): Promise<boolean> {
   try {
-    const { storage } = require('./storage');
     // Check if we have a mood record for this user-bartender pair
     const moodRecord = await storage.getBartenderMood(userId, bartenderId);
     return moodRecord !== undefined;

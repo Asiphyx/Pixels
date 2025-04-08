@@ -1,7 +1,8 @@
 import { FC, useState } from 'react';
 import { useWebSocketStore } from '@/lib/websocket';
 import { MenuItemIcon } from '@/assets/svgs/menu-items';
-import { XIcon, UserCircle } from 'lucide-react';
+import { UserCircle, Trophy, HeartHandshake } from 'lucide-react';
+import { getMoodDescription, getMoodColor, getMoodIcon } from '../utils/mood';
 
 // Storage keys for saving user preferences (must match those in CharacterSelection.tsx)
 const STORAGE_KEY_USERNAME = 'tavern_username';
@@ -13,7 +14,7 @@ interface TavernMenuProps {
 }
 
 const TavernMenu: FC<TavernMenuProps> = ({ onClose }) => {
-  const { menuItems, orderMenuItem, disconnect } = useWebSocketStore();
+  const { menuItems, orderMenuItem, disconnect, bartenders, bartenderMoods, user } = useWebSocketStore();
   const [activeCategory, setActiveCategory] = useState<string>('drinks');
   
   const filteredItems = menuItems.filter(item => item.category === activeCategory);
@@ -54,7 +55,7 @@ const TavernMenu: FC<TavernMenuProps> = ({ onClose }) => {
           <button onClick={onClose} className="text-[#E8D6B3] hover:text-[#FFD700] text-2xl">×</button>
         </div>
         
-        <div className="menu-tabs flex border-b border-[#8B4513]">
+        <div className="menu-tabs flex flex-wrap border-b border-[#8B4513]">
           <button 
             className={`menu-tab flex-1 py-2 px-4 font-['VT323'] text-xl text-[#E8D6B3] ${
               activeCategory === 'drinks' 
@@ -84,6 +85,32 @@ const TavernMenu: FC<TavernMenuProps> = ({ onClose }) => {
             onClick={() => setActiveCategory('specials')}
           >
             Specials
+          </button>
+          <button 
+            className={`menu-tab flex-1 py-2 px-4 font-['VT323'] text-xl text-[#E8D6B3] ${
+              activeCategory === 'moods' 
+                ? 'bg-[#8B4513]' 
+                : 'bg-[#2C1810] hover:bg-[#3C281A]'
+            }`}
+            onClick={() => setActiveCategory('moods')}
+          >
+            <div className="flex items-center justify-center">
+              <HeartHandshake className="w-4 h-4 mr-1" />
+              <span>Moods</span>
+            </div>
+          </button>
+          <button 
+            className={`menu-tab flex-1 py-2 px-4 font-['VT323'] text-xl text-[#E8D6B3] ${
+              activeCategory === 'achievements' 
+                ? 'bg-[#8B4513]' 
+                : 'bg-[#2C1810] hover:bg-[#3C281A]'
+            }`}
+            onClick={() => setActiveCategory('achievements')}
+          >
+            <div className="flex items-center justify-center">
+              <Trophy className="w-4 h-4 mr-1" />
+              <span>Badges</span>
+            </div>
           </button>
           <button 
             className={`menu-tab flex-1 py-2 px-4 font-['VT323'] text-xl text-[#E8D6B3] ${
@@ -137,6 +164,155 @@ const TavernMenu: FC<TavernMenuProps> = ({ onClose }) => {
                   </p>
                 </div>
               </div>
+            </div>
+          ) : activeCategory === 'moods' ? (
+            <div className="moods-container p-4">
+              <div className="text-center mb-6">
+                <div className="inline-flex justify-center items-center w-20 h-20 rounded-full bg-[#2C1810] border-2 border-[#8B4513]">
+                  <HeartHandshake className="h-14 w-14 text-[#FFD700]" />
+                </div>
+                <h3 className="font-['Press_Start_2P'] text-[#FFD700] text-sm mt-2">Bartender Moods</h3>
+              </div>
+              
+              {user ? (
+                bartenderMoods.length > 0 ? (
+                  <div className="mood-list space-y-4">
+                    {bartenders.map(bartender => {
+                      // Find the mood for this bartender
+                      const moodRecord = bartenderMoods.find(
+                        m => m.bartenderId === bartender.id && m.userId === user.id
+                      );
+                      
+                      // Default mood is 50 (neutral) if no record exists
+                      const moodValue = moodRecord ? moodRecord.mood : 50;
+                      
+                      return (
+                        <div 
+                          key={bartender.id}
+                          className="mood-item p-3 bg-[#2C1810] border border-[#8B4513] rounded-sm"
+                        >
+                          <div className="flex justify-between items-center">
+                            <h4 className="font-['VT323'] text-[#FFD700] text-lg">{bartender.name}</h4>
+                            <span className={`mood-icon font-['VT323'] text-lg ${getMoodColor(moodValue)}`}>
+                              {getMoodIcon(moodValue)}
+                            </span>
+                          </div>
+                          <div className="mood-bar w-full h-2 bg-[#2C1810] my-2 border border-[#8B4513]">
+                            <div 
+                              className={`h-full ${getMoodColor(moodValue)}`}
+                              style={{ width: `${moodValue}%` }}
+                            ></div>
+                          </div>
+                          <p className={`text-sm font-['VT323'] ${getMoodColor(moodValue)}`}>
+                            {bartender.name} {getMoodDescription(moodValue)}
+                          </p>
+                          <p className="text-[#E8D6B3] opacity-80 text-xs mt-2 font-['VT323']">
+                            {moodValue >= 60 
+                              ? 'They appreciate how you treat them.' 
+                              : moodValue <= 40 
+                                ? 'They remember your previous interactions.' 
+                                : 'Their opinion of you could change with time.'}
+                          </p>
+                        </div>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <div className="text-center py-8 text-[#E8D6B3] font-['VT323'] text-xl">
+                    <p>Chat with the bartenders first!</p>
+                    <p className="mt-2 text-sm opacity-80">The bartenders will form opinions about you based on your interactions.</p>
+                  </div>
+                )
+              ) : (
+                <div className="text-center py-8 text-[#E8D6B3] font-['VT323'] text-xl">
+                  Please sign in first to view bartender moods.
+                </div>
+              )}
+            </div>
+          ) : activeCategory === 'achievements' ? (
+            <div className="achievements-container p-4">
+              <div className="text-center mb-6">
+                <div className="inline-flex justify-center items-center w-20 h-20 rounded-full bg-[#2C1810] border-2 border-[#8B4513]">
+                  <Trophy className="h-14 w-14 text-[#FFD700]" />
+                </div>
+                <h3 className="font-['Press_Start_2P'] text-[#FFD700] text-sm mt-2">Traveler Badges</h3>
+              </div>
+              
+              {user ? (
+                <div className="grid grid-cols-2 gap-4">
+                  {/* Returning Customer Badge */}
+                  <div className={`achievement-item p-3 text-center 
+                    ${bartenderMoods.length > 0 ? 'bg-[#2C1810]' : 'bg-[#1a0d0d] opacity-50'} 
+                    border border-[#8B4513] rounded-sm`}
+                  >
+                    <div className="badge-icon w-16 h-16 mx-auto rounded-full bg-[#462207] flex items-center justify-center">
+                      <span className="font-['VT323'] text-3xl text-[#FFD700]">
+                        {bartenderMoods.length > 0 ? '★' : '?'}
+                      </span>
+                    </div>
+                    <h4 className="font-['VT323'] text-[#FFD700] text-lg mt-2">Regular</h4>
+                    <p className="text-[#E8D6B3] opacity-80 text-xs mt-1 font-['VT323']">
+                      {bartenderMoods.length > 0 
+                        ? 'Earned by becoming a recognized customer' 
+                        : 'Chat with any bartender to earn this'}
+                    </p>
+                  </div>
+                  
+                  {/* Adored Badge */}
+                  <div className={`achievement-item p-3 text-center 
+                    ${bartenderMoods.some(m => m.mood >= 80) ? 'bg-[#2C1810]' : 'bg-[#1a0d0d] opacity-50'} 
+                    border border-[#8B4513] rounded-sm`}
+                  >
+                    <div className="badge-icon w-16 h-16 mx-auto rounded-full bg-[#462207] flex items-center justify-center">
+                      <span className="font-['VT323'] text-3xl text-[#FFD700]">
+                        {bartenderMoods.some(m => m.mood >= 80) ? '♥' : '?'}
+                      </span>
+                    </div>
+                    <h4 className="font-['VT323'] text-[#FFD700] text-lg mt-2">Adored</h4>
+                    <p className="text-[#E8D6B3] opacity-80 text-xs mt-1 font-['VT323']">
+                      {bartenderMoods.some(m => m.mood >= 80)
+                        ? 'You\'ve truly charmed at least one bartender' 
+                        : 'Be exceptionally nice to any bartender'}
+                    </p>
+                  </div>
+                  
+                  {/* Patron of All Badge */}
+                  <div className={`achievement-item p-3 text-center 
+                    ${bartenders.length > 0 && bartenderMoods.length >= bartenders.length ? 'bg-[#2C1810]' : 'bg-[#1a0d0d] opacity-50'} 
+                    border border-[#8B4513] rounded-sm`}
+                  >
+                    <div className="badge-icon w-16 h-16 mx-auto rounded-full bg-[#462207] flex items-center justify-center">
+                      <span className="font-['VT323'] text-3xl text-[#FFD700]">
+                        {bartenders.length > 0 && bartenderMoods.length >= bartenders.length ? '♦' : '?'}
+                      </span>
+                    </div>
+                    <h4 className="font-['VT323'] text-[#FFD700] text-lg mt-2">Patron of All</h4>
+                    <p className="text-[#E8D6B3] opacity-80 text-xs mt-1 font-['VT323']">
+                      {bartenders.length > 0 && bartenderMoods.length >= bartenders.length
+                        ? 'You\'ve chatted with every bartender' 
+                        : 'Interact with all bartenders at least once'}
+                    </p>
+                  </div>
+                  
+                  {/* Orderer Badge */}
+                  <div className={`achievement-item p-3 text-center 
+                    ${false ? 'bg-[#2C1810]' : 'bg-[#1a0d0d] opacity-50'} 
+                    border border-[#8B4513] rounded-sm`}
+                  >
+                    <div className="badge-icon w-16 h-16 mx-auto rounded-full bg-[#462207] flex items-center justify-center">
+                      <span className="font-['VT323'] text-3xl text-[#FFD700]">?</span>
+                    </div>
+                    <h4 className="font-['VT323'] text-[#FFD700] text-lg mt-2">Connoisseur</h4>
+                    <p className="text-[#E8D6B3] opacity-80 text-xs mt-1 font-['VT323']">
+                      Order every item on the menu at least once
+                    </p>
+                  </div>
+                </div>
+              ) : (
+                <div className="text-center py-8 text-[#E8D6B3] font-['VT323'] text-xl">
+                  Please sign in first to view your badges.
+                </div>
+              )}
             </div>
           ) : filteredItems.length === 0 ? (
             <div className="text-center py-8 text-[#E8D6B3] font-['VT323'] text-xl">
