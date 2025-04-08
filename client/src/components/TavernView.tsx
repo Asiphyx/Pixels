@@ -73,9 +73,15 @@ const TavernView: FC = () => {
       
       {/* Tavern Interior - Using the background image that already has all bartenders */}
       <div className="tavern-interior relative w-full h-full">
-        {/* Tavern Name Display */}
-        <div className="absolute top-4 left-1/2 transform -translate-x-1/2 px-4 py-2 rounded-md">
-          <h1 className="font-['VT323'] text-3xl font-bold text-[#FFD700] text-shadow-md">The Hidden Gems</h1>
+        {/* Bartender Name Labels */}
+        <div className="absolute top-16 left-[25%] transform -translate-x-1/2 px-3 py-1 bg-black bg-opacity-50 rounded-lg">
+          <h2 className="font-['VT323'] text-xl font-bold text-[#FF69B4] text-shadow-sm">Amethyst</h2>
+        </div>
+        <div className="absolute top-16 left-1/2 transform -translate-x-1/2 px-3 py-1 bg-black bg-opacity-50 rounded-lg">
+          <h2 className="font-['VT323'] text-xl font-bold text-[#1E90FF] text-shadow-sm">Sapphire</h2>
+        </div>
+        <div className="absolute top-16 right-[25%] transform translate-x-1/2 px-3 py-1 bg-black bg-opacity-50 rounded-lg">
+          <h2 className="font-['VT323'] text-xl font-bold text-[#FF4500] text-shadow-sm">Ruby</h2>
         </div>
       </div>
     </div>
