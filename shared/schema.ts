@@ -139,6 +139,7 @@ export enum WebSocketMessageType {
   JOIN_ROOM = 'join_room',
   LEAVE_ROOM = 'leave_room',
   SEND_MESSAGE = 'send_message',
+  CHAT_MESSAGE = 'chat_message',
   USER_JOINED = 'user_joined',
   USER_LEFT = 'user_left',
   NEW_MESSAGE = 'new_message',
@@ -149,6 +150,9 @@ export enum WebSocketMessageType {
   BARTENDER_MOOD_UPDATE = 'bartender_mood_update',
   BARTENDER_MEMORY_UPDATE = 'bartender_memory_update',
   BARTENDER_MEMORY_RECOLLECTION = 'bartender_memory_recollection',
+  GET_MOODS = 'get_moods',
+  GET_MEMORIES = 'get_memories',
+  MEMORIES_RESPONSE = 'memories_response',
   ERROR = 'error'
 }
 

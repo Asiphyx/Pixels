@@ -788,12 +788,17 @@ export class DatabaseStorage implements IStorage {
       return [];
     }
     
-    // Parse memories and sort by timestamp (most recent first)
-    const memories = JSON.parse(memory.memories as string) as MemoryEntry[];
-    memories.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
-    
-    // Return limited number of entries
-    return memories.slice(0, limit);
+    try {
+      // Parse memories and sort by timestamp (most recent first)
+      const memories = JSON.parse(memory.memories as string) as MemoryEntry[];
+      memories.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+      
+      // Return limited number of entries
+      return memories.slice(0, limit);
+    } catch (error) {
+      console.error('Error parsing memory entries:', error);
+      return [];
+    }
   }
   
   async getSummarizedMemories(userId: number, bartenderId: number, maxEntries = 5): Promise<string> {

@@ -47,8 +47,11 @@ export const useWebSocketStore = create<WebSocketState>((set, get) => ({
       // Create a new WebSocket connection
       const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
       const host = window.location.host; // Use the current host for both dev and prod
+      // Ensure we're connecting to the /ws endpoint with proper parameters
       const wsUrl = `${protocol}//${host}/ws?token=${encodeURIComponent(username)}&avatar=${encodeURIComponent(avatar)}`;
       console.log('Connecting to WebSocket URL:', wsUrl);
+      
+      // Set up a WebSocket with explicit error handling
       const socket = new WebSocket(wsUrl);
       
       socket.onopen = () => {
@@ -63,7 +66,14 @@ export const useWebSocketStore = create<WebSocketState>((set, get) => ({
       
       socket.onmessage = (event) => {
         try {
+          // Safely handle binary messages
+          if (typeof event.data !== 'string') {
+            console.log('Received binary data, ignoring');
+            return;
+          }
+          
           const data: WebSocketMessage = JSON.parse(event.data);
+          console.log('WebSocket message received:', data.type);
           
           switch (data.type) {
             case WebSocketMessageType.USER_JOINED:
@@ -108,7 +118,18 @@ export const useWebSocketStore = create<WebSocketState>((set, get) => ({
               
             case WebSocketMessageType.ERROR:
               console.error('WebSocket error:', data.payload.message);
-              // Could add toast notification for errors
+              // Add a system message for errors
+              set(state => ({ 
+                messages: [...state.messages, {
+                  id: Date.now(),
+                  content: data.payload.message || "An error occurred",
+                  type: 'system',
+                  userId: null,
+                  roomId: state.roomId,
+                  bartenderId: null,
+                  timestamp: new Date()
+                }]
+              }));
               break;
               
             case WebSocketMessageType.BARTENDER_MOOD_UPDATE:
@@ -120,6 +141,7 @@ export const useWebSocketStore = create<WebSocketState>((set, get) => ({
           }
         } catch (error) {
           console.error('Error parsing WebSocket message:', error);
+          // Don't crash on parse errors, just log them
         }
       };
       
@@ -132,13 +154,23 @@ export const useWebSocketStore = create<WebSocketState>((set, get) => ({
       
       socket.onerror = (error) => {
         console.error('WebSocket error:', error);
+        
+        // Close the socket if it's still open
+        try {
+          if (socket.readyState === WebSocket.OPEN) {
+            socket.close();
+          }
+        } catch (e) {
+          console.error('Error closing WebSocket after error:', e);
+        }
+        
         // Add a message to help users understand the connection issue
         set(state => ({ 
           socket: null,
           connected: false,
           messages: [...state.messages, {
             id: Date.now(),
-            content: "Connection error. Please try refreshing the page.",
+            content: "Connection error. The tavern doors seem stuck. Please try refreshing the page.",
             type: 'system',
             userId: null,
             roomId: state.roomId,
@@ -146,6 +178,17 @@ export const useWebSocketStore = create<WebSocketState>((set, get) => ({
             timestamp: new Date()
           }]
         }));
+        
+        // Try to reconnect after a delay
+        setTimeout(() => {
+          if (!get().connected) {
+            // Only attempt to reconnect if we're still disconnected
+            console.log('Attempting to reconnect...');
+            const username = localStorage.getItem('username') || 'Guest';
+            const avatar = localStorage.getItem('avatar') || 'warrior';
+            get().connect(username, avatar);
+          }
+        }, 5000); // Wait 5 seconds before reconnecting
       };
       
     } catch (error) {
