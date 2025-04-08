@@ -144,6 +144,7 @@ export enum WebSocketMessageType {
   NEW_MESSAGE = 'new_message',
   ORDER_ITEM = 'order_item',
   BARTENDER_RESPONSE = 'bartender_response',
+  BARTENDER_GREETING = 'bartender_greeting',
   ROOM_USERS = 'room_users',
   BARTENDER_MOOD_UPDATE = 'bartender_mood_update',
   BARTENDER_MEMORY_UPDATE = 'bartender_memory_update',

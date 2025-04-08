@@ -18,6 +18,8 @@ interface ConnectedClient {
   socket: WebSocket;
   userId: number;
   roomId: number;
+  username: string;
+  greetedByBartenders: Set<number>; // Track which bartenders have already greeted this user
 }
 
 const connectedClients: Map<WebSocket, ConnectedClient> = new Map();
@@ -143,7 +145,65 @@ async function handleBartenderResponse(message: string, roomId: number, username
       return false;
     }
     
-    // Generate a response
+    // Check if this user needs a greeting from this bartender
+    // Find the client for this user
+    const client = Array.from(connectedClients.values()).find(c => c.userId === userId);
+    
+    // If we found the client and they haven't been greeted by this bartender yet
+    if (client && userId && !client.greetedByBartenders.has(bartender.id)) {
+      // Mark this bartender as having greeted this user
+      client.greetedByBartenders.add(bartender.id);
+      
+      // Generate a personalized greeting that includes the user's name
+      const greetings = {
+        "Amethyst": [
+          `*Gasps dramatically* OH. MY. GOODNESS! It's ${username}-chan~! *sparkles float around her as she twirls* Welcome to my Rose Garden, cutie~! What magical concoction can I prepare for you today? *winks with a shower of tiny pink hearts*`,
+          `*Eyes widen with excitement* ${username}~! You're FINALLY here! *bounces energetically* I was JUST telling my fairy friends that we needed more adorable customers like you! *giggles* What can I get for my new favorite patron?`,
+          `*Strikes a dramatic pose* The stars told me you'd visit today, ${username}-sweetie~! *magical sparkles appear in her hair* I've been practicing a SUPER special potion just for you! *leans in conspiratorially* What's your pleasure, darling~?`
+        ],
+        "Sapphire": [
+          `*Her tattoos ripple as she notices you* Well, well... if it isn't ${username}. *piercing glows slightly* The void whispered your name earlier. Normies wouldn't hear it, but I sensed your aura approaching. *smirks* What depths are you willing to explore today?`,
+          `*Tilts head curiously* ${username}... unusual currents surround you. *traces water-like pattern on the bar that briefly forms your name* Most surface-dwellers blur together, but you've got... something different. *eyes gleam* What brings you to my waters?`,
+          `*Stops mid-motion as if receiving a psychic message* ${username}... *tattoos pulse with blue light* The deep ones rarely notice newcomers, but they're aware of you now. *leans forward* Interesting. Let's see what you're really made of. What'll it be?`
+        ],
+        "Ruby": [
+          `*Makes precise notation in ledger* Client: ${username}. First interaction commenced at exactly ${new Date().toLocaleTimeString()}. *adjusts glasses methodically* Initial assessment: potential value - moderate to high. *slight efficient nod* How may I optimize your tavern experience today?`,
+          `*Analyzes you with calculating gaze* ${username}... *consults small notebook* Name pattern suggests a 78.6% probability of preference for our eastern brew selection. *arranges bottles at precise angles* I've prepared inventory accordingly. What is your selection?`,
+          `*Straightens items on bar with mathematical precision* Welcome, ${username}. *subtle eye twitch* I've already catalogued 37 potential conversation topics based on your attire and posture. *efficient smile* Would you prefer information, refreshment, or both? I can provide optimal combinations.`
+        ]
+      };
+      
+      // Select a random greeting for this bartender
+      const bartenderGreetings = greetings[bartender.name as keyof typeof greetings] || 
+        [`Hello there, ${username}! What can I get for you today?`];
+      
+      const greeting = bartenderGreetings[Math.floor(Math.random() * bartenderGreetings.length)];
+      
+      // Create and store the personalized greeting message
+      const greetingMessage = await storage.createMessage({
+        userId: null,
+        roomId,
+        content: greeting,
+        type: "bartender",
+        bartenderId: bartender.id
+      });
+      
+      // Send a special greeting message to the client
+      broadcastToRoom(roomId, {
+        type: WebSocketMessageType.BARTENDER_GREETING,
+        payload: {
+          message: greetingMessage,
+          bartender: bartender
+        }
+      });
+      
+      // For non-greeting messages, continue with normal processing
+      if (message.toLowerCase() === "hi" || message.toLowerCase() === "hello" || message.toLowerCase() === "hey") {
+        return true; // We already sent a greeting, no need for another response
+      }
+    }
+    
+    // Generate a response for non-greeting messages
     let response = await getBartenderResponse(message, bartender.id, username, userId);
     
     // If we have a user ID, process mood changes and adjust response
@@ -722,7 +782,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
               connectedClients.set(socket, {
                 socket,
                 userId: existingUser.id,
-                roomId: existingUser.roomId
+                roomId: existingUser.roomId,
+                username: existingUser.username,
+                greetedByBartenders: new Set() // Initialize empty set of greeted bartenders
               });
               
               // Send welcome back message
@@ -763,7 +825,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
             connectedClients.set(socket, {
               socket,
               userId: user.id,
-              roomId: user.roomId
+              roomId: user.roomId,
+              username: user.username,
+              greetedByBartenders: new Set() // Initialize empty set of greeted bartenders
             });
             
             // Send welcome message
@@ -887,7 +951,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
                   connectedClients.set(socket, {
                     socket,
                     userId: existingUser.id,
-                    roomId: existingUser.roomId
+                    roomId: existingUser.roomId,
+                    username: existingUser.username,
+                    greetedByBartenders: new Set() // Initialize empty set of greeted bartenders
                   });
                   
                   // Send welcome back message
@@ -928,7 +994,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 connectedClients.set(socket, {
                   socket,
                   userId: user.id,
-                  roomId: user.roomId
+                  roomId: user.roomId,
+                  username: user.username,
+                  greetedByBartenders: new Set() // Initialize empty set of greeted bartenders
                 });
                 
                 // Send welcome message
