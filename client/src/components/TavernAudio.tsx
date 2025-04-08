@@ -68,222 +68,313 @@ const commonSounds: SoundEffect[] = [
 // Action sounds
 const actionSounds: Record<string, SoundEffect> = {
   'drink-pour': { 
-    id: 'drinkPour', 
+    id: 'drink-pour', 
     volume: 0.5, 
     loop: false 
   },
   'door-open': { 
-    id: 'doorOpen', 
+    id: 'door-open', 
     volume: 0.4, 
     loop: false 
   },
   'drink-serve': { 
-    id: 'glassClink', 
+    id: 'drink-serve', 
     volume: 0.4, 
     loop: false 
   },
   'coin-drop': {
-    id: 'coinDrop',
+    id: 'coin-drop',
     volume: 0.4,
     loop: false
   },
   'chair-move': {
-    id: 'chairMove',
+    id: 'chair-move',
     volume: 0.3,
     loop: false
   },
   'glass-clink': {
-    id: 'glassClink',
+    id: 'glass-clink',
     volume: 0.4,
     loop: false
   }
 };
 
-// Map our sound IDs to the sound generator's output keys
-const soundIdMapping: Record<string, string> = {
-  'rose-garden-ambience': 'tavernAmbience', 
-  'magical-chimes': 'glassClink',
-  'ocean-waves': 'tavernAmbience',
-  'distant-seagulls': 'tavernAmbience',
-  'tavern-murmurs': 'tavernAmbience',
-  'crackling-fire': 'tavernAmbience',
-  'tavern-background': 'tavernAmbience',
-  'drink-pour': 'drinkPour',
-  'door-open': 'doorOpen',
-  'drink-serve': 'glassClink',
-  'coin-drop': 'coinDrop',
-  'chair-move': 'chairMove',
-  'glass-clink': 'glassClink'
+// Sound generation utilities
+const generateAudioBuffer = (ctx: AudioContext, createFn: (ctx: AudioContext) => AudioBuffer): AudioBuffer => {
+  return createFn(ctx);
+};
+
+// Sound generator functions
+const SoundEffects = {
+  // Generate a door sound
+  doorOpen: (audioContext: AudioContext): AudioBuffer => {
+    const duration = 1.5;
+    const buffer = audioContext.createBuffer(
+      2, 
+      audioContext.sampleRate * duration, 
+      audioContext.sampleRate
+    );
+    
+    for (let channel = 0; channel < buffer.numberOfChannels; channel++) {
+      const data = buffer.getChannelData(channel);
+      
+      for (let i = 0; i < buffer.length; i++) {
+        const t = i / audioContext.sampleRate;
+        const phase = t / duration;
+        
+        // Creaking sound
+        const creak1 = Math.sin(t * 50 + 5 * Math.sin(t * 2)) * 0.1 * (phase < 0.6 ? 1 - phase : 0);
+        
+        data[i] = creak1;
+      }
+    }
+    
+    return buffer;
+  },
+  
+  // Generate a coin drop sound
+  coinDrop: (audioContext: AudioContext): AudioBuffer => {
+    const duration = 0.8;
+    const buffer = audioContext.createBuffer(
+      2,
+      audioContext.sampleRate * duration,
+      audioContext.sampleRate
+    );
+    
+    for (let channel = 0; channel < buffer.numberOfChannels; channel++) {
+      const data = buffer.getChannelData(channel);
+      
+      for (let i = 0; i < buffer.length; i++) {
+        const t = i / audioContext.sampleRate;
+        const phase = t / duration;
+        
+        // High-pitched clink followed by "bounces"
+        const clink = Math.sin(6000 * t) * Math.pow(Math.E, -10 * phase) * 0.2;
+        const bounce1 = phase > 0.3 ? Math.sin(4000 * t) * Math.pow(Math.E, -20 * (phase - 0.3)) * 0.1 : 0;
+        const bounce2 = phase > 0.5 ? Math.sin(3500 * t) * Math.pow(Math.E, -20 * (phase - 0.5)) * 0.05 : 0;
+        const bounce3 = phase > 0.65 ? Math.sin(3000 * t) * Math.pow(Math.E, -20 * (phase - 0.65)) * 0.02 : 0;
+        
+        data[i] = clink + bounce1 + bounce2 + bounce3;
+      }
+    }
+    
+    return buffer;
+  },
+  
+  // Generate a glass clink sound
+  glassClink: (audioContext: AudioContext): AudioBuffer => {
+    const duration = 1.0;
+    const buffer = audioContext.createBuffer(
+      2,
+      audioContext.sampleRate * duration,
+      audioContext.sampleRate
+    );
+    
+    for (let channel = 0; channel < buffer.numberOfChannels; channel++) {
+      const data = buffer.getChannelData(channel);
+      
+      for (let i = 0; i < buffer.length; i++) {
+        const t = i / audioContext.sampleRate;
+        const phase = t / duration;
+        
+        // Glass resonance
+        const clink = Math.sin(2400 * t) * Math.pow(Math.E, -8 * phase) * 0.2;
+        const ring = Math.sin(3600 * t) * Math.pow(Math.E, -6 * phase) * 0.1;
+        
+        data[i] = clink + ring;
+      }
+    }
+    
+    return buffer;
+  },
+  
+  // Generate a drink pour sound
+  drinkPour: (audioContext: AudioContext): AudioBuffer => {
+    const duration = 2.0;
+    const buffer = audioContext.createBuffer(
+      2,
+      audioContext.sampleRate * duration,
+      audioContext.sampleRate
+    );
+    
+    for (let channel = 0; channel < buffer.numberOfChannels; channel++) {
+      const data = buffer.getChannelData(channel);
+      
+      for (let i = 0; i < buffer.length; i++) {
+        const t = i / audioContext.sampleRate;
+        const phase = t / duration;
+        
+        // Pouring liquid sound
+        const noise = Math.random() * 0.1 * (1 - phase * 0.7);
+        const bubbles = Math.random() < 0.02 ? Math.random() * 0.2 : 0;
+        
+        data[i] = noise + bubbles;
+      }
+    }
+    
+    return buffer;
+  },
+  
+  // Generate a chair moving sound
+  chairMove: (audioContext: AudioContext): AudioBuffer => {
+    const duration = 0.8;
+    const buffer = audioContext.createBuffer(
+      2,
+      audioContext.sampleRate * duration,
+      audioContext.sampleRate
+    );
+    
+    for (let channel = 0; channel < buffer.numberOfChannels; channel++) {
+      const data = buffer.getChannelData(channel);
+      
+      for (let i = 0; i < buffer.length; i++) {
+        const t = i / audioContext.sampleRate;
+        const phase = t / duration;
+        
+        // Chair drag sound
+        let noise = Math.random() * 0.03;
+        // Add some lower frequency rumble
+        const rumble = Math.sin(100 * t + Math.sin(60 * t) * 2) * 0.05 * (phase < 0.7 ? 1 : 7 * (1 - phase));
+        
+        data[i] = noise * (phase < 0.7 ? 1 : 7 * (1 - phase)) + rumble;
+      }
+    }
+    
+    return buffer;
+  },
+  
+  // Generate a tavern ambient sound
+  tavernAmbience: (audioContext: AudioContext): AudioBuffer => {
+    const duration = 10.0;
+    const buffer = audioContext.createBuffer(
+      2,
+      audioContext.sampleRate * duration,
+      audioContext.sampleRate
+    );
+    
+    for (let channel = 0; channel < buffer.numberOfChannels; channel++) {
+      const data = buffer.getChannelData(channel);
+      
+      for (let i = 0; i < buffer.length; i++) {
+        const t = i / audioContext.sampleRate;
+        
+        // Background murmur
+        const murmur = Math.random() * 0.01;
+        // Add occasional clinks at random intervals
+        const glassRandom = Math.random();
+        const glassClink = glassRandom < 0.0005 ? Math.sin(2000 * t % 1) * 0.03 * Math.min(1, 10 * (1 - (t % 0.3))) : 0;
+        // Low-frequency rumble for "room tone"
+        const rumble = Math.sin(30 * t) * 0.003;
+        
+        data[i] = murmur + glassClink + rumble;
+      }
+    }
+    
+    return buffer;
+  }
 };
 
 const TavernAudio: React.FC = () => {
   const { roomId } = useWebSocketStore();
   const [isMuted, setIsMuted] = useState(false);
   const [volume, setVolume] = useState(0.5);
-  const audioRefs = useRef<Record<string, HTMLAudioElement | null>>({});
+  const audioCtxRef = useRef<AudioContext | null>(null);
+  const soundBuffers = useRef<Record<string, AudioBuffer>>({});
   const [soundsLoaded, setSoundsLoaded] = useState(false);
-  const [generatedSounds, setGeneratedSounds] = useState<Record<string, string>>({});
   
-  // Load the sound generator script
+  // Initialize audio context and load sounds
   useEffect(() => {
-    // Create a script element for sound generator
-    const scriptEl = document.createElement('script');
-    scriptEl.src = '/sounds/sound-generator.js';
-    scriptEl.async = true;
-    
-    // Append the script to the document head
-    document.head.appendChild(scriptEl);
-    
-    // Clean up
-    return () => {
-      document.head.removeChild(scriptEl);
-    };
-  }, []);
-  
-  // Generate sounds when the script is loaded
-  useEffect(() => {
-    const generateSounds = async () => {
-      // Wait for the generateSounds function to be available
-      let attempts = 0;
-      while (!window.generateSounds && attempts < 10) {
-        await new Promise(resolve => setTimeout(resolve, 500));
-        attempts++;
-      }
-      
-      if (!window.generateSounds) {
-        console.error('Sound generator not loaded after multiple attempts');
-        return;
-      }
-      
+    const initAudio = async () => {
       try {
-        console.log('Generating sounds...');
-        const sounds = await window.generateSounds();
-        console.log('Generated sounds:', sounds);
-        
-        if (sounds) {
-          setGeneratedSounds(sounds);
-        } else {
-          console.error('Failed to generate sounds');
+        // Create audio context
+        const AudioContext = window.AudioContext || window.webkitAudioContext;
+        if (!AudioContext) {
+          console.error('Web Audio API is not supported by this browser');
+          return;
         }
+        
+        audioCtxRef.current = new AudioContext();
+        
+        // Generate sound buffers
+        console.log('Generating sound buffers...');
+        
+        // Map of sound IDs to generator functions
+        const soundGenerators: Record<string, (ctx: AudioContext) => AudioBuffer> = {
+          'door-open': SoundEffects.doorOpen,
+          'coin-drop': SoundEffects.coinDrop,
+          'glass-clink': SoundEffects.glassClink,
+          'drink-pour': SoundEffects.drinkPour,
+          'chair-move': SoundEffects.chairMove,
+          'tavern-background': SoundEffects.tavernAmbience
+        };
+        
+        // Generate each sound buffer
+        for (const [id, generator] of Object.entries(soundGenerators)) {
+          try {
+            soundBuffers.current[id] = generateAudioBuffer(audioCtxRef.current, generator);
+            console.log(`Generated sound: ${id}`);
+          } catch (error) {
+            console.error(`Error generating sound ${id}:`, error);
+          }
+        }
+        
+        // Use tavern ambience for other ambient sounds as well
+        soundBuffers.current['rose-garden-ambience'] = soundBuffers.current['tavern-background'];
+        soundBuffers.current['magical-chimes'] = soundBuffers.current['glass-clink'];
+        soundBuffers.current['ocean-waves'] = soundBuffers.current['tavern-background'];
+        soundBuffers.current['distant-seagulls'] = soundBuffers.current['tavern-background'];
+        soundBuffers.current['tavern-murmurs'] = soundBuffers.current['tavern-background'];
+        soundBuffers.current['crackling-fire'] = soundBuffers.current['tavern-background'];
+        soundBuffers.current['drink-serve'] = soundBuffers.current['glass-clink'];
+        
+        setSoundsLoaded(true);
+        console.log('All sound buffers generated successfully');
       } catch (error) {
-        console.error('Error generating sounds:', error);
+        console.error('Error initializing audio:', error);
       }
     };
     
-    generateSounds();
-  }, []);
-  
-  // Create audio elements when sounds are generated
-  useEffect(() => {
-    if (Object.keys(generatedSounds).length === 0) return;
-    
-    console.log('Creating audio elements from generated sounds');
-    
-    // Create audio elements for all sounds
-    const allSounds = [
-      ...commonSounds,
-      ...Object.values(actionSounds),
-      ...Object.values(roomSounds).flat()
-    ];
-    
-    // Process each sound
-    allSounds.forEach(sound => {
-      if (!audioRefs.current[sound.id]) {
-        try {
-          // Get the URL mapping for this sound
-          const soundKey = soundIdMapping[sound.id] || sound.id;
-          const url = generatedSounds[soundKey];
-          
-          if (url) {
-            console.log(`Creating audio for ${sound.id} using ${soundKey}`);
-            const audio = new Audio(url);
-            audio.volume = sound.volume * volume;
-            audio.loop = sound.loop;
-            if (sound.playbackRate) {
-              audio.playbackRate = sound.playbackRate;
-            }
-            
-            // Store the audio element
-            audioRefs.current[sound.id] = audio;
-          } else {
-            console.warn(`No generated sound found for: ${sound.id}`);
-          }
-        } catch (error) {
-          console.error(`Error setting up sound ${sound.id}:`, error);
-        }
-      }
-    });
-    
-    console.log("All sounds loaded");
-    setSoundsLoaded(true);
+    initAudio();
     
     return () => {
-      // Cleanup
-      Object.values(audioRefs.current).forEach(audio => {
-        if (audio) {
-          audio.pause();
-        }
-      });
-      audioRefs.current = {};
+      if (audioCtxRef.current?.state !== 'closed') {
+        audioCtxRef.current?.close();
+      }
     };
-  }, [generatedSounds, volume]);
+  }, []);
   
   // Handle room changes
   useEffect(() => {
-    if (isMuted || !soundsLoaded) return;
+    if (isMuted || !soundsLoaded || !audioCtxRef.current) return;
     
     const playRoomSounds = async () => {
-      // Stop all room-specific ambient sounds
-      Object.values(roomSounds).flat().forEach(sound => {
-        const audio = audioRefs.current[sound.id];
-        if (audio) {
-          audio.pause();
-          try {
-            audio.currentTime = 0;
-          } catch (e) {
-            console.warn(`Could not reset time for ${sound.id}:`, e);
-          }
-        }
-      });
-      
       // Play the door opening sound when changing rooms
       try {
-        console.log("Playing door open sound");
         playSound('door-open');
       } catch (e) {
         console.warn("Error with door sound:", e);
       }
       
-      // Short delay to let the door sound play first
+      // Short delay for the door sound to play
       await new Promise(resolve => setTimeout(resolve, 500));
       
       // Play ambient sounds for the current room
       if (roomSounds[roomId]) {
         roomSounds[roomId].forEach(sound => {
-          const audio = audioRefs.current[sound.id];
-          if (audio) {
-            try {
-              console.log(`Playing room sound: ${sound.id}`);
-              audio.currentTime = 0;
-              audio.play().catch(e => console.error(`Error playing ${sound.id}:`, e));
-            } catch (e) {
-              console.warn(`Error with room sound ${sound.id}:`, e);
-            }
+          try {
+            playAmbientSound(sound.id, sound.volume, sound.loop, sound.playbackRate);
+          } catch (e) {
+            console.warn(`Error playing room sound ${sound.id}:`, e);
           }
         });
       }
       
-      // Make sure common sounds are playing
+      // Play common sounds
       commonSounds.forEach(sound => {
-        const audio = audioRefs.current[sound.id];
-        if (audio && audio.paused) {
-          try {
-            console.log(`Playing common sound: ${sound.id}`);
-            audio.currentTime = 0;
-            audio.play().catch(e => console.error(`Error playing ${sound.id}:`, e));
-          } catch (e) {
-            console.warn(`Error with common sound ${sound.id}:`, e);
-          }
+        try {
+          playAmbientSound(sound.id, sound.volume, sound.loop);
+        } catch (e) {
+          console.warn(`Error playing common sound ${sound.id}:`, e);
         }
       });
     };
@@ -291,32 +382,37 @@ const TavernAudio: React.FC = () => {
     playRoomSounds();
   }, [roomId, isMuted, soundsLoaded]);
   
-  // Volume control
-  useEffect(() => {
-    Object.values(audioRefs.current).forEach(audio => {
-      if (audio) {
-        const soundId = Object.keys(audioRefs.current).find(
-          key => audioRefs.current[key] === audio
-        );
-        
-        if (soundId) {
-          // Find the original sound definition to get the base volume
-          const allSounds = [
-            ...commonSounds,
-            ...Object.values(actionSounds),
-            ...Object.values(roomSounds).flat()
-          ];
-          
-          const soundDef = allSounds.find(s => s.id === soundId);
-          if (soundDef) {
-            audio.volume = isMuted ? 0 : soundDef.volume * volume;
-          } else {
-            audio.volume = isMuted ? 0 : 0.3 * volume; // Default volume
-          }
-        }
+  // Create a function to play ambient sounds
+  const playAmbientSound = (id: string, baseVolume: number, loop: boolean, playbackRate?: number) => {
+    if (!audioCtxRef.current || !soundBuffers.current[id]) return;
+    
+    const source = audioCtxRef.current.createBufferSource();
+    source.buffer = soundBuffers.current[id];
+    
+    const gainNode = audioCtxRef.current.createGain();
+    gainNode.gain.value = isMuted ? 0 : baseVolume * volume;
+    
+    source.connect(gainNode);
+    gainNode.connect(audioCtxRef.current.destination);
+    
+    if (playbackRate) {
+      source.playbackRate.value = playbackRate;
+    }
+    
+    source.loop = loop;
+    source.start();
+    
+    // Return cleanup function
+    return () => {
+      try {
+        source.stop();
+        source.disconnect();
+        gainNode.disconnect();
+      } catch (e) {
+        console.warn(`Error stopping sound ${id}:`, e);
       }
-    });
-  }, [volume, isMuted]);
+    };
+  };
   
   // Listen for audio events from the hook
   useEffect(() => {
@@ -350,47 +446,46 @@ const TavernAudio: React.FC = () => {
   
   // Play action sound
   const playSound = (soundId: ActionSoundType) => {
-    if (isMuted || !soundsLoaded) return;
+    if (isMuted || !soundsLoaded || !audioCtxRef.current) return;
     
-    console.log(`Trying to play sound: ${soundId}`);
+    console.log(`Playing sound: ${soundId}`);
     
     const sound = actionSounds[soundId];
-    if (sound && audioRefs.current[sound.id]) {
-      const audio = audioRefs.current[sound.id];
-      if (audio) {
-        try {
-          // Create a clone of the audio to allow overlapping sounds
-          const clone = new Audio(audio.src);
-          clone.volume = audio.volume;
-          clone.play().catch(e => console.error(`Error playing ${sound.id}:`, e));
-        } catch (e) {
-          console.warn(`Error with action sound ${sound.id}:`, e);
-          
-          // Try direct playback with the original
-          try {
-            audio.currentTime = 0;
-            audio.play().catch(e2 => console.error(`Original playback failed for ${sound.id}:`, e2));
-          } catch (e2) {
-            console.warn(`Error with original audio for ${sound.id}:`, e2);
-          }
-        }
+    if (sound && soundBuffers.current[sound.id]) {
+      try {
+        const source = audioCtxRef.current.createBufferSource();
+        source.buffer = soundBuffers.current[sound.id];
+        
+        const gainNode = audioCtxRef.current.createGain();
+        gainNode.gain.value = sound.volume * volume;
+        
+        source.connect(gainNode);
+        gainNode.connect(audioCtxRef.current.destination);
+        
+        source.start();
+        
+        // Automatically clean up
+        source.onended = () => {
+          source.disconnect();
+          gainNode.disconnect();
+        };
+      } catch (e) {
+        console.warn(`Error with action sound ${sound.id}:`, e);
       }
     } else {
       console.warn(`Sound not found or not loaded: ${soundId}`);
-      
-      // Try to play the raw generated sound if available
-      const mappedId = soundIdMapping[soundId];
-      if (mappedId && generatedSounds[mappedId]) {
-        console.log(`Attempting direct playback of ${soundId} using ${mappedId}`);
-        const directAudio = new Audio(generatedSounds[mappedId]);
-        directAudio.volume = 0.4 * volume; // Default volume
-        directAudio.play().catch(e => console.error(`Direct playback failed for ${soundId}:`, e));
-      }
+    }
+  };
+  
+  // Wake up AudioContext if it's suspended (needed for some browsers)
+  const resumeAudioContext = () => {
+    if (audioCtxRef.current?.state === 'suspended') {
+      audioCtxRef.current.resume();
     }
   };
   
   return (
-    <div className="fixed bottom-4 right-4 z-50">
+    <div className="fixed bottom-4 right-4 z-50" onClick={resumeAudioContext}>
       <button 
         onClick={() => setIsMuted(!isMuted)}
         className="bg-background/80 border border-border rounded-full p-2 shadow-md hover:bg-background transition-colors"
@@ -429,10 +524,11 @@ const TavernAudio: React.FC = () => {
   );
 };
 
-// Add the generateSounds function to the Window interface
+// Add AudioContext to the Window interface
 declare global {
   interface Window {
-    generateSounds: () => Promise<Record<string, string>>;
+    AudioContext: typeof AudioContext;
+    webkitAudioContext: typeof AudioContext;
   }
 }
 
