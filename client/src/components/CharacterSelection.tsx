@@ -1,17 +1,47 @@
-import { FC, useState } from 'react';
+import { FC, useState, useEffect } from 'react';
 import { useWebSocketStore } from '@/lib/websocket';
 import { PatronAvatar, PatronIconMap } from '@/assets/svgs/tavern-patrons';
 
+// Storage keys for saving user preferences
+const STORAGE_KEY_USERNAME = 'tavern_username';
+const STORAGE_KEY_AVATAR = 'tavern_selected_avatar';
+const STORAGE_KEY_AUTO_CONNECT = 'tavern_auto_connect';
+
 const CharacterSelection: FC = () => {
   const { connect, user } = useWebSocketStore();
-  const [selectedAvatar, setSelectedAvatar] = useState<string>('bard');
-  const [username, setUsername] = useState<string>('');
+  const [selectedAvatar, setSelectedAvatar] = useState<string>(
+    localStorage.getItem(STORAGE_KEY_AVATAR) || 'bard'
+  );
+  const [username, setUsername] = useState<string>(
+    localStorage.getItem(STORAGE_KEY_USERNAME) || ''
+  );
+  const [autoConnect, setAutoConnect] = useState<boolean>(
+    localStorage.getItem(STORAGE_KEY_AUTO_CONNECT) === 'true'
+  );
+  
+  // Auto-connect if enabled and we have saved credentials
+  useEffect(() => {
+    if (!user && autoConnect && username.trim()) {
+      connect(username, selectedAvatar);
+    }
+  }, [autoConnect, username, selectedAvatar, connect, user]);
   
   const handleConfirm = () => {
     if (username.trim()) {
+      // Save preferences to localStorage
+      localStorage.setItem(STORAGE_KEY_USERNAME, username);
+      localStorage.setItem(STORAGE_KEY_AVATAR, selectedAvatar);
+      localStorage.setItem(STORAGE_KEY_AUTO_CONNECT, autoConnect.toString());
+      
       // Connect to WebSocket with selected avatar
       connect(username, selectedAvatar);
     }
+  };
+  
+  // Update stored avatar when selection changes
+  const handleAvatarSelect = (avatar: string) => {
+    setSelectedAvatar(avatar);
+    localStorage.setItem(STORAGE_KEY_AVATAR, avatar);
   };
   
   // Available patron avatars
@@ -40,7 +70,7 @@ const CharacterSelection: FC = () => {
                   ? 'bg-[#8B4513] rounded-md scale-110 shadow-lg' 
                   : 'hover:bg-[#5A4439] rounded-md'
                 }`}
-                onClick={() => setSelectedAvatar(avatar)}
+                onClick={() => handleAvatarSelect(avatar)}
               >
                 <PatronAvatar name={avatar} size={64} className="mb-2" />
                 <span className="font-['VT323'] text-[#E8D6B3] text-center capitalize">
@@ -68,6 +98,19 @@ const CharacterSelection: FC = () => {
             >
               ENTER
             </button>
+          </div>
+          
+          <div className="flex items-center mt-4">
+            <input
+              type="checkbox"
+              id="auto-connect"
+              className="w-4 h-4 bg-[#2C1810] border border-[#8B4513] focus:ring-[#8B4513]"
+              checked={autoConnect}
+              onChange={(e) => setAutoConnect(e.target.checked)}
+            />
+            <label htmlFor="auto-connect" className="ml-2 text-sm text-[#E8D6B3] font-['VT323']">
+              Remember me and auto-connect next time
+            </label>
           </div>
         </div>
       </div>

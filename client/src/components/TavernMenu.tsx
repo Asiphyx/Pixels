@@ -1,17 +1,41 @@
 import { FC, useState } from 'react';
 import { useWebSocketStore } from '@/lib/websocket';
 import { MenuItemIcon } from '@/assets/svgs/menu-items';
-import { XIcon } from 'lucide-react';
+import { XIcon, UserCircle } from 'lucide-react';
+
+// Storage keys for saving user preferences (must match those in CharacterSelection.tsx)
+const STORAGE_KEY_USERNAME = 'tavern_username';
+const STORAGE_KEY_AVATAR = 'tavern_selected_avatar';
+const STORAGE_KEY_AUTO_CONNECT = 'tavern_auto_connect';
 
 interface TavernMenuProps {
   onClose: () => void;
 }
 
 const TavernMenu: FC<TavernMenuProps> = ({ onClose }) => {
-  const { menuItems, orderMenuItem } = useWebSocketStore();
+  const { menuItems, orderMenuItem, disconnect } = useWebSocketStore();
   const [activeCategory, setActiveCategory] = useState<string>('drinks');
   
   const filteredItems = menuItems.filter(item => item.category === activeCategory);
+  
+  const handleSignOut = () => {
+    // Clear stored user data
+    localStorage.removeItem(STORAGE_KEY_USERNAME);
+    localStorage.removeItem(STORAGE_KEY_AVATAR);
+    localStorage.removeItem(STORAGE_KEY_AUTO_CONNECT);
+    
+    // Disconnect from the WebSocket
+    disconnect();
+    
+    // Close the menu
+    onClose();
+  };
+  
+  const handleDisableAutoConnect = () => {
+    // Just disable auto-connect but keep other preferences
+    localStorage.setItem(STORAGE_KEY_AUTO_CONNECT, 'false');
+    onClose();
+  };
   
   return (
     <div className="fixed inset-0 flex items-center justify-center z-50 bg-black bg-opacity-50">
@@ -55,13 +79,60 @@ const TavernMenu: FC<TavernMenuProps> = ({ onClose }) => {
           >
             Specials
           </button>
+          <button 
+            className={`menu-tab flex-1 py-2 px-4 font-['VT323'] text-xl text-[#E8D6B3] ${
+              activeCategory === 'profile' 
+                ? 'bg-[#8B4513]' 
+                : 'bg-[#2C1810] hover:bg-[#3C281A]'
+            }`}
+            onClick={() => setActiveCategory('profile')}
+          >
+            Profile
+          </button>
         </div>
         
         <div 
           className="menu-content p-4 overflow-y-auto"
           style={{ maxHeight: 'calc(100% - 110px)' }}
         >
-          {filteredItems.length === 0 ? (
+          {activeCategory === 'profile' ? (
+            <div className="profile-settings p-4">
+              <div className="text-center mb-6">
+                <div className="inline-flex justify-center items-center w-20 h-20 rounded-full bg-[#2C1810] border-2 border-[#8B4513]">
+                  <UserCircle className="h-14 w-14 text-[#FFD700]" />
+                </div>
+                <h3 className="font-['Press_Start_2P'] text-[#FFD700] text-sm mt-2">Traveler Settings</h3>
+              </div>
+              
+              <div className="profile-options space-y-4">
+                <div 
+                  className="profile-option p-3 bg-[#2C1810] border border-[#8B4513] rounded-sm cursor-pointer hover:bg-[#3C281A]"
+                  onClick={handleSignOut}
+                >
+                  <h4 className="font-['VT323'] text-[#FFD700] text-lg">Sign Out</h4>
+                  <p className="text-[#E8D6B3] opacity-80 text-sm mt-1 font-['VT323']">
+                    Clear your saved info and return to the tavern entrance
+                  </p>
+                </div>
+                
+                <div 
+                  className="profile-option p-3 bg-[#2C1810] border border-[#8B4513] rounded-sm cursor-pointer hover:bg-[#3C281A]"
+                  onClick={handleDisableAutoConnect}
+                >
+                  <h4 className="font-['VT323'] text-[#FFD700] text-lg">Disable Auto-Connect</h4>
+                  <p className="text-[#E8D6B3] opacity-80 text-sm mt-1 font-['VT323']">
+                    Remember your name and avatar, but ask before connecting next time
+                  </p>
+                </div>
+                
+                <div className="profile-info p-3 bg-[#2C1810] border border-[#8B4513] rounded-sm mt-6">
+                  <p className="text-[#E8D6B3] opacity-80 text-sm font-['VT323']">
+                    Bartenders will remember how you treat them even if you leave and return later.
+                  </p>
+                </div>
+              </div>
+            </div>
+          ) : filteredItems.length === 0 ? (
             <div className="text-center py-8 text-[#E8D6B3] font-['VT323'] text-xl">
               Nothing on the menu yet. Check back later!
             </div>
