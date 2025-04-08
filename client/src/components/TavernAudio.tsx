@@ -132,39 +132,52 @@ const TavernAudio: React.FC = () => {
       ];
       
       // Process each sound and load with fallback if needed
-      const loadPromises = allSounds.map(async (sound) => {
+      for (const sound of allSounds) {
         if (!audioRefs.current[sound.id]) {
-          // Try to get a working URL for the sound (local or fallback)
-          const sourceUrl = await getCachedSoundUrl(sound.id, sound.src);
-          
-          if (sourceUrl) {
-            const audio = new Audio();
-            audio.src = sourceUrl;
-            audio.volume = sound.volume * volume;
-            audio.loop = sound.loop;
-            if (sound.playbackRate) {
-              audio.playbackRate = sound.playbackRate;
-            }
-            audio.preload = 'auto';
+          try {
+            // Skip local file checks and directly use fallbacks
+            const sourceUrl = fallbackSoundUrls[sound.id];
             
-            // Return a promise that resolves when the audio can play
-            const loadPromise = new Promise<void>((resolve) => {
-              audio.addEventListener('canplaythrough', () => resolve(), { once: true });
-              audio.addEventListener('error', () => {
-                console.error(`Error loading sound: ${sound.id}`);
-                resolve(); // Resolve anyway to not block other sounds
+            if (sourceUrl) {
+              console.log(`Loading sound: ${sound.id} from ${sourceUrl}`);
+              const audio = new Audio();
+              
+              // Set up event handlers first
+              const loadPromise = new Promise<void>((resolve) => {
+                audio.addEventListener('canplaythrough', () => {
+                  console.log(`Sound loaded successfully: ${sound.id}`);
+                  resolve();
+                }, { once: true });
+                
+                audio.addEventListener('error', (e) => {
+                  console.error(`Error loading sound ${sound.id}:`, e);
+                  resolve(); // Resolve anyway to not block other sounds
+                });
               });
-            });
-            
-            audioRefs.current[sound.id] = audio;
-            return loadPromise;
+              
+              // Then set the source
+              audio.src = sourceUrl;
+              audio.volume = sound.volume * volume;
+              audio.loop = sound.loop;
+              if (sound.playbackRate) {
+                audio.playbackRate = sound.playbackRate;
+              }
+              audio.preload = 'auto';
+              
+              // Store the audio element
+              audioRefs.current[sound.id] = audio;
+              
+              // Wait for this sound to load before continuing
+              await loadPromise;
+            } else {
+              console.warn(`No fallback found for sound: ${sound.id}`);
+            }
+          } catch (error) {
+            console.error(`Error setting up sound ${sound.id}:`, error);
           }
         }
-        return Promise.resolve(); // If already loaded or URL not found
-      });
+      }
       
-      // Wait for all sounds to be loaded
-      await Promise.all(loadPromises);
       console.log("All sounds loaded");
       setSoundsLoaded(true);
     };
@@ -181,63 +194,75 @@ const TavernAudio: React.FC = () => {
       });
       audioRefs.current = {};
     };
-  }, []);
+  }, [volume]);
   
   // Handle room changes
   useEffect(() => {
     if (isMuted || !soundsLoaded) return;
     
-    // Stop all room-specific ambient sounds
-    Object.values(roomSounds).flat().forEach(sound => {
-      const audio = audioRefs.current[sound.id];
-      if (audio) {
-        audio.pause();
-        try {
-          audio.currentTime = 0;
-        } catch (e) {
-          console.warn(`Could not reset time for ${sound.id}:`, e);
-        }
-      }
-    });
-    
-    // Play the door opening sound when changing rooms
-    const doorAudio = audioRefs.current['door-open'];
-    if (doorAudio) {
-      try {
-        doorAudio.currentTime = 0;
-        doorAudio.play().catch(e => console.error("Error playing door sound:", e));
-      } catch (e) {
-        console.warn("Error with door sound:", e);
-      }
-    }
-    
-    // Play ambient sounds for the current room
-    if (roomSounds[roomId]) {
-      roomSounds[roomId].forEach(sound => {
+    const playRoomSounds = async () => {
+      // Stop all room-specific ambient sounds
+      Object.values(roomSounds).flat().forEach(sound => {
         const audio = audioRefs.current[sound.id];
         if (audio) {
+          audio.pause();
           try {
             audio.currentTime = 0;
-            audio.play().catch(e => console.error(`Error playing ${sound.id}:`, e));
           } catch (e) {
-            console.warn(`Error with room sound ${sound.id}:`, e);
+            console.warn(`Could not reset time for ${sound.id}:`, e);
           }
         }
       });
-    }
-    
-    // Make sure common sounds are playing
-    commonSounds.forEach(sound => {
-      const audio = audioRefs.current[sound.id];
-      if (audio && audio.paused) {
-        try {
-          audio.currentTime = 0;
-          audio.play().catch(e => console.error(`Error playing ${sound.id}:`, e));
-        } catch (e) {
-          console.warn(`Error with common sound ${sound.id}:`, e);
-        }
+      
+      // Play the door opening sound when changing rooms
+      try {
+        console.log("Playing door open sound");
+        playSound('door-open');
+      } catch (e) {
+        console.warn("Error with door sound:", e);
       }
-    });
+      
+      // Short delay to let the door sound play first
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
+      // Play ambient sounds for the current room
+      if (roomSounds[roomId]) {
+        roomSounds[roomId].forEach(sound => {
+          const audio = audioRefs.current[sound.id];
+          if (audio) {
+            try {
+              console.log(`Playing room sound: ${sound.id}`);
+              audio.currentTime = 0;
+              const playPromise = audio.play();
+              if (playPromise) {
+                playPromise.catch(e => console.error(`Error playing ${sound.id}:`, e));
+              }
+            } catch (e) {
+              console.warn(`Error with room sound ${sound.id}:`, e);
+            }
+          }
+        });
+      }
+      
+      // Make sure common sounds are playing
+      commonSounds.forEach(sound => {
+        const audio = audioRefs.current[sound.id];
+        if (audio && audio.paused) {
+          try {
+            console.log(`Playing common sound: ${sound.id}`);
+            audio.currentTime = 0;
+            const playPromise = audio.play();
+            if (playPromise) {
+              playPromise.catch(e => console.error(`Error playing ${sound.id}:`, e));
+            }
+          } catch (e) {
+            console.warn(`Error with common sound ${sound.id}:`, e);
+          }
+        }
+      });
+    };
+    
+    playRoomSounds();
   }, [roomId, isMuted, soundsLoaded]);
   
   // Volume control
@@ -299,16 +324,41 @@ const TavernAudio: React.FC = () => {
   const playSound = (soundId: ActionSoundType) => {
     if (isMuted || !soundsLoaded) return;
     
+    console.log(`Trying to play sound: ${soundId}`);
+    
     const sound = actionSounds[soundId];
     if (sound && audioRefs.current[sound.id]) {
       const audio = audioRefs.current[sound.id];
       if (audio) {
         try {
           audio.currentTime = 0;
-          audio.play().catch(e => console.error(`Error playing ${sound.id}:`, e));
+          const playPromise = audio.play();
+          if (playPromise) {
+            playPromise.catch(e => {
+              console.error(`Error playing ${sound.id}:`, e);
+              
+              // Try to recreate the audio element and play it
+              if (fallbackSoundUrls[sound.id]) {
+                console.log(`Retrying with new audio element for ${sound.id}`);
+                const newAudio = new Audio(fallbackSoundUrls[sound.id]);
+                newAudio.volume = sound.volume * volume;
+                newAudio.play().catch(e2 => console.error(`Second attempt failed for ${sound.id}:`, e2));
+              }
+            });
+          }
         } catch (e) {
           console.warn(`Error with action sound ${sound.id}:`, e);
         }
+      }
+    } else {
+      console.warn(`Sound not found or not loaded: ${soundId}`);
+      
+      // Try to play directly from fallback
+      if (fallbackSoundUrls[soundId]) {
+        console.log(`Attempting direct playback of ${soundId}`);
+        const directAudio = new Audio(fallbackSoundUrls[soundId]);
+        directAudio.volume = 0.4 * volume; // Default volume
+        directAudio.play().catch(e => console.error(`Direct playback failed for ${soundId}:`, e));
       }
     }
   };

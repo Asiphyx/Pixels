@@ -20,24 +20,34 @@ export const fallbackSoundUrls: Record<string, string> = {
   'distant-seagulls': 'https://cdn.freesound.org/previews/512/512978_4445487-lq.mp3',
   'rose-garden-ambience': 'https://cdn.freesound.org/previews/341/341695_5865517-lq.mp3',
   'magical-chimes': 'https://cdn.freesound.org/previews/457/457043_9497060-lq.mp3',
+  'crackling-fire': 'https://cdn.freesound.org/previews/191/191822_2558537-lq.mp3',
   'fire-crackling': 'https://cdn.freesound.org/previews/191/191822_2558537-lq.mp3',
   'drink-pour': 'https://cdn.freesound.org/previews/446/446636_6142149-lq.mp3',
   'door-open': 'https://cdn.freesound.org/previews/401/401659_7292308-lq.mp3',
   'glass-clink': 'https://cdn.freesound.org/previews/448/448262_7487117-lq.mp3',
+  'drink-serve': 'https://cdn.freesound.org/previews/448/448262_7487117-lq.mp3',
   'coin-drop': 'https://cdn.freesound.org/previews/469/469716_9459038-lq.mp3',
-  'chair-move': 'https://cdn.freesound.org/previews/416/416179_8199000-lq.mp3'
+  'chair-move': 'https://cdn.freesound.org/previews/416/416179_8199000-lq.mp3',
+  'seagulls': 'https://cdn.freesound.org/previews/512/512978_4445487-lq.mp3'
 };
 
-// Get the available URL for a sound file
+// Always use the fallback URLs for now since we don't have local files yet
 export async function getSoundUrl(soundId: string, localPath: string): Promise<string> {
-  const isLocal = await checkSoundFile(localPath);
-  
-  if (isLocal) {
-    return localPath;
-  } else if (fallbackSoundUrls[soundId]) {
+  // Skip local check for now and go straight to fallbacks
+  if (fallbackSoundUrls[soundId]) {
     console.log(`Using fallback for ${soundId}`);
     return fallbackSoundUrls[soundId];
   } else {
+    // Try to find a similarly named sound if exact match not found
+    const similarKeys = Object.keys(fallbackSoundUrls).filter(key => 
+      soundId.includes(key) || key.includes(soundId)
+    );
+    
+    if (similarKeys.length > 0) {
+      console.log(`Using similar fallback ${similarKeys[0]} for ${soundId}`);
+      return fallbackSoundUrls[similarKeys[0]];
+    }
+    
     console.error(`No sound file available for ${soundId}`);
     return '';
   }
