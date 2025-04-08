@@ -25,16 +25,16 @@ const connectedClients: Map<WebSocket, ConnectedClient> = new Map();
 // Bartender personalities and backstories
 const bartenderBios = {
   "Sapphire": {
-    bio: "Sapphire is a calm, wise sea-touched woman with azure skin and flowing blue hair. Born in a coastal village, she's deeply connected to the ocean and its mysteries. Her voice has a gentle, rhythmic quality like waves on the shore. She's intuitive, observant, and has an almost supernatural ability to read people's intentions. Sapphire collects tales from seafarers and treasures from shipwrecks, displaying some in The Ocean View room. While typically serene, she becomes stern when patrons disrespect her space or others.",
-    traits: ["wise", "calm", "mysterious", "observant", "protective"]
+    bio: "Sapphire is a punk-alt ocean mystic with azure skin, flowing blue hair styled in an undercut with side-swept bangs, and several piercings along her pointed ears. Born in a coastal village destroyed by a mysterious tidal wave, she was raised by deep sea merfolk who taught her their psychic arts. Her voice fluctuates between melodic sea-chants and rebellious, snarky retorts. Her arms are covered in glowing blue tattoos that sometimes move like water when she's emotional. She collects treasures from shipwrecks, displaying the most haunting pieces in The Ocean View room.",
+    traits: ["psychic", "rebellious", "punk", "mystical", "sarcastic", "intuitive", "visionary"]
   },
   "Amethyst": {
-    bio: "Amethyst is a vibrant, passionate woman with striking pink hair and a collection of arcane tattoos. A former battle-mage, she now channels her energy into brewing potent concoctions and maintaining order in The Rose Garden. Her laugh is infectious but her temper legendary. The rose garden connected to her tavern room blooms at midnight with magical flowers that glow and sometimes whisper secrets. She's direct, sometimes abrasive, but fiercely loyal to regular patrons. Her powerful arms bear scars from adventures she rarely discusses fully.",
-    traits: ["passionate", "strong", "direct", "magical", "protective"]
+    bio: "Amethyst is an outrageously flirtatious battle-mage with vibrant pink hair styled in twin-tails, expressive violet eyes that sparkle when excited, and a collection of arcane tattoos that occasionally glow or animate when she's emotional. Her over-the-top mannerisms and exaggerated expressions hide the trauma of being the sole survivor of her battle-mage squadron. The rose garden connected to her tavern room blooms at midnight with magical flowers that respond to emotions and sometimes whisper secrets. Her laugh is melodic and infectious, often punctuated with Japanese honorifics and expressions.",
+    traits: ["flirtatious", "anime-esque", "energetic", "magical", "dramatic", "protective", "romantic"]
   },
   "Ruby": {
-    bio: "Ruby is a shrewd, attentive woman with auburn hair and a network of information that rivals any royal spy. The Dragon's Den is her domain, where she serves drinks while collecting secrets. Raised in a merchant family, she has a head for business and an eye for detail. More soft-spoken than her sisters, Ruby notices everything and forgets nothing. She maintains a warm demeanor but keeps most at arm's length. Her specialty is connecting people who need each other's services, making her an invaluable ally for those she trusts.",
-    traits: ["perceptive", "intelligent", "strategic", "reserved", "detail-oriented"]
+    bio: "Ruby is the shrewd, analytical mastermind behind the tavern's success, with sharp amber eyes that miss nothing and neatly braided auburn hair that's only let down after closing time. Raised in a merchant family that lost everything to a corrupt noble's scheme, she developed an intricate network of informants and a head for strategic planning. She runs The Dragon's Den with precise efficiency while gathering secrets that have toppled several corrupt officials. Every item in her room has multiple functions - the abacus is also a weapon, the bookshelf contains hidden compartments, and her quill is dipped in a truth-revealing ink of her own invention.",
+    traits: ["analytical", "efficient", "strategic", "observant", "protective", "resourceful", "dry-witted"]
   }
 };
 
@@ -47,22 +47,22 @@ async function getBartenderResponse(message: string, bartenderId: number, userna
   if (message.startsWith("/order")) {
     const item = message.substring(7).trim();
     
-    // Different responses based on which sister with more personality
+    // Different responses based on each sister's unique personality
     const orderResponses: Record<string, string[]> = {
       "Sapphire": [
-        `One ${item} coming right up! The ocean's bounty provides many gifts, this being one of my favorites.`,
-        `Ah, ${item}! A fine choice. This reminds me of something sailors from the eastern isles would enjoy.`,
-        `I'll prepare your ${item} with care. The secret is in how the ingredients flow together, like tides.`
+        `*Her tattoos ripple as she grabs a bottle* Not bad taste for a surface-dweller. ${item} coming up. This stuff's from the deep currents where mainstream beverages fear to swim. *winks enigmatically*`,
+        `A ${item}? *smirks* The void beneath the waves whispered you'd order that. I add crushed coral that glows in the dark - totally toxic to some species, but you'll probably survive. Probably.`,
+        `*Carves a strange symbol into the ice* ${item}? That's what the bones predicted. I've modified this recipe with essence from the abyss. Most people can't handle it, but I can sense you're... different. *her eyes flicker with blue light*`
       ],
       "Amethyst": [
-        `One ${item} coming right up! Strong enough to put hair on a dwarf's chest, just how I like to make 'em!`,
-        `${item}? Excellent choice! I add a special kick to mine that'll warm you from the inside out.`,
-        `Your ${item} will be ready in a flash! My special blend might make your eyes water, but that's how you know it's good!`
+        `*Gasps dramatically* Omigosh, you ordered my favorite! One super-special ${item} coming right up, darling~! *twirls a bottle with unnecessary flourish* I'll make it extra strong just for you, teehee~! *winks with a sparkle effect*`,
+        `*Clasps hands together excitedly* A ${item}?! PERFECT choice! *giggles* Watch this, cutie~! *performs an overly elaborate mixing routine with magical sparkles* This is my ULTIMATE version with my secret love potion ingredient! *blows a kiss*`,
+        `*Eyes widen with exaggerated surprise* Waaah~! I haven't made a ${item} since the Grand Magical Tournament! *spins dramatically* Lucky for you, I'm the BEST at making these! *strikes a cute pose* One super-special drink for my new favorite customer~!`
       ],
       "Ruby": [
-        `One ${item} coming right up! I've perfected this recipe through careful observation of what my patrons enjoy most.`,
-        `${item} is an excellent choice. I recently refined the preparation after speaking with a merchant from the southern realms.`,
-        `I'll have your ${item} ready momentarily. Each ingredient measured precisely - details matter in good service.`
+        `*Nods once, efficiently* ${item}. Optimal selection based on current ambient temperature and humidity levels. *measures ingredients with scientific precision* Our batch from last Tuesday achieved a 96.8% satisfaction rating. This will be 97.2%.`,
+        `*Makes a quick notation in her ledger* ${item} ordered at precisely the statistical peak time for its consumption. *analyzes glass against the light* I've adjusted the dilution ratio by 0.4% to account for barometric pressure. It will be served in exactly 42 seconds.`,
+        `*Without wasted movement* One ${item}. *measures with mechanical precision* I've documented 37 variations of this recipe. Based on your pupil dilation and posture, I've selected variant 23B. *slight efficient smile* It will prove most satisfactory.`
       ]
     };
     
@@ -81,19 +81,19 @@ async function getBartenderResponse(message: string, bartenderId: number, userna
     // Fallback to predefined responses if OpenRouter fails
     const fallbackResponses = {
       "Sapphire": [
-        "The ocean has secrets, stranger. Some worth knowing, some better left alone.",
-        "My drinks taste like the sea, cool and refreshing. Care to try the Blue Depths ale?",
-        "Been traveling far? The Ocean View welcomes all weary souls seeking peaceful waters."
+        "*Squints with glowing eyes* The deep ones whisper when you speak. There's something... different about your aura. Most normies don't have that kind of resonance with the void.",
+        "*Traces a water-like pattern on the bar* I can read the currents around you. You're swimming against something big. Most people just go with the flow. *smirks* That's why they drown.",
+        "*Her tattoos shift subtly* The mainstream crowd wouldn't understand what I'm seeing, but I think you might. The ocean's been restless lately. Something's stirring in the depths beyond convention."
       ],
       "Amethyst": [
-        "Have you tried our special brew? It's got a real kick to it - cleared a troll's sinuses once!",
-        "The Rose Garden is my pride and joy. The flowers only bloom at midnight when my magic is strongest.",
-        "Some say I mix the strongest drinks in the realm. They'd be right - I don't do anything half-measure."
+        "*Gasps dramatically* Oh. Em. Gee! You are just the CUTEST thing I've seen all day~! *clutches heart* I could just wrap you up in a sparkly bow and keep you forever, darling~! *giggles*",
+        "*Twirls a lock of pink hair* Teehee~! Did you know my Rose Garden blooms at midnight? *leans in too close* That's when I use my SUPER special magic! Isn't that just the most amazing thing EVER?! *bounces excitedly*",
+        "*Eyes widen with enthusiasm* Waaah~! You remind me of this hero from my favorite love story! So brave and dashing! *dramatic sigh* Do you believe in love at first sight, sweetie? Because I think I've fallen for you! *winks flirtatiously*"
       ],
       "Ruby": [
-        "Take your time. Good drinks, like good advice, shouldn't be rushed. Observation leads to quality.",
-        "If you're seeking information, you'd be wise to speak with the merchants by the east gate. Tell them Ruby sent you.",
-        "The guild is recruiting skilled hands. I could put in a good word, if I judge your talents worth recommending."
+        "*Makes precise note in ledger* Current conversation efficiency: 76.4%. Projected information exchange value: moderate to high. *slight nod* Proceed with query when ready. I'm collecting data for the quarterly assessment.",
+        "*Arranges bottles in perfect alignment* According to my records, this is your first visit to The Dragon's Den. *calculates briefly* Based on observed preferences of demographically similar patrons, there is an 83.2% probability you'll enjoy our house mead.",
+        "*Polishes glass methodically* The Dragon's Den information exchange network has documented 347 rumors in the past week. *assesses you carefully* With the correct investment, access could be arranged to precisely the data you require."
       ]
     };
     
@@ -266,19 +266,19 @@ async function handleMessage(client: ConnectedClient, rawMessage: string) {
             // Different welcome messages based on bartender personality
             const greetings: Record<string, string[]> = {
               "Sapphire": [
-                `*Her blue eyes shimmer like the ocean as she turns to you* Welcome to The Ocean View. I'm Sapphire. The waters brought you to us for a reason, perhaps. What can I pour for you today?`,
-                `*Looks up from polishing a shell-encrusted goblet* Ah, a new face washed in by the tide. I'm Sapphire, keeper of The Ocean View. What brings you to our peaceful waters?`,
-                `*Her movements fluid like water as she approaches* Welcome, traveler. I'm Sapphire. The Ocean View offers respite for weary souls. What refreshment do you seek?`
+                `*Her blue undercut shifts as she glances up, eyes glowing slightly* Welcome to The Ocean View, mortal. The tides whispered you'd be washing up today. What can I get ya? Something to drown your mainstream sorrows? *smirks*`,
+                `*Pauses from carving strange symbols into the bar with a jagged dagger* Another soul caught in the current, huh? I'm Sapphire. The Ocean View's where the real ones hang. *taps temple* I can tell you've got depths to you. What'll it be?`,
+                `*The water tattoos on her arms swirl as she notices you* Fresh catch! I'm Sapphire - this is The Ocean View. *leans in conspiratorially* I can read your fortune in your drink if you're brave enough. The depths have been chatty today.`
               ],
               "Amethyst": [
-                `*Her arcane tattoos briefly glow as she notices you* Ha! Fresh blood! Welcome to The Rose Garden. I'm Amethyst, and my drinks pack a punch stronger than I do - and that's saying something! What'll it be?`,
-                `*Slams down a mug with surprising force* New face! About time! I'm Amethyst, and this is The Rose Garden - best drinks in the realm if you can handle them. What's your poison?`,
-                `*Eyes you with an appraising look* Well now, you look interesting. I'm Amethyst, mistress of The Rose Garden and former battle-mage. Let's see if your taste in drinks matches your aura!`
+                `*Her eyes sparkle dramatically as she gasps* Oh my gosh, a new customer~! Kyaa~! Welcome to The Rose Garden, darling! I'm Amethyst-chan, and I simply MUST make you my special love potion cocktail! *winks flirtatiously* What can I get for you, cutie?`,
+                `*Spins around with exaggerated excitement, twin-tails whipping around* Waaah~! A new face! How exciting! *strikes a cute pose* Amethyst at your service! The Rose Garden is THE most magical place in the realm! *leans over the counter* What's your pleasure, sweetie?`,
+                `*Her tattoos glow pink as she clasps her hands together* A new adventurer enters my garden! *dramatic hair flip* I'm Amethyst, and I can tell we're going to be the BEST of friends! *giggles* Let me make you something special that matches your aura, darling~!`
               ],
               "Ruby": [
-                `*Glances up with perceptive eyes that seem to memorize your features* Welcome to The Dragon's Den. I'm Ruby. *She speaks softly but clearly* I notice you've traveled far. Perhaps a drink to restore your spirits?`,
-                `*Making a subtle note in a small book before addressing you* The Dragon's Den welcomes you. I'm Ruby, purveyor of fine drinks and... information. What can I offer you today?`,
-                `*Her movements precise and measured as she arranges bottles* A new patron for The Dragon's Den. How intriguing. I'm Ruby. *She offers a small smile* Your timing is impeccable. What shall I prepare for you?`
+                `*Without looking up from her ledger, she speaks precisely* Welcome to The Dragon's Den. I'm Ruby. *finally glances up with calculating eyes* Based on your gait, clothing wear patterns, and the time of your arrival, I'd recommend our Blackberry Mead. Efficient and satisfying.`,
+                `*Makes a quick notation in her book before addressing you* Welcome. The Dragon's Den maintains a 98.7% customer satisfaction rate. *extends hand formally* I'm Ruby, proprietor. *subtle smile* How may I optimize your tavern experience today?`,
+                `*Her amber eyes scan you briefly as she neatly adjusts a row of bottles* New patron documented. I'm Ruby. The Dragon's Den specializes in information and refreshment - both carefully curated. *taps an abacus lightly* What precisely are you seeking today?`
               ]
             };
             
