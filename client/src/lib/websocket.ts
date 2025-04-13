@@ -443,9 +443,6 @@ export const useWebSocketStore = create<WebSocketState>((set, get) => ({
     
     set({ isLoggingIn: true, authError: null });
     
-    // Get the selected avatar from localStorage
-    const avatar = localStorage.getItem('tavern_selected_avatar') || 'warrior';
-    
     // Store username in localStorage if "Remember me" is checked
     const rememberMe = localStorage.getItem('tavern_auto_login') === 'true';
     if (rememberMe) {
@@ -456,8 +453,8 @@ export const useWebSocketStore = create<WebSocketState>((set, get) => ({
       type: WebSocketMessageType.AUTH_LOGIN,
       payload: {
         username,
-        password,
-        avatar  // Send avatar with login credentials
+        password
+        // No avatar parameter needed - server will use the one from the user's record
       }
     }));
   },
