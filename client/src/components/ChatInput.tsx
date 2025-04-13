@@ -1,10 +1,17 @@
-import { FC, useState, KeyboardEvent } from 'react';
+import { FC, useState, KeyboardEvent, useEffect } from 'react';
 import { useWebSocketStore } from '@/lib/websocket';
-import { SendIcon } from 'lucide-react';
+import { SendIcon, AtSign } from 'lucide-react';
 
 const ChatInput: FC = () => {
   const [message, setMessage] = useState<string>('');
-  const { sendMessage, toggleMenu } = useWebSocketStore();
+  const [showMentionOptions, setShowMentionOptions] = useState(false);
+  const { sendMessage, toggleMenu, roomId } = useWebSocketStore();
+  
+  // Reset state when room changes
+  useEffect(() => {
+    setMessage('');
+    setShowMentionOptions(false);
+  }, [roomId]);
   
   const handleSendMessage = () => {
     if (!message.trim()) return;
@@ -14,6 +21,8 @@ const ChatInput: FC = () => {
     // Check for commands
     if (trimmedMessage === '/menu') {
       toggleMenu();
+      setMessage('');
+      return;
     } else if (trimmedMessage.startsWith('/emote ')) {
       // Extract the emote action
       const emoteAction = trimmedMessage.substring(7).trim();
@@ -21,10 +30,19 @@ const ChatInput: FC = () => {
         sendMessage(emoteAction, 'emote');
       }
     } else {
+      // Log message before sending to help debug
+      console.log(`Sending message to room ${roomId}: "${trimmedMessage}"`);
       sendMessage(trimmedMessage);
     }
     
     setMessage('');
+    setShowMentionOptions(false);
+  };
+  
+  // Helper to insert bartender mention
+  const insertMention = (bartenderName: string) => {
+    setMessage(`@${bartenderName} `);
+    setShowMentionOptions(false);
   };
   
   const handleKeyPress = (e: KeyboardEvent<HTMLInputElement>) => {
@@ -36,14 +54,67 @@ const ChatInput: FC = () => {
   return (
     <div className="chat-input p-3 border-t-4 border-[#8B4513]">
       <div className="flex gap-2 items-center">
-        <input 
-          type="text" 
-          value={message}
-          onChange={(e) => setMessage(e.target.value)}
-          onKeyPress={handleKeyPress}
-          className="flex-grow bg-[#2C1810] border-2 border-[#8B4513] text-[#E8D6B3] p-2 rounded-sm font-['VT323'] text-lg"
-          placeholder="Say something or type /menu..."
-        />
+        {/* Mention button */}
+        <button 
+          onClick={() => setShowMentionOptions(!showMentionOptions)}
+          className="bg-[#8B4513] text-[#E8D6B3] p-2 rounded-sm transition hover:bg-[#9B5523]"
+          title="Mention bartender"
+        >
+          <AtSign className="h-5 w-5" />
+        </button>
+        
+        <div className="relative flex-grow">
+          <input 
+            type="text" 
+            value={message}
+            onChange={(e) => setMessage(e.target.value)}
+            onKeyPress={handleKeyPress}
+            className="w-full bg-[#2C1810] border-2 border-[#8B4513] text-[#E8D6B3] p-2 rounded-sm font-['VT323'] text-lg"
+            placeholder="Say something or type /menu..."
+          />
+          
+          {/* Mention dropdown */}
+          {showMentionOptions && (
+            <div className="absolute top-full left-0 mt-1 w-full bg-[#2C1810] border-2 border-[#8B4513] rounded-sm z-50 shadow-lg">
+              <div className="p-2 text-[#FFD700] font-['VT323'] text-sm border-b border-[#8B4513]">
+                Mention a bartender
+              </div>
+              {/* Match bartender to room by default */}
+              <div 
+                className="p-2 hover:bg-[#8B4513] cursor-pointer text-[#E8D6B3] font-['VT323']"
+                onClick={() => insertMention(roomId === 1 ? "Amethyst" : roomId === 2 ? "Sapphire" : "Ruby")}
+              >
+                {roomId === 1 ? "Amethyst" : roomId === 2 ? "Sapphire" : "Ruby"} (current room)
+              </div>
+              {/* All bartenders options */}
+              {roomId !== 1 && (
+                <div 
+                  className="p-2 hover:bg-[#8B4513] cursor-pointer text-[#E8D6B3] font-['VT323']"
+                  onClick={() => insertMention("Amethyst")}
+                >
+                  Amethyst (The Rose Garden)
+                </div>
+              )}
+              {roomId !== 2 && (
+                <div 
+                  className="p-2 hover:bg-[#8B4513] cursor-pointer text-[#E8D6B3] font-['VT323']"
+                  onClick={() => insertMention("Sapphire")}
+                >
+                  Sapphire (The Ocean View)
+                </div>
+              )}
+              {roomId !== 3 && (
+                <div 
+                  className="p-2 hover:bg-[#8B4513] cursor-pointer text-[#E8D6B3] font-['VT323']"
+                  onClick={() => insertMention("Ruby")}
+                >
+                  Ruby (The Dragon's Den)
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+        
         <button 
           onClick={handleSendMessage}
           className="bg-[#8B4513] text-[#E8D6B3] p-2 rounded-sm transition hover:bg-[#9B5523] active:bg-[#7B3503] active:translate-y-[2px]"
@@ -52,7 +123,7 @@ const ChatInput: FC = () => {
         </button>
       </div>
       <div className="commands-help text-xs mt-2 text-[#E8D6B3] opacity-60 font-['VT323']">
-        Commands: /menu, /order [item], /emote [action], /whisper [name] [message]
+        Commands: /menu, @Bartender (mention), /emote [action]
       </div>
     </div>
   );

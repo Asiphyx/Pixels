@@ -350,6 +350,22 @@ export function checkForBartenderMention(messageContent: string): string | null 
     }
   }
   
+  // Alternate check for direct mentions without @ (common in UI-based mentions)
+  const directMentionRegex = /^(Sapphire|Amethyst|Ruby|sapphire|amethyst|ruby)\b/i;
+  const directMatch = messageContent.match(directMentionRegex);
+  
+  if (directMatch && directMatch[1]) {
+    // Return the bartender name with correct capitalization
+    const bartenderName = directMatch[1].charAt(0).toUpperCase() + directMatch[1].slice(1).toLowerCase();
+    
+    console.log("Found direct bartender mention:", bartenderName);
+    
+    // Verify this is a valid bartender name
+    if (["Sapphire", "Amethyst", "Ruby"].includes(bartenderName)) {
+      return bartenderName;
+    }
+  }
+  
   console.log("No bartender mention found");
   return null;
 }
@@ -361,8 +377,21 @@ export function checkForBartenderMention(messageContent: string): string | null 
  * @returns string - Message without the @mention part
  */
 export function extractQueryFromMention(messageContent: string, bartenderName: string): string {
-  // Improved to handle more flexible @mentions
-  const result = messageContent.replace(new RegExp(`@\\s*${bartenderName}\\b`, 'i'), '').trim();
+  // First try to remove @mention format
+  let result = messageContent.replace(new RegExp(`@\\s*${bartenderName}\\b`, 'i'), '').trim();
+  
+  // If the message starts with the bartender name without @, remove that too
+  if (messageContent.match(new RegExp(`^\\s*${bartenderName}\\b`, 'i'))) {
+    result = messageContent.replace(new RegExp(`^\\s*${bartenderName}\\b`, 'i'), '').trim();
+  }
+  
   console.log(`Extracted query from mention: "${result}" (original: "${messageContent}")`);
+  
+  // If we ended up with an empty message, add a generic greeting
+  if (!result) {
+    result = "Hello";
+    console.log(`Using default greeting because extracted query was empty`);
+  }
+  
   return result;
 }
