@@ -27,17 +27,31 @@ const ChatMessages: FC = () => {
         return (
           <div className={`chat-message ${isCurrentUser ? 'user flex justify-end' : 'flex'}`}>
             {!isCurrentUser && message.userId && (
-              <PixelAvatar 
-                name={avatarString}
-                size={36}
-                className="mr-2"
-              />
+              <div className="relative group avatar-wrapper mr-2">
+                <PixelAvatar 
+                  name={avatarString}
+                  size={36}
+                />
+                <div className="absolute -top-10 left-0 bg-[#2C1810] p-2 rounded border border-[#8B4513] 
+                              text-[#E8D6B3] text-xs whitespace-nowrap opacity-0 group-hover:opacity-100 
+                              transition-opacity z-50 pointer-events-none shadow-lg">
+                  {RoleDescriptions[avatarString.toLowerCase() as keyof typeof RoleDescriptions] || "Tavern Patron"}
+                </div>
+              </div>
             )}
-            <div className={`chat-bubble p-2 rounded-md max-w-[80%] ${
+            <div className={`chat-bubble p-2 rounded-md max-w-[80%] relative ${
               isCurrentUser 
                 ? 'bg-[#4A3429] text-[#E8D6B3]' 
                 : 'bg-[#8B4513] text-[#E8D6B3]'
             }`}>
+              {!isCurrentUser && (
+                <span className="text-[#FFD700] text-xs font-bold block mb-1">
+                  {onlineUsers.find(u => u.id === message.userId)?.username}
+                  <span className="text-[#E8D6B3] opacity-70 ml-2 italic">
+                    {avatarString.charAt(0).toUpperCase() + avatarString.slice(1)}
+                  </span>
+                </span>
+              )}
               {message.content}
             </div>
           </div>
@@ -65,12 +79,25 @@ const ChatMessages: FC = () => {
       case 'bartender':
         return (
           <div className="chat-message bartender flex">
-            <BartenderAvatar 
-              name={message.bartenderId === 1 ? "amethyst" : message.bartenderId === 2 ? "sapphire" : "ruby"}
-              size={32}
-              className="mr-2"
-            />
+            <div className="relative group">
+              <BartenderAvatar 
+                name={message.bartenderId === 1 ? "amethyst" : message.bartenderId === 2 ? "sapphire" : "ruby"}
+                size={40}
+                className="mr-2"
+              />
+              <div className="absolute -top-10 left-0 bg-[#2C1810] p-2 rounded border border-[#8B4513] 
+                            text-[#E8D6B3] text-xs whitespace-nowrap opacity-0 group-hover:opacity-100 
+                            transition-opacity z-50 pointer-events-none shadow-lg">
+                Tavern Bartender
+              </div>
+            </div>
             <div className="chat-bubble p-2 rounded-md max-w-[80%] bg-[#8B4513] text-[#E8D6B3]">
+              <span className="text-[#FFD700] text-xs font-bold block mb-1">
+                {message.bartenderId === 1 ? "Amethyst" : message.bartenderId === 2 ? "Sapphire" : "Ruby"}
+                <span className="text-[#E8D6B3] opacity-70 ml-2 italic">
+                  Bartender
+                </span>
+              </span>
               {message.content}
             </div>
           </div>
