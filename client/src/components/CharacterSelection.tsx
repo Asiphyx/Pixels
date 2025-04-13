@@ -127,8 +127,15 @@ const CharacterSelection: FC = () => {
   
   // Toggle between login and register modes
   const toggleMode = () => {
+    // When switching to login, we don't want to reset the avatar
+    // When switching to register, we do want to allow avatar selection
     setMode(mode === AuthMode.LOGIN ? AuthMode.REGISTER : AuthMode.LOGIN);
     setValidationError(null);
+    
+    // Reset form fields when switching modes, but preserve the avatar selection
+    setPassword('');
+    setConfirmPassword('');
+    setEmail('');
   };
   
   // Available patron avatars
@@ -171,43 +178,75 @@ const CharacterSelection: FC = () => {
         </div>
         
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 p-5">
-          {/* Avatar selection */}
-          <div className="avatar-selection bg-[#3A2419] rounded-lg p-4 border-2 border-[#8B4513] 
-                         shadow-[inset_0_0_10px_rgba(0,0,0,0.6)]">
-            <h3 className="font-['VT323'] text-[#FFD700] text-center text-xl mb-3 border-b border-[#8B4513] pb-2">
-              Choose Your Avatar
-            </h3>
-            
-            <div className="avatars-grid grid grid-cols-3 gap-3">
-              {avatarOptions.map((avatar) => (
-                <div 
-                  key={avatar}
-                  className={`avatar-option cursor-pointer p-2 flex flex-col items-center transition-all ${
-                    selectedAvatar === avatar 
-                    ? 'bg-gradient-to-b from-[#8B4513] to-[#6B3503] rounded-md scale-110 shadow-lg' 
-                    : 'hover:bg-[#5A4439] rounded-md'
-                  }`}
-                  onClick={() => handleAvatarSelect(avatar)}
-                >
-                  <div className={`rounded-full p-1 mb-1 ${
-                    selectedAvatar === avatar 
-                    ? 'bg-[#FFD700] bg-opacity-20 scale-105 transition-all duration-300' 
-                    : ''
-                  }`}>
-                    <PixelAvatar name={avatar} size={64} className="mb-1" />
-                  </div>
-                  <span className="font-['VT323'] text-[#FFD700] text-center capitalize font-bold">
-                    {avatar}
-                  </span>
-                  {selectedAvatar === avatar && (
-                    <span className="font-['VT323'] text-[#E8D6B3] text-xs text-center mt-1 max-w-32">
-                      {RoleDescriptions[avatar as keyof typeof RoleDescriptions]}
+          {/* Avatar selection - only show during registration */}
+          {mode === AuthMode.REGISTER && (
+            <div className="avatar-selection bg-[#3A2419] rounded-lg p-4 border-2 border-[#8B4513] 
+                           shadow-[inset_0_0_10px_rgba(0,0,0,0.6)]">
+              <h3 className="font-['VT323'] text-[#FFD700] text-center text-xl mb-3 border-b border-[#8B4513] pb-2">
+                Choose Your Avatar
+              </h3>
+              
+              <div className="avatars-grid grid grid-cols-3 gap-3">
+                {avatarOptions.map((avatar) => (
+                  <div 
+                    key={avatar}
+                    className={`avatar-option cursor-pointer p-2 flex flex-col items-center transition-all ${
+                      selectedAvatar === avatar 
+                      ? 'bg-gradient-to-b from-[#8B4513] to-[#6B3503] rounded-md scale-110 shadow-lg' 
+                      : 'hover:bg-[#5A4439] rounded-md'
+                    }`}
+                    onClick={() => handleAvatarSelect(avatar)}
+                  >
+                    <div className={`rounded-full p-1 mb-1 ${
+                      selectedAvatar === avatar 
+                      ? 'bg-[#FFD700] bg-opacity-20 scale-105 transition-all duration-300' 
+                      : ''
+                    }`}>
+                      <PixelAvatar name={avatar} size={64} className="mb-1" />
+                    </div>
+                    <span className="font-['VT323'] text-[#FFD700] text-center capitalize font-bold">
+                      {avatar}
                     </span>
-                  )}
-                </div>
-              ))}
+                    {selectedAvatar === avatar && (
+                      <span className="font-['VT323'] text-[#E8D6B3] text-xs text-center mt-1 max-w-32">
+                        {RoleDescriptions[avatar as keyof typeof RoleDescriptions]}
+                      </span>
+                    )}
+                  </div>
+                ))}
+              </div>
+              
+              <div className="mt-4 px-2 py-3 bg-[#2C1810] rounded border border-[#8B4513] text-center">
+                <p className="text-[#E8D6B3] text-sm italic">
+                  Choose your character class wisely! This selection is permanent after registration.
+                </p>
+              </div>
             </div>
-          </div>
+          )}
+          
+          {/* Sign in explanation when no avatar selection is shown */}
+          {mode === AuthMode.LOGIN && (
+            <div className="tavern-lore bg-[#3A2419] rounded-lg p-4 border-2 border-[#8B4513] 
+                           shadow-[inset_0_0_10px_rgba(0,0,0,0.6)] flex flex-col justify-center">
+              <h3 className="font-['VT323'] text-[#FFD700] text-center text-xl mb-3 border-b border-[#8B4513] pb-2">
+                Return to the Tavern
+              </h3>
+              
+              <div className="px-3 py-4 bg-[#2C1810] rounded border border-[#8B4513] text-center mb-4">
+                <p className="text-[#E8D6B3] text-lg">
+                  Welcome back, adventurer! The bartenders remember you and your tales.
+                </p>
+              </div>
+              
+              <div className="flex justify-center mb-4">
+                <PixelAvatar name={selectedAvatar} size={80} className="animate-pulse" />
+              </div>
+              
+              <p className="text-[#E8D6B3] text-center italic">
+                Your {selectedAvatar} awaits to continue the adventure.
+              </p>
+            </div>
+          )}
           
           {/* Auth form */}
           <div className="auth-form bg-[#3A2419] rounded-lg p-4 border-2 border-[#8B4513] 

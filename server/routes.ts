@@ -386,9 +386,6 @@ async function handleMessage(client: ConnectedClient, rawMessage: string) {
           // Validate login credentials
           const credentials = userAuthSchema.parse(payload);
           
-          // Get avatar from payload or use default
-          const avatar = payload.avatar || 'warrior';
-          
           // Verify user with password check (important for security)
           const user = await storage.verifyUser(credentials.username, credentials.password);
           
