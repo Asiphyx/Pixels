@@ -72,15 +72,15 @@ const CharacterSelection: FC = () => {
       localStorage.removeItem(STORAGE_KEY_USERNAME);
     }
     
-    // Always save avatar preference
+    // Always save avatar and remember preferences
     localStorage.setItem(STORAGE_KEY_AVATAR, selectedAvatar);
     localStorage.setItem(STORAGE_KEY_AUTO_LOGIN, rememberMe.toString());
     
-    // First connect to establish WebSocket connection
+    // First connect to establish WebSocket connection (without authentication)
     console.log('Establishing WebSocket connection...');
     connect(username, selectedAvatar);
     
-    // Small delay to allow connection to establish
+    // Small delay to allow connection to establish before authentication
     setTimeout(() => {
       if (mode === AuthMode.REGISTER) {
         performRegistration();

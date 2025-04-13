@@ -387,7 +387,10 @@ async function handleMessage(client: ConnectedClient, rawMessage: string) {
           // Validate login credentials
           const credentials = userAuthSchema.parse(payload);
           
-          // Verify user
+          // Get avatar from payload or use default
+          const avatar = payload.avatar || 'warrior';
+          
+          // Verify user with password check (important for security)
           const user = await storage.verifyUser(credentials.username, credentials.password);
           
           if (!user) {
@@ -401,15 +404,59 @@ async function handleMessage(client: ConnectedClient, rawMessage: string) {
           // Update client info
           client.userId = user.id;
           client.username = user.username;
+          client.roomId = user.roomId || 1;
+          
+          // Update user's online status
+          await storage.updateUserStatus(user.id, true);
           
           // Get user data without password
           const { passwordHash, ...userData } = user;
           
-          // Send success response
+          // Send success response with user data
           client.socket.send(JSON.stringify({
             type: WebSocketMessageType.AUTH_SUCCESS,
-            payload: { user: userData }
+            payload: { user: {...userData} }
           }));
+          
+          // Send room join message - using JOIN_ROOM type for compatibility
+          client.socket.send(JSON.stringify({
+            type: WebSocketMessageType.JOIN_ROOM,
+            payload: { 
+              room: await storage.getRoom(client.roomId)
+            }
+          }));
+          
+          // Get and send room messages
+          const messages = await storage.getMessagesByRoom(client.roomId);
+          client.socket.send(JSON.stringify({
+            type: WebSocketMessageType.NEW_MESSAGE,
+            payload: { messages }
+          }));
+          
+          // Get and send online users
+          const onlineUsers = await storage.getOnlineUsers(client.roomId);
+          client.socket.send(JSON.stringify({
+            type: WebSocketMessageType.ROOM_USERS,
+            payload: { users: onlineUsers }
+          }));
+          
+          // Create system message for user joining
+          const systemMessage = await storage.createMessage({
+            userId: null,
+            roomId: client.roomId,
+            content: `${user.username} has joined the tavern.`,
+            type: "system"
+          });
+          
+          broadcastToRoom(client.roomId, {
+            type: WebSocketMessageType.NEW_MESSAGE,
+            payload: { message: systemMessage }
+          });
+          
+          broadcastToRoom(client.roomId, {
+            type: WebSocketMessageType.ROOM_USERS,
+            payload: { users: onlineUsers }
+          });
         } catch (error) {
           console.error('Login error:', error);
           client.socket.send(JSON.stringify({

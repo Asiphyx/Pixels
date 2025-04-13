@@ -95,22 +95,26 @@ export const useWebSocketStore = create<WebSocketState>((set, get) => ({
       const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
       const host = window.location.host; // Use the current host for both dev and prod
       
-      // Ensure we're connecting to the /ws endpoint with proper parameters
-      // Make sure we're using the exact URL format that the server expects
-      const wsUrl = `${protocol}//${host}/ws?token=${encodeURIComponent(username)}&avatar=${encodeURIComponent(avatar)}`;
+      // Connect to WebSocket endpoint without auth info
+      // This fixes security issue - we'll authenticate properly in login/register
+      const wsUrl = `${protocol}//${host}/ws`;
       console.log('Connecting to WebSocket URL:', wsUrl);
       
       // Set up a WebSocket with explicit error handling and better error reporting
       const socket = new WebSocket(wsUrl);
       
       socket.onopen = () => {
-        // No need to send user info as we already included it in the URL query parameters
         console.log('WebSocket connection established');
         
         set({ 
           socket,
           connected: true
         });
+        
+        // Save avatar selection for later use
+        if (avatar) {
+          localStorage.setItem('tavern_selected_avatar', avatar);
+        }
       };
       
       socket.onmessage = (event) => {
@@ -439,11 +443,21 @@ export const useWebSocketStore = create<WebSocketState>((set, get) => ({
     
     set({ isLoggingIn: true, authError: null });
     
+    // Get the selected avatar from localStorage
+    const avatar = localStorage.getItem('tavern_selected_avatar') || 'warrior';
+    
+    // Store username in localStorage if "Remember me" is checked
+    const rememberMe = localStorage.getItem('tavern_auto_login') === 'true';
+    if (rememberMe) {
+      localStorage.setItem('tavern_username', username);
+    }
+    
     socket.send(JSON.stringify({
       type: WebSocketMessageType.AUTH_LOGIN,
       payload: {
         username,
-        password
+        password,
+        avatar  // Send avatar with login credentials
       }
     }));
   },
