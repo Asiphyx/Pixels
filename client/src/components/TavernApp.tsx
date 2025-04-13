@@ -1,15 +1,55 @@
-import { FC, useEffect } from 'react';
+import { FC, useEffect, useState } from 'react';
 import TavernView from './TavernView';
 import ChatPanel from './ChatPanel';
 import OnlineUsers from './OnlineUsers';
 import CharacterSelection from './CharacterSelection';
 import TavernMenu from './TavernMenu';
 import { useWebSocketStore } from '@/lib/websocket';
-import { Menu } from 'lucide-react';
+import { Menu, Volume2, VolumeX } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { tavernSoundscape } from '@/lib/audio/tavernSoundscape';
+import { audioManager } from '@/lib/audio/audioManager';
 
 const TavernApp: FC = () => {
   const { user, showMenu, toggleMenu } = useWebSocketStore();
+  const [audioMuted, setAudioMuted] = useState(false);
+
+  // Initialize audio when component mounts
+  useEffect(() => {
+    // Start ambient tavern soundscape
+    tavernSoundscape.startAmbience();
+    
+    // Play tavern music
+    tavernSoundscape.playMusic('mellow');
+    
+    // Register bartender voices
+    tavernSoundscape.registerBartenderVoice('Ruby', 'high');
+    tavernSoundscape.registerBartenderVoice('Sapphire', 'neutral');
+    tavernSoundscape.registerBartenderVoice('Amethyst', 'deep');
+    
+    // Clean up on unmount
+    return () => {
+      tavernSoundscape.stopAmbience();
+      tavernSoundscape.stopMusic();
+    };
+  }, []);
+
+  // Handle audio mute toggle
+  const toggleMute = () => {
+    const newMutedState = audioManager.toggleMute();
+    setAudioMuted(newMutedState);
+    
+    // Play UI sound if we're unmuting
+    if (!newMutedState) {
+      tavernSoundscape.playUiSound('ui_click');
+    }
+  };
+
+  // Play UI sounds on interactions
+  const handleMenuToggle = () => {
+    tavernSoundscape.playUiSound('menu_open');
+    toggleMenu();
+  };
 
   return (
     <div className="tavern-app min-h-screen flex flex-col">
@@ -22,13 +62,31 @@ const TavernApp: FC = () => {
             <span className="hidden md:inline-block font-['VT323'] text-xl text-[#E8D6B3]">
               {user ? `Welcome, ${user.username}!` : 'Welcome, Adventurer!'}
             </span>
+            
+            {/* Audio Controls */}
+            <div className="audio-controls mr-2">
+              <Button
+                variant="ghost"
+                size="sm"
+                className="text-[#FFD700] hover:text-[#FFF] hover:bg-transparent"
+                onClick={toggleMute}
+                title={audioMuted ? "Unmute Sounds" : "Mute Sounds"}
+              >
+                {audioMuted ? (
+                  <VolumeX className="h-5 w-5" />
+                ) : (
+                  <Volume2 className="h-5 w-5" />
+                )}
+              </Button>
+            </div>
+            
             {user ? (
               <div className="menu-icon-container relative">
                 <Button 
                   variant="outline" 
                   size="sm"
                   className="bg-[#4A3429] text-[#FFD700] border-2 border-[#8B4513] rounded-md hover:bg-[#3A2419] relative overflow-hidden"
-                  onClick={toggleMenu}
+                  onClick={handleMenuToggle}
                 >
                   <div className="absolute inset-0 bg-opacity-10 pointer-events-none"
                       style={{
@@ -80,7 +138,7 @@ const TavernApp: FC = () => {
       <CharacterSelection />
       
       {/* Menu */}
-      {showMenu && <TavernMenu onClose={toggleMenu} />}
+      {showMenu && <TavernMenu onClose={handleMenuToggle} />}
     </div>
   );
 };
