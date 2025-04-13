@@ -381,8 +381,7 @@ async function handleMessage(client: ConnectedClient, rawMessage: string) {
       }
       
       // Authentication message handlers
-      case WebSocketMessageType.AUTH_LOGIN:
-      case WebSocketMessageType.LOGIN: { // Support legacy login type
+      case WebSocketMessageType.AUTH_LOGIN: { // Authentication
         try {
           // Validate login credentials
           const credentials = userAuthSchema.parse(payload);
@@ -467,8 +466,7 @@ async function handleMessage(client: ConnectedClient, rawMessage: string) {
         break;
       }
       
-      case WebSocketMessageType.AUTH_REGISTER:
-      case WebSocketMessageType.REGISTER: { // Support legacy register type
+      case WebSocketMessageType.AUTH_REGISTER: { // User registration
         try {
           // Validate registration data
           const registrationData = userRegisterSchema.parse(payload);

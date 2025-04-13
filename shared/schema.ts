@@ -228,9 +228,9 @@ export type BartenderMemory = typeof bartenderMemories.$inferSelect;
 export type InsertBartenderMemory = z.infer<typeof insertBartenderMemorySchema>;
 export type MemoryEntry = z.infer<typeof memoryEntrySchema>;
 
-// Websocket message types
+// Websocket message types - Refactored to remove legacy duplicates and improve organization
 export enum WebSocketMessageType {
-  // Existing message types
+  // Room and chat message types
   JOIN_ROOM = 'join_room',
   LEAVE_ROOM = 'leave_room',
   SEND_MESSAGE = 'send_message',
@@ -238,10 +238,12 @@ export enum WebSocketMessageType {
   USER_JOINED = 'user_joined',
   USER_LEFT = 'user_left',
   NEW_MESSAGE = 'new_message',
+  ROOM_USERS = 'room_users',
+  
+  // Bartender interaction types
   ORDER_ITEM = 'order_item',
   BARTENDER_RESPONSE = 'bartender_response',
   BARTENDER_GREETING = 'bartender_greeting',
-  ROOM_USERS = 'room_users',
   BARTENDER_MOOD_UPDATE = 'bartender_mood_update',
   BARTENDER_MEMORY_UPDATE = 'bartender_memory_update',
   BARTENDER_MEMORY_RECOLLECTION = 'bartender_memory_recollection',
@@ -257,9 +259,6 @@ export enum WebSocketMessageType {
   AUTH_LOGOUT = 'auth_logout',
   AUTH_PROFILE = 'auth_profile',
   AUTH_RESPONSE = 'auth_response',
-  LOGIN = 'login',           // Legacy support
-  REGISTER = 'register',     // Legacy support
-  LOGOUT = 'logout',         // Legacy support
   
   // Inventory message types
   INVENTORY_GET = 'inventory_get',
@@ -270,20 +269,13 @@ export enum WebSocketMessageType {
   INVENTORY_UNEQUIP_ITEM = 'inventory_unequip_item',
   INVENTORY_GET_EQUIPPED = 'inventory_get_equipped',
   EQUIPPED_ITEMS_UPDATE = 'equipped_items_update',
-  GET_INVENTORY = 'get_inventory',   // Legacy support
-  EQUIP_ITEM = 'equip_item',         // Legacy support
-  UNEQUIP_ITEM = 'unequip_item',     // Legacy support
-  USE_ITEM = 'use_item',             // Legacy support
-  ADD_ITEM = 'add_item',             // Legacy support
-  REMOVE_ITEM = 'remove_item',       // Legacy support
+  USE_ITEM = 'use_item',
   
   // Currency message types
   CURRENCY_GET = 'currency_get',
   CURRENCY_ADD = 'currency_add',
   CURRENCY_SPEND = 'currency_spend',
   CURRENCY_UPDATE = 'currency_update',
-  ADD_CURRENCY = 'add_currency',     // Legacy support
-  SPEND_CURRENCY = 'spend_currency', // Legacy support
   
   // Shop/transaction message types
   SHOP_OPEN = 'shop_open',
