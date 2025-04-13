@@ -21,11 +21,28 @@ const ChatMessages: FC = () => {
       
       // Don't play notification sound for the current user's messages
       if (latestMessage && latestMessage.userId !== user?.id) {
-        // Play different sounds based on message type
+        console.log('New message detected - playing notification sound');
+        
+        // Try all notification methods
+        
+        // 1. Try using the global sound functions
+        if ((window as any).playNotificationSound) {
+          (window as any).playNotificationSound();
+        }
+        
         if (latestMessage.type === 'bartender') {
-          tavernSoundscape.playUiSound('notification');
+          // For bartender messages, also try the alert sound
+          if ((window as any).playAlertSound) {
+            setTimeout(() => {
+              (window as any).playAlertSound();
+            }, 300);
+          }
+          
+          // 2. Also try through our system
+          tavernSoundscape.playUiSound('notification', 1.0);
         } else if (latestMessage.type === 'user') {
-          tavernSoundscape.playUiSound('notification');
+          // For user messages
+          tavernSoundscape.playUiSound('notification', 1.0);
         }
       }
     }
@@ -102,11 +119,51 @@ const ChatMessages: FC = () => {
     }
   };
 
+  // Function to test audio directly
+  const playTestSound = () => {
+    try {
+      console.log('Playing test sounds directly...');
+      
+      // Try using global sound functions first
+      if ((window as any).playNotificationSound) {
+        (window as any).playNotificationSound();
+      }
+      
+      if ((window as any).playAlertSound) {
+        setTimeout(() => {
+          (window as any).playAlertSound();
+        }, 500);
+      }
+      
+      if ((window as any).playMessageSound) {
+        setTimeout(() => {
+          (window as any).playMessageSound();
+        }, 1000);
+      }
+      
+      // Also try through our system
+      tavernSoundscape.playUiSound('notification', 1.0);
+      
+    } catch (e) {
+      console.error('Error in test sound:', e);
+    }
+  };
+  
   return (
     <div 
       className="flex-grow p-4 overflow-y-auto font-['VT323'] text-lg text-[#E8D6B3]"
       style={{ maxHeight: 'calc(100vh - 400px)' }}
     >
+      {/* Sound test button */}
+      <div className="mb-4 text-right">
+        <button
+          onClick={playTestSound}
+          className="px-2 py-1 bg-[#8B4513] text-[#E8D6B3] rounded-md text-sm"
+        >
+          🔊 Test Sound
+        </button>
+      </div>
+      
       {messages.length === 0 ? (
         <div className="flex items-center justify-center h-full text-center text-[#8B4513] opacity-50">
           <div>

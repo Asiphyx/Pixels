@@ -7,9 +7,79 @@
   </head>
   <body>
     <div id="root"></div>
+    <!-- Hidden audio elements for sound effects -->
+    <audio id="notification-sound" src="/sounds/notification.mp3" preload="auto" style="display:none;"></audio>
+    <audio id="message-sound" src="/sounds/message_send.mp3" preload="auto" style="display:none;"></audio>
+    <audio id="alert-sound" src="/sounds/alert.wav" preload="auto" style="display:none;"></audio>
+    
     <script type="module" src="/src/main.tsx"></script>
     <!-- Audio unlock script to help with browser autoplay policies -->
     <script src="/sounds/unlock.js"></script>
+    
+    <!-- Simple inline script to play sounds -->
+    <script>
+      // Global functions to play notification sounds
+      window.playNotificationSound = function() {
+        try {
+          const sound = document.getElementById('notification-sound');
+          if (sound) {
+            sound.volume = 1.0;
+            sound.currentTime = 0;
+            sound.play().catch(e => console.error('Error playing notification:', e));
+          }
+        } catch (e) {
+          console.error('Error in playNotificationSound:', e);
+        }
+      };
+      
+      window.playMessageSound = function() {
+        try {
+          const sound = document.getElementById('message-sound');
+          if (sound) {
+            sound.volume = 1.0;
+            sound.currentTime = 0;
+            sound.play().catch(e => console.error('Error playing message sound:', e));
+          }
+        } catch (e) {
+          console.error('Error in playMessageSound:', e);
+        }
+      };
+      
+      window.playAlertSound = function() {
+        try {
+          const sound = document.getElementById('alert-sound');
+          if (sound) {
+            sound.volume = 1.0;
+            sound.currentTime = 0;
+            sound.play().catch(e => console.error('Error playing alert sound:', e));
+          }
+        } catch (e) {
+          console.error('Error in playAlertSound:', e);
+        }
+      };
+      
+      // Add click handlers to initialize audio after user interaction
+      document.addEventListener('click', function initAudio() {
+        // Try to play all sounds once with zero volume to unlock audio
+        const sounds = ['notification-sound', 'message-sound', 'alert-sound'];
+        sounds.forEach(id => {
+          const sound = document.getElementById(id);
+          if (sound) {
+            sound.volume = 0.01;
+            sound.play().then(() => {
+              console.log('Sound initialized:', id);
+              sound.pause();
+              sound.currentTime = 0;
+            }).catch(e => {
+              console.error('Failed to initialize sound:', id, e);
+            });
+          }
+        });
+        
+        // Remove this listener once we've tried initializing
+        document.removeEventListener('click', initAudio);
+      });
+    </script>
     <!-- This script injects a replit badge into the page, please feel free to remove this line -->
   </body>
 </html>
