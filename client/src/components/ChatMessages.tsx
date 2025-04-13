@@ -5,8 +5,13 @@ import { BartenderAvatar } from '@/assets/svgs/bartenders';
 import { PixelAvatar, RoleDescriptions } from '@/assets/svgs/pixel-avatars';
 
 const ChatMessages: FC = () => {
-  const { messages, user, onlineUsers } = useWebSocketStore();
+  const { messages, user, onlineUsers, roomId } = useWebSocketStore();
   const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  // Debug logging for messages
+  useEffect(() => {
+    console.log(`Room ${roomId} has ${messages.length} messages:`, messages);
+  }, [messages, roomId]);
 
   // Auto scroll to bottom on new messages
   useEffect(() => {

@@ -425,7 +425,12 @@ export const useWebSocketStore = create<WebSocketState>((set, get) => ({
   sendMessage: (content, type = 'user') => {
     const { socket, user, roomId } = get();
     
-    if (!socket || !user) return;
+    if (!socket || !user) {
+      console.error("Cannot send message: ", !socket ? "No socket connection" : "User not logged in");
+      return;
+    }
+    
+    console.log(`Sending message to room ${roomId}:`, content);
     
     const message = {
       type: WebSocketMessageType.CHAT_MESSAGE,
@@ -437,13 +442,21 @@ export const useWebSocketStore = create<WebSocketState>((set, get) => ({
       }
     };
     
+    console.log("WebSocket message payload:", message);
     socket.send(JSON.stringify(message));
   },
   
   joinRoom: (roomId) => {
-    const { socket } = get();
+    const { socket, rooms } = get();
     
-    if (!socket) return;
+    if (!socket) {
+      console.error("Cannot join room: No socket connection");
+      return;
+    }
+    
+    // Find room name for better logging
+    const roomName = rooms.find(r => r.id === roomId)?.name || `Unknown (ID: ${roomId})`;
+    console.log(`Joining room: ${roomName}`);
     
     const message = {
       type: WebSocketMessageType.JOIN_ROOM,
@@ -452,6 +465,7 @@ export const useWebSocketStore = create<WebSocketState>((set, get) => ({
       }
     };
     
+    console.log("Sending JOIN_ROOM message:", message);
     socket.send(JSON.stringify(message));
   },
   
