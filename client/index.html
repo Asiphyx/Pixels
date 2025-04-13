@@ -7,10 +7,13 @@
   </head>
   <body>
     <div id="root"></div>
-    <!-- Hidden audio elements for sound effects -->
-    <audio id="notification-sound" src="/sounds/notification.mp3" preload="auto" style="display:none;"></audio>
-    <audio id="message-sound" src="/sounds/message_send.mp3" preload="auto" style="display:none;"></audio>
-    <audio id="alert-sound" src="/sounds/alert.wav" preload="auto" style="display:none;"></audio>
+    <!-- Hidden audio elements for sound effects with inline data -->
+    <audio id="notification-sound" preload="auto" style="display:none;">
+      <source src="data:audio/mpeg;base64,SUQzBAAAAAAAI1RTU0UAAAAPAAADTGF2ZjU4Ljc2LjEwMAAAAAAAAAAAAAAA//NAwAAAAAAAAAAAAFhpbmcAAAAPAAAABAADoh4AICAgICAgICAgQEBAQEBAQEBAYGBgYGBgYGBggICAgICAgICAwMDAwMDAwMDQ0NDQ0NDQ0NDQ8PDw8PDw8PD////////////////7EUAAAOeQJuSGAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAWGluZwAAAA8AAAAOAAAKxgA7OztWVlZvb2+KioqkpKS+vr7W1tbr6+vr6+v////r6+vr6+vW1ta+vr6kpKSKiopvb29WVlY7Ozv///8AAAA5TEFNRTMuMTAwAc0AAAAAAAAAABSAJAUkgwAAgAAAHaId/zOmAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAP/zUMQAGLYU4+dBQAEZb1qJ9eCBAIRduHOc5wNEmSJIj/7//6SJEiRMx8K8vs182WALAAAAMrqJG6mRH5WbZmkrCZyQLy4L0yLE6cD3jEOcGETJggCBnCEFQQBAEIZhCCocQk//82DEBxkMHtfnY8ABg4TazOd05xCFi5cQhc6cXLgoKnSYsWH/+HvHxd//+sXcuXcW4u53bu933YKBgCgIAgCAIAgCUKGGlCCAMgKCx42ViSRQFwI1hUBKCYoJAGZgaAZGMowZgAYA6AACAAAAAA//80DEBxgsEsVvPMABAYJWnHiYAAEAQAGcGQAi8D6AYY0AgYhgAC8AmAAwAEALgAYAWFUAAcAAA//80LEAxlbfj0HPYAAAAAAQAAEAAAhVhpTvGmGGAYYXAQOQgaMZBoAAAP/zQsQAAAAANIAAAAACEYFAIYUAAYGAAGAAH//NAxAQAAANIAAAAABAAAAgAAAAEAEoAAYAH//NExAcAAAKYAYAAAP/zQsQAAAJcHRgBgAP/zUMQAGOE2K38PQCQ1RqVv4egFP/zQsQAAAAANIAAAAA==" type="audio/mpeg">
+    </audio>
+    <audio id="message-sound" preload="auto" style="display:none;">
+      <source src="data:audio/mpeg;base64,SUQzBAAAAAAAI1RTU0UAAAAPAAADTGF2ZjU4Ljc2LjEwMAAAAAAAAAAAAAAA//NAwAAAAAAAAAAAAFhpbmcAAAAPAAAAAgACVrAAFhYWFhYWFhYWFhYWFhYWFhYWFhb/////////////////////GkUAAAMUQqhRKAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAFhpbmcAAAAPAAAADAAAD2AADw8PGhoaJCQkLS0tNzc3QEBAS0tLVFRUXl5eaGhoFhYWFhYWLi4uLi4uPj4+Pj4+T09PT09PX19fX19fc3NzdHR0hISEhISElZWVpaWltra2xsbG1tbW5ubm9vb2////AAA5TEFNRTMuMTAwA80AAAAAAAAAABSAJAkUgQAAgAAAtrbrwj0cAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAP/zQsRKEXQdK5cyYgiRbBJlujJgAEwbqmyJk6NAH3BLf////OlgAA0PK9J0YNKMkjQRAQJSgBMAkhcIcCW//8qAAAIA8nG+IGlI//NAxEEUlApXL2DEAKTMyOYiGP8yRt3sJQiA0EwIhHAgcOABFKMuoSxIJQxEgGAwwUBuAcYrDEwL0GCEQAZLAhDKM1KgwGCMASQZTBeAUMAyQlzBQYGUwPQCTALAUP/zYMQLFtgGQA8wYAEVMEiBNTDMw4UwLUInMBAA1zEwMU0xlTHCMIoAFzIrQCEwFwAEMAcARzBZUCkwEAATMAwAJjAVADkwGQATMA8AIDANABIwBwAEMCMAsjAjADMwHgB+MBsAQv/zQMQXEpgOL08wwACDMA8AEzAIABQwFQATMAoABjAIAAUwAgACMAEAADAAAP/zUMQZMuwGGAGAAA//80LEHwAAANIAAAAABIEAABAAA//zQsQZAAAA0gAAAAAA//NAxBgAAANIAAAAAAD/80LEGgAAANIAAAAAAA==" type="audio/mpeg">
+    </audio>
     
     <script type="module" src="/src/main.tsx"></script>
     <!-- Audio unlock script to help with browser autoplay policies -->
@@ -47,14 +50,43 @@
       
       window.playAlertSound = function() {
         try {
-          const sound = document.getElementById('alert-sound');
-          if (sound) {
-            sound.volume = 1.0;
-            sound.currentTime = 0;
-            sound.play().catch(e => console.error('Error playing alert sound:', e));
-          }
+          // Create a simple audio context approach - most reliable
+          const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+          const oscillator = audioContext.createOscillator();
+          oscillator.type = 'sine';
+          oscillator.frequency.setValueAtTime(900, audioContext.currentTime); 
+          oscillator.connect(audioContext.destination);
+          oscillator.start();
+          oscillator.stop(audioContext.currentTime + 0.1);
+          console.log('Playing alert sound via Web Audio API');
         } catch (e) {
           console.error('Error in playAlertSound:', e);
+        }
+      };
+      
+      // Simple beep function that works in all browsers without dependencies
+      window.playBeep = function() {
+        try {
+          // Create a basic beep sound using the lowest-level Web Audio API approach
+          const ctx = new (window.AudioContext || window.webkitAudioContext)();
+          const osc = ctx.createOscillator();
+          const gain = ctx.createGain();
+          
+          osc.connect(gain);
+          gain.connect(ctx.destination);
+          
+          gain.gain.value = 0.1;
+          osc.frequency.value = 880;
+          osc.type = 'sine';
+          
+          osc.start();
+          setTimeout(function() {
+            osc.stop();
+          }, 100);
+          
+          console.log('Simple beep played successfully');
+        } catch (e) {
+          console.error('Error playing simple beep:', e);
         }
       };
       

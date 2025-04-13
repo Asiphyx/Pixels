@@ -44,6 +44,13 @@ const ChatMessages: FC = () => {
           // For user messages
           tavernSoundscape.playUiSound('notification', 1.0);
         }
+        
+        // Fallback to basic beep as a last resort
+        if ((window as any).playBeep) {
+          setTimeout(() => {
+            (window as any).playBeep();
+          }, 100);
+        }
       }
     }
     
@@ -139,6 +146,13 @@ const ChatMessages: FC = () => {
         setTimeout(() => {
           (window as any).playMessageSound();
         }, 1000);
+      }
+      
+      // Try beep as final fallback
+      if ((window as any).playBeep) {
+        setTimeout(() => {
+          (window as any).playBeep();
+        }, 1500);
       }
       
       // Also try through our system
