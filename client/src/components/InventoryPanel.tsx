@@ -30,13 +30,16 @@ const getRarityColor = (rarity: string): string => {
   }
 };
 
-const InventoryPanel: FC = () => {
+interface InventoryPanelProps {
+  onClose: () => void;
+}
+
+const InventoryPanel: FC<InventoryPanelProps> = ({ onClose }) => {
   const { 
     inventory, 
     equippedItems, 
     currency, 
     showInventory, 
-    toggleInventory,
     equipItem,
     unequipItem,
     sellItem,
@@ -107,7 +110,7 @@ const InventoryPanel: FC = () => {
         <button 
           className="absolute top-3 right-3 w-8 h-8 flex items-center justify-center
                      bg-[#8B4513] text-[#FFD700] rounded-full hover:bg-[#9B5523] z-10"
-          onClick={toggleInventory}
+          onClick={onClose}
         >
           ✕
         </button>
