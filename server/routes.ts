@@ -285,14 +285,18 @@ async function handleMessage(client: ConnectedClient, rawMessage: string) {
         });
         
         // Check for bartender mentions using @name syntax
+        console.log(`Checking message for bartender mentions: "${messageContent}"`);
         const mentionedBartender = checkForBartenderMention(messageContent);
         if (mentionedBartender) {
+          console.log(`Detected mention of bartender: ${mentionedBartender}`);
           // Extract the actual query part from the message (remove the @mention)
           const query = extractQueryFromMention(messageContent, mentionedBartender);
           
           // Force a response from the mentioned bartender
+          console.log(`Requesting response from ${mentionedBartender} for query: "${query}"`);
           await handleBartenderResponse(query, client.roomId, client.username, mentionedBartender, client.userId);
         } else {
+          console.log('No specific bartender mentioned, using default chance-based response');
           // Generate a response from the appropriate bartender with 40% chance
           await handleBartenderResponse(messageContent, client.roomId, client.username, undefined, client.userId);
         }
@@ -1140,16 +1144,24 @@ async function handleBartenderResponse(message: string, roomId: number, username
   // Force a response if a specific bartender is mentioned or if the random chance is met
   const shouldRespond = forcedBartenderName ? true : Math.random() > 0.6; // 40% chance to respond if not forced
   
+  console.log(`Handling bartender response: shouldRespond=${shouldRespond}, message="${message}", roomId=${roomId}, username="${username}", forcedBartenderName=${forcedBartenderName || 'none'}`);
+  
   if (shouldRespond) {
     // If a specific bartender is mentioned, use that one instead of the room's default
     let bartenderId = 1; // Default to Amethyst (first room)
     
     if (forcedBartenderName) {
       // Find the bartender by name
+      console.log(`Looking for bartender by name: "${forcedBartenderName}"`);
       const bartenders = await storage.getBartenders();
+      console.log(`Available bartenders:`, bartenders.map(b => ({id: b.id, name: b.name})));
+      
       const foundBartender = bartenders.find(b => b.name.toLowerCase() === forcedBartenderName.toLowerCase());
       if (foundBartender) {
         bartenderId = foundBartender.id;
+        console.log(`Found bartender: ${foundBartender.name} (ID: ${bartenderId})`);
+      } else {
+        console.log(`Bartender "${forcedBartenderName}" not found, using default ID: ${bartenderId}`);
       }
     } else {
       // Get the default bartender for this specific room

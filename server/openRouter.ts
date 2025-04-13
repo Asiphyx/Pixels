@@ -329,13 +329,17 @@ Always stay in character as a fantasy tavern bartender in a medieval world with 
  * @returns string | null - Bartender name if mentioned, null if no mention
  */
 export function checkForBartenderMention(messageContent: string): string | null {
-  // Check for @Bartender mentions using regex
-  const mentionRegex = /@(Sapphire|Amethyst|Ruby)\b/i;
+  // Check for @Bartender mentions using regex - improved to be more flexible with spacing and capitalization
+  const mentionRegex = /@\s*(Sapphire|Amethyst|Ruby|sapphire|amethyst|ruby)\b/i;
   const match = messageContent.match(mentionRegex);
+  
+  console.log("Checking for bartender mention in:", messageContent);
   
   if (match && match[1]) {
     // Return the bartender name with correct capitalization
     const bartenderName = match[1].charAt(0).toUpperCase() + match[1].slice(1).toLowerCase();
+    
+    console.log("Found bartender mention:", bartenderName);
     
     // Verify this is a valid bartender name
     if (["Sapphire", "Amethyst", "Ruby"].includes(bartenderName)) {
@@ -343,6 +347,7 @@ export function checkForBartenderMention(messageContent: string): string | null 
     }
   }
   
+  console.log("No bartender mention found");
   return null;
 }
 
@@ -353,6 +358,8 @@ export function checkForBartenderMention(messageContent: string): string | null 
  * @returns string - Message without the @mention part
  */
 export function extractQueryFromMention(messageContent: string, bartenderName: string): string {
-  // Remove the @Bartender mention and any leading/trailing whitespace
-  return messageContent.replace(new RegExp(`@${bartenderName}\\b`, 'i'), '').trim();
+  // Improved to handle more flexible @mentions
+  const result = messageContent.replace(new RegExp(`@\\s*${bartenderName}\\b`, 'i'), '').trim();
+  console.log(`Extracted query from mention: "${result}" (original: "${messageContent}")`);
+  return result;
 }
