@@ -1,104 +1,19 @@
-import { FC, useEffect, useState } from 'react';
+import { FC } from 'react';
 import TavernView from './TavernView';
 import ChatPanel from './ChatPanel';
 import OnlineUsers from './OnlineUsers';
 import CharacterSelection from './CharacterSelection';
 import TavernMenu from './TavernMenu';
 import { useWebSocketStore } from '@/lib/websocket';
-import { Menu, Volume2, VolumeX } from 'lucide-react';
+import { Menu } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { tavernSoundscape } from '@/lib/audio/tavernSoundscape';
-import { audioManager } from '@/lib/audio/audioManager';
 import { InventoryButton, InventoryItemPicker } from './inventory';
-import AudioNotificationSystem from './AudioNotificationSystem';
-import AudioPreloader from './AudioPreloader';
-import SimpleSoundSystem from './SimpleSoundSystem';
 
 const TavernApp: FC = () => {
   const { user, showMenu, toggleMenu } = useWebSocketStore();
-  const [audioMuted, setAudioMuted] = useState(false);
 
-  // Track if audio has been initialized
-  const [audioInitialized, setAudioInitialized] = useState(false);
-  
-  // Initialize audio when component mounts with user interaction
-  useEffect(() => {
-    if (audioInitialized) return; // Skip if already initialized
-    
-    // Create an initialization function that requires user interaction
-    const initAudio = () => {
-      console.log('Initializing audio system on user interaction...');
-      
-      // Try forcing audio context to resume
-      if (window.AudioContext || (window as any).webkitAudioContext) {
-        try {
-          const tempAudio = new Audio();
-          tempAudio.play().catch(e => console.log('Initial audio play attempt:', e));
-        } catch (e) {
-          console.log('Audio context setup attempt:', e);
-        }
-      }
-      
-      // Register bartender voices
-      tavernSoundscape.registerBartenderVoice('Ruby', 'high');
-      tavernSoundscape.registerBartenderVoice('Sapphire', 'neutral');
-      tavernSoundscape.registerBartenderVoice('Amethyst', 'deep');
-      
-      // Start ambient tavern soundscape
-      tavernSoundscape.startAmbience();
-      
-      // Play tavern music
-      tavernSoundscape.playMusic('mellow');
-      
-      // Try playing a notification sound after a delay
-      setTimeout(() => {
-        // Directly create and play a notification sound as a test
-        const audio = new Audio('/sounds/notification.mp3?v=3');
-        audio.volume = 1.0;
-        audio.play().catch(e => console.error('Error playing test notification:', e));
-        
-        // Also try through our system
-        tavernSoundscape.playUiSound('notification', 1.0);
-        console.log('Test notification sound played');
-      }, 1000);
-      
-      // Mark audio as initialized
-      setAudioInitialized(true);
-      
-      // Remove event listeners
-      document.removeEventListener('click', initAudio);
-      document.removeEventListener('touchstart', initAudio);
-    };
-    
-    // Add event listeners for user interaction
-    document.addEventListener('click', initAudio);
-    document.addEventListener('touchstart', initAudio);
-    
-    // Clean up
-    return () => {
-      document.removeEventListener('click', initAudio);
-      document.removeEventListener('touchstart', initAudio);
-      
-      // Stop audio if component unmounts
-      tavernSoundscape.stopAmbience();
-      tavernSoundscape.stopMusic();
-    };
-  }, [audioInitialized]);
-
-  // Handle audio mute toggle
-  const toggleMute = () => {
-    const newMutedState = audioManager.toggleMute();
-    setAudioMuted(newMutedState);
-    
-    // Play UI sound if we're unmuting
-    if (!newMutedState) {
-      tavernSoundscape.playUiSound('ui_click');
-    }
-  };
-
-  // Play UI sounds on interactions
+  // Menu toggle handler
   const handleMenuToggle = () => {
-    tavernSoundscape.playUiSound('menu_open');
     toggleMenu();
   };
 
@@ -113,23 +28,6 @@ const TavernApp: FC = () => {
             <span className="hidden md:inline-block font-['VT323'] text-xl text-[#E8D6B3]">
               {user ? `Welcome, ${user.username}!` : 'Welcome, Adventurer!'}
             </span>
-            
-            {/* Audio Controls */}
-            <div className="audio-controls mr-2">
-              <Button
-                variant="ghost"
-                size="sm"
-                className="text-[#FFD700] hover:text-[#FFF] hover:bg-transparent"
-                onClick={toggleMute}
-                title={audioMuted ? "Unmute Sounds" : "Mute Sounds"}
-              >
-                {audioMuted ? (
-                  <VolumeX className="h-5 w-5" />
-                ) : (
-                  <Volume2 className="h-5 w-5" />
-                )}
-              </Button>
-            </div>
             
             {/* Inventory */}
             <div className="inventory-controls flex items-center space-x-2">
@@ -196,11 +94,6 @@ const TavernApp: FC = () => {
       
       {/* Menu */}
       {showMenu && <TavernMenu onClose={handleMenuToggle} />}
-      
-      {/* Invisible components that handle audio notifications directly */}
-      <AudioNotificationSystem />
-      <AudioPreloader />
-      <SimpleSoundSystem />
     </div>
   );
 };

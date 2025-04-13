@@ -2,7 +2,6 @@ import { FC, useEffect, useRef, useState } from 'react';
 import { useWebSocketStore } from '@/lib/websocket';
 import { background as newTavernBg } from '@/assets/svgs/bartenders';
 import TavernBackground3D from './TavernBackground3D';
-import { tavernSoundscape } from '@/lib/audio/tavernSoundscape';
 
 const TavernView: FC = () => {
   const tavernRef = useRef<HTMLDivElement>(null);
@@ -58,18 +57,10 @@ const TavernView: FC = () => {
   // Optional toggle for 3D background (for performance)
   const [show3DBackground, setShow3DBackground] = useState(true);
   
-  // Play sound effects for interactive elements
+  // Handle click on bartender
   const handleInteraction = (bartenderName: string) => {
-    if (bartenderName === 'Amethyst') {
-      tavernSoundscape.playSfx('glass_clink');
-      tavernSoundscape.playBartenderVoice('Amethyst', 'neutral');
-    } else if (bartenderName === 'Sapphire') {
-      tavernSoundscape.playSfx('pour_drink');
-      tavernSoundscape.playBartenderVoice('Sapphire', 'happy');
-    } else if (bartenderName === 'Ruby') {
-      tavernSoundscape.playSfx('mug_down');
-      tavernSoundscape.playBartenderVoice('Ruby', 'confused');
-    }
+    console.log(`Clicked on bartender: ${bartenderName}`);
+    // Visual feedback only - no sound
   };
 
   return (

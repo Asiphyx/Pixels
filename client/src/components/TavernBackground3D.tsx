@@ -1,7 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import * as THREE from 'three';
 import { tavernScene } from '@/lib/3d/tavernScene';
-import { tavernSoundscape } from '@/lib/audio/tavernSoundscape';
 
 interface TavernBackground3DProps {
   className?: string;
@@ -34,9 +33,6 @@ const TavernBackground3D: React.FC<TavernBackground3DProps> = ({ className = '' 
       tavernScene.addCandleLight(new THREE.Vector3(-3, 1.5, 0));
       tavernScene.addCandleLight(new THREE.Vector3(3, 1.5, 0));
       tavernScene.addCandleLight(new THREE.Vector3(0, 1.5, 3));
-      
-      // Play audio that matches the scene
-      tavernSoundscape.startAmbience();
     }
     
     // Clean up when the component unmounts
@@ -70,10 +66,8 @@ const TavernBackground3D: React.FC<TavernBackground3DProps> = ({ className = '' 
       const randomWeather = weathers[randomIndex];
       const intensity = 0.3 + Math.random() * 0.7;
       
+      // Set the weather visually
       tavernScene.setWeather(randomWeather, intensity);
-      
-      // Update audio to match weather
-      tavernSoundscape.setWeather(randomWeather, intensity);
     }, 180000); // Change weather every 3 minutes
     
     return () => {
