@@ -4,12 +4,19 @@ import ChatPanel from './ChatPanel';
 import OnlineUsers from './OnlineUsers';
 import CharacterSelection from './CharacterSelection';
 import TavernMenu from './TavernMenu';
+import InventoryPanel from './InventoryPanel';
 import { useWebSocketStore } from '@/lib/websocket';
-import { Menu } from 'lucide-react';
+import { Menu, Package, ShoppingBag } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 const TavernApp: FC = () => {
-  const { user, showMenu, toggleMenu } = useWebSocketStore();
+  const { 
+    user, 
+    showMenu, 
+    toggleMenu,
+    showInventory,
+    setShowInventory
+  } = useWebSocketStore();
 
   return (
     <div className="tavern-app min-h-screen flex flex-col">
