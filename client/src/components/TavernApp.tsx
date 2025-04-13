@@ -9,6 +9,7 @@ import { Menu, Volume2, VolumeX } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { tavernSoundscape } from '@/lib/audio/tavernSoundscape';
 import { audioManager } from '@/lib/audio/audioManager';
+import { InventoryButton, InventoryItemPicker } from './inventory';
 
 const TavernApp: FC = () => {
   const { user, showMenu, toggleMenu } = useWebSocketStore();
@@ -78,6 +79,12 @@ const TavernApp: FC = () => {
                   <Volume2 className="h-5 w-5" />
                 )}
               </Button>
+            </div>
+            
+            {/* Inventory */}
+            <div className="inventory-controls flex items-center space-x-2">
+              <InventoryButton className="bg-[#4A3429] text-[#FFD700] border-2 border-[#8B4513] hover:bg-[#3A2419]" />
+              {user && <InventoryItemPicker />}
             </div>
             
             {user ? (

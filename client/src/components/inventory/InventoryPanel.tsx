@@ -3,6 +3,18 @@ import { DragDropContext, Droppable, DropResult } from 'react-beautiful-dnd';
 import { useInventoryStore } from '../../lib/inventory/inventoryStore';
 import InventorySlot from './InventorySlot';
 import { Item } from '../../lib/inventory/types';
+
+// Map category to icon placeholder (you could replace these with actual SVG icons)
+const categoryIcons = {
+  potion: '🧪',
+  weapon: '⚔️',
+  armor: '🛡️',
+  food: '🍖',
+  drink: '🍺',
+  trinket: '📿',
+  quest: '📜',
+  misc: '📦'
+};
 import { 
   Tabs, 
   TabsContent, 
