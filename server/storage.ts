@@ -258,8 +258,10 @@ export class MemStorage implements IStorage {
   }
 
   async getUserByUsername(username: string): Promise<User | undefined> {
+    // Already case-insensitive, but let's make it explicit for consistency
+    const lowercaseUsername = username.toLowerCase();
     for (const user of this.users.values()) {
-      if (user.username.toLowerCase() === username.toLowerCase()) {
+      if (user.username.toLowerCase() === lowercaseUsername) {
         return user;
       }
     }
@@ -315,8 +317,10 @@ export class MemStorage implements IStorage {
   }
 
   async getRoomByName(name: string): Promise<Room | undefined> {
+    // Already case-insensitive, but let's make it explicit for consistency
+    const lowercaseName = name.toLowerCase();
     for (const room of this.rooms.values()) {
-      if (room.name.toLowerCase() === name.toLowerCase()) {
+      if (room.name.toLowerCase() === lowercaseName) {
         return room;
       }
     }
@@ -601,7 +605,10 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getUserByUsername(username: string): Promise<User | undefined> {
-    const [user] = await db.select().from(users).where(eq(users.username, username));
+    // Use SQL LOWER function to make the username comparison case-insensitive
+    const [user] = await db.select().from(users).where(
+      sql`LOWER(${users.username}) = LOWER(${username})`
+    );
     return user || undefined;
   }
   
@@ -790,7 +797,10 @@ export class DatabaseStorage implements IStorage {
   }
   
   async getRoomByName(name: string): Promise<Room | undefined> {
-    const [room] = await db.select().from(rooms).where(eq(rooms.name, name));
+    // Use SQL LOWER function to make the name comparison case-insensitive
+    const [room] = await db.select().from(rooms).where(
+      sql`LOWER(${rooms.name}) = LOWER(${name})`
+    );
     return room || undefined;
   }
   
