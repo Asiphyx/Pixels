@@ -30,8 +30,11 @@ export const userAuthSchema = z.object({
   password: z.string().min(6),
 });
 
-export const userRegisterSchema = userAuthSchema.extend({
+export const userRegisterSchema = z.object({
+  username: z.string().min(3).max(50),
+  password: z.string().min(6),
   email: z.string().email().optional(),
+  avatar: z.string().optional().default('knight'),
 });
 
 // Chat Room model
@@ -247,24 +250,39 @@ export enum WebSocketMessageType {
   MEMORIES_RESPONSE = 'memories_response',
   
   // Authentication message types
-  LOGIN = 'login',
-  REGISTER = 'register',
-  LOGOUT = 'logout',
+  AUTH_LOGIN = 'auth_login',
+  AUTH_REGISTER = 'auth_register',
+  AUTH_SUCCESS = 'auth_success',
+  AUTH_ERROR = 'auth_error',
+  AUTH_LOGOUT = 'auth_logout',
+  AUTH_PROFILE = 'auth_profile',
   AUTH_RESPONSE = 'auth_response',
+  LOGIN = 'login',           // Legacy support
+  REGISTER = 'register',     // Legacy support
+  LOGOUT = 'logout',         // Legacy support
   
   // Inventory message types
-  GET_INVENTORY = 'get_inventory',
+  INVENTORY_GET = 'inventory_get',
   INVENTORY_UPDATE = 'inventory_update',
-  EQUIP_ITEM = 'equip_item',
-  UNEQUIP_ITEM = 'unequip_item',
-  USE_ITEM = 'use_item',
-  ADD_ITEM = 'add_item',
-  REMOVE_ITEM = 'remove_item',
+  INVENTORY_ADD_ITEM = 'inventory_add_item',
+  INVENTORY_REMOVE_ITEM = 'inventory_remove_item',
+  INVENTORY_EQUIP_ITEM = 'inventory_equip_item',
+  INVENTORY_UNEQUIP_ITEM = 'inventory_unequip_item',
+  INVENTORY_GET_EQUIPPED = 'inventory_get_equipped',
+  EQUIPPED_ITEMS_UPDATE = 'equipped_items_update',
+  GET_INVENTORY = 'get_inventory',   // Legacy support
+  EQUIP_ITEM = 'equip_item',         // Legacy support
+  UNEQUIP_ITEM = 'unequip_item',     // Legacy support
+  USE_ITEM = 'use_item',             // Legacy support
+  ADD_ITEM = 'add_item',             // Legacy support
+  REMOVE_ITEM = 'remove_item',       // Legacy support
   
   // Currency message types
-  CURRENCY_UPDATE = 'currency_update',
-  ADD_CURRENCY = 'add_currency',
-  SPEND_CURRENCY = 'spend_currency',
+  CURRENCY_GET = 'currency_get',
+  CURRENCY_ADD = 'currency_add',
+  CURRENCY_SPEND = 'currency_spend',
+  ADD_CURRENCY = 'add_currency',     // Legacy support
+  SPEND_CURRENCY = 'spend_currency', // Legacy support
   
   // Shop/transaction message types
   SHOP_OPEN = 'shop_open',

@@ -16,6 +16,8 @@ import { z } from "zod";
 import { getOpenRouterResponse, checkForBartenderMention, extractQueryFromMention, isReturningCustomer, getCustomerContext } from "./openRouter";
 import { analyzeSentiment, adjustResponseBasedOnMood } from "./sentiment";
 import { eq } from "drizzle-orm";
+import { authRouter } from "./authRoutes";
+import { inventoryRouter } from "./inventoryRoutes";
 
 // Track which bartenders have already greeted each user (persists across room changes)
 const userGreetedByBartenders = new Map<number, Set<number>>();
@@ -376,6 +378,685 @@ async function handleMessage(client: ConnectedClient, rawMessage: string) {
         break;
       }
       
+      // Authentication message handlers
+      case WebSocketMessageType.AUTH_LOGIN:
+      case WebSocketMessageType.LOGIN: { // Support legacy login type
+        try {
+          // Validate login credentials
+          const credentials = userAuthSchema.parse(payload);
+          
+          // Verify user
+          const user = await storage.verifyUser(credentials.username, credentials.password);
+          
+          if (!user) {
+            client.socket.send(JSON.stringify({
+              type: WebSocketMessageType.AUTH_ERROR,
+              payload: { message: "Invalid username or password" }
+            }));
+            return;
+          }
+          
+          // Update client info
+          client.userId = user.id;
+          client.username = user.username;
+          
+          // Get user data without password
+          const { passwordHash, ...userData } = user;
+          
+          // Send success response
+          client.socket.send(JSON.stringify({
+            type: WebSocketMessageType.AUTH_SUCCESS,
+            payload: { user: userData }
+          }));
+        } catch (error) {
+          console.error('Login error:', error);
+          client.socket.send(JSON.stringify({
+            type: WebSocketMessageType.AUTH_ERROR,
+            payload: { message: "Invalid login data" }
+          }));
+        }
+        break;
+      }
+      
+      case WebSocketMessageType.AUTH_REGISTER:
+      case WebSocketMessageType.REGISTER: { // Support legacy register type
+        try {
+          // Validate registration data
+          const registrationData = userRegisterSchema.parse(payload);
+          
+          try {
+            // Register new user
+            const user = await storage.registerUser(
+              registrationData.username,
+              registrationData.password,
+              registrationData.email,
+              registrationData.avatar
+            );
+            
+            // Update client info
+            client.userId = user.id;
+            client.username = user.username;
+            
+            // Get user data without password
+            const { passwordHash, ...userData } = user;
+            
+            // Send success response
+            client.socket.send(JSON.stringify({
+              type: WebSocketMessageType.AUTH_SUCCESS,
+              payload: { user: userData }
+            }));
+          } catch (err: any) {
+            // Handle duplicate username
+            if (err.message?.includes('already taken') || err.message?.includes('already registered')) {
+              client.socket.send(JSON.stringify({
+                type: WebSocketMessageType.AUTH_ERROR,
+                payload: { message: err.message }
+              }));
+              return;
+            }
+            throw err;
+          }
+        } catch (error) {
+          console.error('Registration error:', error);
+          client.socket.send(JSON.stringify({
+            type: WebSocketMessageType.AUTH_ERROR,
+            payload: { message: "Invalid registration data" }
+          }));
+        }
+        break;
+      }
+      
+      case WebSocketMessageType.AUTH_LOGOUT:
+      case WebSocketMessageType.LOGOUT: { // Support legacy logout type
+        try {
+          if (client.userId) {
+            // Update user status to offline
+            await storage.updateUserStatus(client.userId, false);
+            
+            // Create system message for user leaving
+            const systemMessage = await storage.createMessage({
+              userId: null,
+              roomId: client.roomId,
+              content: `${client.username} logged out.`,
+              type: "system"
+            });
+            
+            // Broadcast to room
+            broadcastToRoom(client.roomId, {
+              type: WebSocketMessageType.NEW_MESSAGE,
+              payload: { message: systemMessage }
+            });
+            
+            // Send confirmation to client
+            client.socket.send(JSON.stringify({
+              type: WebSocketMessageType.AUTH_SUCCESS,
+              payload: { message: "Logged out successfully" }
+            }));
+          }
+        } catch (error) {
+          console.error('Logout error:', error);
+          client.socket.send(JSON.stringify({
+            type: WebSocketMessageType.AUTH_ERROR,
+            payload: { message: "Error during logout" }
+          }));
+        }
+        break;
+      }
+      
+      case WebSocketMessageType.AUTH_PROFILE: {
+        try {
+          if (!client.userId) {
+            client.socket.send(JSON.stringify({
+              type: WebSocketMessageType.AUTH_ERROR,
+              payload: { message: "Not authenticated" }
+            }));
+            return;
+          }
+          
+          // Get user profile
+          const user = await storage.getUser(client.userId);
+          
+          if (!user) {
+            client.socket.send(JSON.stringify({
+              type: WebSocketMessageType.AUTH_ERROR,
+              payload: { message: "User not found" }
+            }));
+            return;
+          }
+          
+          // Get user data without password
+          const { passwordHash, ...userData } = user;
+          
+          // Send profile data
+          client.socket.send(JSON.stringify({
+            type: WebSocketMessageType.AUTH_RESPONSE,
+            payload: { user: userData }
+          }));
+        } catch (error) {
+          console.error('Profile fetch error:', error);
+          client.socket.send(JSON.stringify({
+            type: WebSocketMessageType.AUTH_ERROR,
+            payload: { message: "Error fetching profile" }
+          }));
+        }
+        break;
+      }
+      
+      // Inventory message handlers
+      case WebSocketMessageType.INVENTORY_GET:
+      case WebSocketMessageType.GET_INVENTORY: { // Support legacy type
+        try {
+          if (!client.userId) {
+            client.socket.send(JSON.stringify({
+              type: WebSocketMessageType.ERROR,
+              payload: { message: "Not authenticated" }
+            }));
+            return;
+          }
+          
+          // Get user's inventory
+          const inventory = await storage.getUserInventory(client.userId);
+          
+          // Send inventory data
+          client.socket.send(JSON.stringify({
+            type: WebSocketMessageType.INVENTORY_UPDATE,
+            payload: { inventory }
+          }));
+        } catch (error) {
+          console.error('Inventory fetch error:', error);
+          client.socket.send(JSON.stringify({
+            type: WebSocketMessageType.ERROR,
+            payload: { message: "Error fetching inventory" }
+          }));
+        }
+        break;
+      }
+      
+      case WebSocketMessageType.INVENTORY_GET_EQUIPPED: {
+        try {
+          if (!client.userId) {
+            client.socket.send(JSON.stringify({
+              type: WebSocketMessageType.ERROR,
+              payload: { message: "Not authenticated" }
+            }));
+            return;
+          }
+          
+          // Get user's equipped items
+          const equippedItems = await storage.getEquippedItems(client.userId);
+          
+          // Send equipped items data
+          client.socket.send(JSON.stringify({
+            type: WebSocketMessageType.EQUIPPED_ITEMS_UPDATE,
+            payload: { equipped: equippedItems }
+          }));
+        } catch (error) {
+          console.error('Equipped items fetch error:', error);
+          client.socket.send(JSON.stringify({
+            type: WebSocketMessageType.ERROR,
+            payload: { message: "Error fetching equipped items" }
+          }));
+        }
+        break;
+      }
+      
+      case WebSocketMessageType.INVENTORY_ADD_ITEM:
+      case WebSocketMessageType.ADD_ITEM: { // Support legacy type
+        try {
+          if (!client.userId) {
+            client.socket.send(JSON.stringify({
+              type: WebSocketMessageType.ERROR,
+              payload: { message: "Not authenticated" }
+            }));
+            return;
+          }
+          
+          const itemId = z.number().parse(payload.itemId);
+          const quantity = z.number().min(1).default(1).optional().parse(payload.quantity);
+          
+          // Add item to inventory
+          const inventoryItem = await storage.addItemToInventory(client.userId, itemId, quantity || 1);
+          
+          // Get updated inventory
+          const inventory = await storage.getUserInventory(client.userId);
+          
+          // Send updated inventory
+          client.socket.send(JSON.stringify({
+            type: WebSocketMessageType.INVENTORY_UPDATE,
+            payload: { inventory }
+          }));
+        } catch (error) {
+          console.error('Add item error:', error);
+          client.socket.send(JSON.stringify({
+            type: WebSocketMessageType.ERROR,
+            payload: { message: "Error adding item to inventory" }
+          }));
+        }
+        break;
+      }
+      
+      case WebSocketMessageType.INVENTORY_REMOVE_ITEM:
+      case WebSocketMessageType.REMOVE_ITEM: { // Support legacy type
+        try {
+          if (!client.userId) {
+            client.socket.send(JSON.stringify({
+              type: WebSocketMessageType.ERROR,
+              payload: { message: "Not authenticated" }
+            }));
+            return;
+          }
+          
+          const itemId = z.number().parse(payload.itemId);
+          const quantity = z.number().min(1).default(1).optional().parse(payload.quantity);
+          
+          // Remove item from inventory
+          const success = await storage.removeItemFromInventory(client.userId, itemId, quantity || 1);
+          
+          if (!success) {
+            client.socket.send(JSON.stringify({
+              type: WebSocketMessageType.ERROR,
+              payload: { message: "Item not found in inventory or insufficient quantity" }
+            }));
+            return;
+          }
+          
+          // Get updated inventory
+          const inventory = await storage.getUserInventory(client.userId);
+          
+          // Send updated inventory
+          client.socket.send(JSON.stringify({
+            type: WebSocketMessageType.INVENTORY_UPDATE,
+            payload: { inventory }
+          }));
+        } catch (error) {
+          console.error('Remove item error:', error);
+          client.socket.send(JSON.stringify({
+            type: WebSocketMessageType.ERROR,
+            payload: { message: "Error removing item from inventory" }
+          }));
+        }
+        break;
+      }
+      
+      case WebSocketMessageType.INVENTORY_EQUIP_ITEM:
+      case WebSocketMessageType.EQUIP_ITEM: { // Support legacy type
+        try {
+          if (!client.userId) {
+            client.socket.send(JSON.stringify({
+              type: WebSocketMessageType.ERROR,
+              payload: { message: "Not authenticated" }
+            }));
+            return;
+          }
+          
+          const itemId = z.number().parse(payload.itemId);
+          const slot = z.string().parse(payload.slot);
+          
+          // Equip the item
+          const equippedItem = await storage.equipItem(client.userId, itemId, slot);
+          
+          if (!equippedItem) {
+            client.socket.send(JSON.stringify({
+              type: WebSocketMessageType.ERROR,
+              payload: { message: "Item not found in inventory" }
+            }));
+            return;
+          }
+          
+          // Get updated equipped items
+          const equippedItems = await storage.getEquippedItems(client.userId);
+          
+          // Send updated equipped items
+          client.socket.send(JSON.stringify({
+            type: WebSocketMessageType.EQUIPPED_ITEMS_UPDATE,
+            payload: { equipped: equippedItems }
+          }));
+        } catch (error) {
+          console.error('Equip item error:', error);
+          if (error instanceof Error && error.message === 'Invalid equipment slot') {
+            client.socket.send(JSON.stringify({
+              type: WebSocketMessageType.ERROR,
+              payload: { message: error.message }
+            }));
+            return;
+          }
+          
+          client.socket.send(JSON.stringify({
+            type: WebSocketMessageType.ERROR,
+            payload: { message: "Error equipping item" }
+          }));
+        }
+        break;
+      }
+      
+      case WebSocketMessageType.INVENTORY_UNEQUIP_ITEM:
+      case WebSocketMessageType.UNEQUIP_ITEM: { // Support legacy type
+        try {
+          if (!client.userId) {
+            client.socket.send(JSON.stringify({
+              type: WebSocketMessageType.ERROR,
+              payload: { message: "Not authenticated" }
+            }));
+            return;
+          }
+          
+          const itemId = z.number().parse(payload.itemId);
+          
+          // Unequip the item
+          const unequippedItem = await storage.unequipItem(client.userId, itemId);
+          
+          if (!unequippedItem) {
+            client.socket.send(JSON.stringify({
+              type: WebSocketMessageType.ERROR,
+              payload: { message: "Item not found or not equipped" }
+            }));
+            return;
+          }
+          
+          // Get updated equipped items
+          const equippedItems = await storage.getEquippedItems(client.userId);
+          
+          // Send updated equipped items
+          client.socket.send(JSON.stringify({
+            type: WebSocketMessageType.EQUIPPED_ITEMS_UPDATE,
+            payload: { equipped: equippedItems }
+          }));
+        } catch (error) {
+          console.error('Unequip item error:', error);
+          client.socket.send(JSON.stringify({
+            type: WebSocketMessageType.ERROR,
+            payload: { message: "Error unequipping item" }
+          }));
+        }
+        break;
+      }
+      
+      // Currency message handlers
+      case WebSocketMessageType.CURRENCY_GET: {
+        try {
+          if (!client.userId) {
+            client.socket.send(JSON.stringify({
+              type: WebSocketMessageType.ERROR,
+              payload: { message: "Not authenticated" }
+            }));
+            return;
+          }
+          
+          // Get user's currency
+          const currency = await storage.getCurrency(client.userId);
+          
+          // Send currency data
+          client.socket.send(JSON.stringify({
+            type: WebSocketMessageType.CURRENCY_UPDATE,
+            payload: { currency }
+          }));
+        } catch (error) {
+          console.error('Currency fetch error:', error);
+          client.socket.send(JSON.stringify({
+            type: WebSocketMessageType.ERROR,
+            payload: { message: "Error fetching currency" }
+          }));
+        }
+        break;
+      }
+      
+      case WebSocketMessageType.CURRENCY_ADD:
+      case WebSocketMessageType.ADD_CURRENCY: { // Support legacy type
+        try {
+          if (!client.userId) {
+            client.socket.send(JSON.stringify({
+              type: WebSocketMessageType.ERROR,
+              payload: { message: "Not authenticated" }
+            }));
+            return;
+          }
+          
+          const silver = z.number().min(0).parse(payload.silver);
+          
+          // Add currency
+          const currency = await storage.addCurrency(client.userId, silver);
+          
+          // Send updated currency
+          client.socket.send(JSON.stringify({
+            type: WebSocketMessageType.CURRENCY_UPDATE,
+            payload: { currency }
+          }));
+        } catch (error) {
+          console.error('Add currency error:', error);
+          client.socket.send(JSON.stringify({
+            type: WebSocketMessageType.ERROR,
+            payload: { message: "Error adding currency" }
+          }));
+        }
+        break;
+      }
+      
+      case WebSocketMessageType.CURRENCY_SPEND:
+      case WebSocketMessageType.SPEND_CURRENCY: { // Support legacy type
+        try {
+          if (!client.userId) {
+            client.socket.send(JSON.stringify({
+              type: WebSocketMessageType.ERROR,
+              payload: { message: "Not authenticated" }
+            }));
+            return;
+          }
+          
+          const silver = z.number().min(0).parse(payload.silver);
+          
+          // Spend currency
+          const result = await storage.spendCurrency(client.userId, silver);
+          
+          if (!result) {
+            client.socket.send(JSON.stringify({
+              type: WebSocketMessageType.ERROR,
+              payload: { message: "Insufficient funds" }
+            }));
+            return;
+          }
+          
+          // Send updated currency
+          client.socket.send(JSON.stringify({
+            type: WebSocketMessageType.CURRENCY_UPDATE,
+            payload: { currency: result }
+          }));
+        } catch (error) {
+          console.error('Spend currency error:', error);
+          client.socket.send(JSON.stringify({
+            type: WebSocketMessageType.ERROR,
+            payload: { message: "Error spending currency" }
+          }));
+        }
+        break;
+      }
+      
+      // Shop message handlers
+      case WebSocketMessageType.SHOP_OPEN: {
+        try {
+          // Get all available items
+          const shopItems = await storage.getItems();
+          
+          // Send shop items
+          client.socket.send(JSON.stringify({
+            type: WebSocketMessageType.SHOP_OPEN,
+            payload: { items: shopItems }
+          }));
+        } catch (error) {
+          console.error('Shop open error:', error);
+          client.socket.send(JSON.stringify({
+            type: WebSocketMessageType.ERROR,
+            payload: { message: "Error opening shop" }
+          }));
+        }
+        break;
+      }
+      
+      case WebSocketMessageType.BUY_ITEM: {
+        try {
+          if (!client.userId) {
+            client.socket.send(JSON.stringify({
+              type: WebSocketMessageType.ERROR,
+              payload: { message: "Not authenticated" }
+            }));
+            return;
+          }
+          
+          const itemId = z.number().parse(payload.itemId);
+          const quantity = z.number().min(1).default(1).optional().parse(payload.quantity);
+          
+          // Get the item
+          const item = await storage.getItem(itemId);
+          
+          if (!item) {
+            client.socket.send(JSON.stringify({
+              type: WebSocketMessageType.ERROR,
+              payload: { message: "Item not found" }
+            }));
+            return;
+          }
+          
+          // Calculate total cost
+          const totalCost = item.value * (quantity || 1);
+          
+          // Try to spend currency
+          const spendResult = await storage.spendCurrency(client.userId, totalCost);
+          
+          if (!spendResult) {
+            client.socket.send(JSON.stringify({
+              type: WebSocketMessageType.ERROR,
+              payload: { message: "Insufficient funds" }
+            }));
+            return;
+          }
+          
+          // Add item to inventory
+          await storage.addItemToInventory(client.userId, itemId, quantity || 1);
+          
+          // Get updated inventory and currency
+          const inventory = await storage.getUserInventory(client.userId);
+          const currency = spendResult;
+          
+          // Send purchase success with updated data
+          client.socket.send(JSON.stringify({
+            type: WebSocketMessageType.INVENTORY_UPDATE,
+            payload: { inventory }
+          }));
+          
+          client.socket.send(JSON.stringify({
+            type: WebSocketMessageType.CURRENCY_UPDATE,
+            payload: { currency }
+          }));
+          
+          // Create and broadcast system message
+          const purchaseMessage = await storage.createMessage({
+            userId: null,
+            roomId: client.roomId,
+            content: `${client.username} purchased ${quantity || 1} ${item.name}(s).`,
+            type: "system"
+          });
+          
+          broadcastToRoom(client.roomId, {
+            type: WebSocketMessageType.NEW_MESSAGE,
+            payload: { message: purchaseMessage }
+          });
+        } catch (error) {
+          console.error('Buy item error:', error);
+          client.socket.send(JSON.stringify({
+            type: WebSocketMessageType.ERROR,
+            payload: { message: "Error purchasing item" }
+          }));
+        }
+        break;
+      }
+      
+      case WebSocketMessageType.SELL_ITEM: {
+        try {
+          if (!client.userId) {
+            client.socket.send(JSON.stringify({
+              type: WebSocketMessageType.ERROR,
+              payload: { message: "Not authenticated" }
+            }));
+            return;
+          }
+          
+          const itemId = z.number().parse(payload.itemId);
+          const quantity = z.number().min(1).default(1).optional().parse(payload.quantity);
+          
+          // Check if user has the item
+          const inventoryItem = await storage.getUserInventoryItem(client.userId, itemId);
+          
+          if (!inventoryItem || inventoryItem.quantity < (quantity || 1)) {
+            client.socket.send(JSON.stringify({
+              type: WebSocketMessageType.ERROR,
+              payload: { message: "Item not found in inventory or insufficient quantity" }
+            }));
+            return;
+          }
+          
+          // Get item info
+          const item = await storage.getItem(itemId);
+          
+          if (!item) {
+            client.socket.send(JSON.stringify({
+              type: WebSocketMessageType.ERROR,
+              payload: { message: "Item not found" }
+            }));
+            return;
+          }
+          
+          // Calculate sell value (typically half the buy price)
+          const sellValue = Math.floor(item.value * 0.5) * (quantity || 1);
+          
+          // Remove item from inventory
+          const removeResult = await storage.removeItemFromInventory(client.userId, itemId, quantity || 1);
+          
+          if (!removeResult) {
+            client.socket.send(JSON.stringify({
+              type: WebSocketMessageType.ERROR,
+              payload: { message: "Failed to remove item from inventory" }
+            }));
+            return;
+          }
+          
+          // Add currency
+          const updatedCurrency = await storage.addCurrency(client.userId, sellValue);
+          
+          // Get updated inventory
+          const inventory = await storage.getUserInventory(client.userId);
+          
+          // Send updated data
+          client.socket.send(JSON.stringify({
+            type: WebSocketMessageType.INVENTORY_UPDATE,
+            payload: { inventory }
+          }));
+          
+          client.socket.send(JSON.stringify({
+            type: WebSocketMessageType.CURRENCY_UPDATE,
+            payload: { currency: updatedCurrency }
+          }));
+          
+          // Create and broadcast system message
+          const sellMessage = await storage.createMessage({
+            userId: null,
+            roomId: client.roomId,
+            content: `${client.username} sold ${quantity || 1} ${item.name}(s) for ${sellValue} silver.`,
+            type: "system"
+          });
+          
+          broadcastToRoom(client.roomId, {
+            type: WebSocketMessageType.NEW_MESSAGE,
+            payload: { message: sellMessage }
+          });
+        } catch (error) {
+          console.error('Sell item error:', error);
+          client.socket.send(JSON.stringify({
+            type: WebSocketMessageType.ERROR,
+            payload: { message: "Error selling item" }
+          }));
+        }
+        break;
+      }
+      
       default:
         console.log(`[websocket] Unknown message type: ${type}`);
     }
@@ -592,6 +1273,10 @@ async function handleBartenderResponse(message: string, roomId: number, username
  * @returns HTTP server
  */
 export async function registerRoutes(app: Express): Promise<Server> {
+  // Register auth and inventory routes
+  app.use('/api/auth', authRouter);
+  app.use('/api/inventory', inventoryRouter);
+  
   // Setup API routes
   app.get("/api/rooms", async (req: Request, res: Response) => {
     try {
