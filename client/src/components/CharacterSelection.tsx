@@ -18,15 +18,16 @@ const CharacterSelection: FC = () => {
     user, 
     login, 
     register, 
+    connect,
+    socket,
     isLoggingIn, 
     isRegistering, 
-    authError,
-    connect
+    authError 
   } = useWebSocketStore();
   
   // Authentication states
   const [mode, setMode] = useState<AuthMode>(AuthMode.LOGIN);
-  const [username, setUsername] = useState<string>(localStorage.getItem(STORAGE_KEY_USERNAME) || '');
+  const [username, setUsername] = useState<string>('');
   const [password, setPassword] = useState<string>('');
   const [confirmPassword, setConfirmPassword] = useState<string>('');
   const [email, setEmail] = useState<string>('');
@@ -34,9 +35,9 @@ const CharacterSelection: FC = () => {
     localStorage.getItem(STORAGE_KEY_AUTO_LOGIN) === 'true'
   );
   
-  // Avatar selection state
+  // Avatar selection
   const [selectedAvatar, setSelectedAvatar] = useState<string>(
-    localStorage.getItem(STORAGE_KEY_AVATAR) || 'knight'
+    localStorage.getItem(STORAGE_KEY_AVATAR) || 'warrior'
   );
   
   // Validation state
@@ -64,12 +65,18 @@ const CharacterSelection: FC = () => {
       return;
     }
     
-    // Save preferences
-    localStorage.setItem(STORAGE_KEY_USERNAME, username);
+    // Save username preference if "Remember my username" is checked
+    if (rememberMe) {
+      localStorage.setItem(STORAGE_KEY_USERNAME, username);
+    } else {
+      localStorage.removeItem(STORAGE_KEY_USERNAME);
+    }
+    
+    // Always save avatar preference
     localStorage.setItem(STORAGE_KEY_AVATAR, selectedAvatar);
     localStorage.setItem(STORAGE_KEY_AUTO_LOGIN, rememberMe.toString());
     
-    // First ensure we have a connection before sending auth messages
+    // Establish WebSocket connection if not connected
     if (!socket) {
       console.log('Establishing WebSocket connection first...');
       connect(username, selectedAvatar);
@@ -92,8 +99,9 @@ const CharacterSelection: FC = () => {
     }
   };
   
-  // Separate function for registration validation and execution
+  // Perform registration with validation
   const performRegistration = () => {
+    // Validation for registration
     if (password !== confirmPassword) {
       setValidationError('Passwords do not match');
       return;
@@ -114,9 +122,8 @@ const CharacterSelection: FC = () => {
     register(username, password, email, selectedAvatar);
   };
   
-  // Separate function for login execution
+  // Perform login
   const performLogin = () => {
-    // Login
     console.log('Logging in with:', username);
     login(username, password);
   };
