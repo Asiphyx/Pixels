@@ -40,7 +40,7 @@ export const PixelAvatar: FC<PixelAvatarProps> = ({ name, size = 32, className =
   
   return (
     <div 
-      className={`bg-[#2C1810] rounded-full overflow-hidden flex items-center justify-center ${className}`}
+      className={`bg-[#3A2419] rounded-full overflow-hidden flex items-center justify-center ${className}`}
       style={{ width: size, height: size }}
       title={RoleDescriptions[lowerName as keyof typeof RoleDescriptions] || ""}
     >
