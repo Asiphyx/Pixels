@@ -601,7 +601,11 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getUserByUsername(username: string): Promise<User | undefined> {
-    const [user] = await db.select().from(users).where(eq(users.username, username));
+    // Use case-insensitive SQL ILIKE for matching usernames
+    const [user] = await db
+      .select()
+      .from(users)
+      .where(sql`LOWER(${users.username}) = LOWER(${username})`);
     return user || undefined;
   }
   
@@ -655,10 +659,18 @@ export class DatabaseStorage implements IStorage {
   }
   
   async verifyUser(username: string, password: string): Promise<User | null> {
-    // Find user by username
+    // Find user by username (case-insensitive)
     const user = await this.getUserByUsername(username);
-    if (!user || !user.passwordHash) {
+    
+    // If user doesn't exist, return null
+    if (!user) {
       return null;
+    }
+    
+    // If this is a legacy account (no password hash set), just return the user
+    // The password will be set during the login process
+    if (!user.passwordHash) {
+      return user;
     }
     
     // Compare passwords

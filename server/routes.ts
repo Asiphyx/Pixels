@@ -1,4 +1,4 @@
-import type { Express, Request, Response, NextFunction } from "express";
+import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { WebSocketServer, WebSocket } from "ws";
 import { storage } from "./storage";
@@ -10,24 +10,17 @@ import {
   insertMessageSchema,
   insertRoomSchema,
   InsertUser,
-  users,
-  userAuthSchema,
-  userRegisterSchema
+  users
 } from "@shared/schema";
 import { z } from "zod";
-import { getOpenRouterResponse, checkForBartenderMention, extractQueryFromMention, isReturningCustomer, getCustomerContext } from "./openRouter";
+import { getOpenRouterResponse, checkForBartenderMention, extractQueryFromMention } from "./openRouter";
 import { analyzeSentiment, adjustResponseBasedOnMood } from "./sentiment";
-import { eq } from "drizzle-orm";
-import { authRouter } from "./authRoutes";
-import { inventoryRouter } from "./inventoryRoutes";
 
 // Track which bartenders have already greeted each user (persists across room changes)
-const userGreetedByBartenders = new Map<number, Set<number>>();
+// Key is userId, value is Set of bartender IDs that have greeted this user
+const userGreetedByBartenders: Map<number, Set<number>> = new Map();
 
-// Connected clients map (WebSocket -> Client info)
-const connectedClients = new Map<WebSocket, ConnectedClient>();
-
-// Interface to track connected clients
+// Store connected clients with their user info
 interface ConnectedClient {
   socket: WebSocket;
   userId: number;
@@ -35,13 +28,16 @@ interface ConnectedClient {
   username: string;
 }
 
+const connectedClients: Map<WebSocket, ConnectedClient> = new Map();
+
 /**
  * Clear all connected clients when the server starts
  * This ensures we don't have stale client connections after restart
  */
 export function clearConnectedClients() {
   connectedClients.clear();
-  console.log("[websocket] Cleared all connected clients");
+  userGreetedByBartenders.clear();
+  console.log("[websocket] Cleared connected clients on server start");
 }
 
 /**
@@ -51,1066 +47,234 @@ export function clearConnectedClients() {
 export async function resetUserOnlineStatus() {
   try {
     await db.update(users).set({ online: false });
-    console.log("[server] Reset all user online statuses to offline");
+    console.log("[database] Reset all user online statuses to offline");
   } catch (error) {
-    console.error("[server] Error resetting user online statuses:", error);
+    console.error("[database] Error resetting user online statuses:", error);
   }
 }
 
-/**
- * Gets an AI-generated response from a bartender
- * @param message The user message
- * @param bartenderId The ID of the bartender
- * @param username Optional username for personalized responses
- * @param userId Optional user ID to check returning customer status
- * @returns A string containing the AI-generated response
- */
-async function getBartenderResponse(message: string, bartenderId: number, username: string = 'Guest', userId?: number): Promise<string> {
+// Handles the AI bartender response logic
+async function handleBartenderResponse(message: string, roomId: number, username: string = 'Guest', forcedBartenderName?: string, userId?: number) {
+  // Force a response if a specific bartender is mentioned or if the random chance is met
+  const shouldRespond = forcedBartenderName ? true : Math.random() > 0.6; // 40% chance to respond if not forced
+  
+  if (!shouldRespond) return;
+  
   try {
-    // Get bartender info
-    const bartender = await storage.getBartender(bartenderId);
-    if (!bartender) {
-      return "Sorry, I'm not available right now.";
+    // Get the appropriate bartender to respond
+    let bartenderId: number;
+    let bartenderName: string;
+    
+    if (forcedBartenderName) {
+      // Use the specified bartender name
+      const bartender = await storage.getBartenderByName(forcedBartenderName);
+      if (!bartender) return; // Exit if bartender not found
+      
+      bartenderId = bartender.id;
+      bartenderName = bartender.name;
+    } else {
+      // Use the bartender assigned to the current room
+      const room = await storage.getRoom(roomId);
+      if (!room || !room.bartenderId) return;
+      
+      const bartender = await storage.getBartender(room.bartenderId);
+      if (!bartender) return;
+      
+      bartenderId = bartender.id;
+      bartenderName = bartender.name;
     }
     
-    let returning = false;
-    let memories = "";
+    // Get the userId for context if available
+    const messageWithContext = message;
     
-    // If we have a user ID, check if they are a returning customer
-    if (userId) {
-      // Get customer context (returning status and memories)
-      const context = await getCustomerContext(userId, bartenderId);
-      returning = context.returning;
-      memories = context.memories;
-    }
+    // Get a response from the AI bartender
+    const responseText = await getBartenderResponse(messageWithContext, bartenderId, username, userId);
     
-    // Get the AI response using the OpenRouter API
-    const response = await getOpenRouterResponse(
-      bartender.name, 
-      message, 
-      username,
-      userId,
+    // Create a message from the bartender
+    const bartenderMessage = await storage.createMessage({
+      userId: null, // null userId indicates a system or NPC message
+      roomId,
+      content: responseText,
+      type: "bartender",
       bartenderId
-    );
+    });
     
-    return response;
+    // Send the message to all clients in the room
+    broadcastToRoom(roomId, {
+      type: WebSocketMessageType.NEW_MESSAGE,
+      payload: { message: bartenderMessage }
+    });
   } catch (error) {
-    console.error(`Error getting bartender response:`, error);
-    return "Sorry, I'm having trouble understanding right now. Can you try again?";
+    console.error("Error handling bartender response:", error);
   }
 }
 
-/**
- * Broadcast a message to all clients in a room
- * @param roomId The room ID to broadcast to
- * @param message The message to broadcast
- */
+// Broadcast a message to all clients in a specific room
 function broadcastToRoom(roomId: number, message: WebSocketMessage) {
-  // Convert to array to avoid iterator issues
-  const clients = Array.from(connectedClients.values());
-  for (const client of clients) {
-    if (client.roomId === roomId && client.socket.readyState === WebSocket.OPEN) {
+  for (const client of connectedClients.values()) {
+    if (client.roomId === roomId) {
       client.socket.send(JSON.stringify(message));
     }
   }
 }
 
-/**
- * Handles WebSocket messages
- * @param client The connected client info
- * @param rawMessage The raw message string
- */
+// Handle incoming WebSocket messages
 async function handleMessage(client: ConnectedClient, rawMessage: string) {
   try {
     const message: WebSocketMessage = JSON.parse(rawMessage);
-    const { type, payload } = message;
     
-    switch (type) {
-      case WebSocketMessageType.JOIN_ROOM: {
-        const roomId = z.number().parse(payload.roomId);
-        const room = await storage.getRoom(roomId);
-        
-        if (!room) {
-          client.socket.send(JSON.stringify({
-            type: WebSocketMessageType.ERROR,
-            payload: { message: "Room not found" }
-          }));
-          return;
-        }
-        
-        // Update client's room
-        const oldRoomId = client.roomId;
-        client.roomId = roomId;
-        
-        // Update user's room in storage
-        await storage.updateUserRoom(client.userId, roomId);
-        
-        // Get recent messages
-        const messages = await storage.getMessagesByRoom(roomId);
-        
-        // Send room info and messages to client
-        client.socket.send(JSON.stringify({
-          type: WebSocketMessageType.JOIN_ROOM,
-          payload: { room, messages }
-        }));
-        
-        // Notify others in old room that user left
-        broadcastToRoom(oldRoomId, {
-          type: WebSocketMessageType.USER_LEFT,
-          payload: { userId: client.userId }
-        });
-        
-        // Send system message to new room
-        const user = await storage.getUser(client.userId);
-        if (user) {
-          const systemMessage = await storage.createMessage({
-            userId: null,
-            roomId,
-            content: `${user.username} joined the room.`,
-            type: "system"
-          });
-          
-          broadcastToRoom(roomId, {
-            type: WebSocketMessageType.NEW_MESSAGE,
-            payload: { message: systemMessage }
-          });
-          
-          // Notify others in new room that user joined
-          broadcastToRoom(roomId, {
-            type: WebSocketMessageType.USER_JOINED,
-            payload: { user }
-          });
-          
-          // Send updated user list to everyone in the room
-          const onlineUsers = await storage.getOnlineUsers(roomId);
-          broadcastToRoom(roomId, {
-            type: WebSocketMessageType.ROOM_USERS,
-            payload: { users: onlineUsers }
-          });
-          
-          // Get the default bartender for this room
-          // Room 1 = Amethyst (The Rose Garden)
-          // Room 2 = Sapphire (The Ocean View)
-          // Room 3 = Ruby (The Dragon's Den)
-          let bartenderId = 1; // Default to Amethyst (first room)
-          
-          if (roomId === 1) {
-            bartenderId = 1; // Amethyst for The Rose Garden
-          } else if (roomId === 2) {
-            bartenderId = 2; // Sapphire for The Ocean View
-          } else if (roomId === 3) {
-            bartenderId = 3; // Ruby for The Dragon's Den
-          }
-          
-          const bartender = await storage.getBartender(bartenderId);
-          
-          if (bartender) {
-            // Check if this user needs a greeting from this bartender
-            // Check if the user already has greeting records, if not, initialize
-            if (!userGreetedByBartenders.has(client.userId)) {
-              userGreetedByBartenders.set(client.userId, new Set<number>());
-            }
-            
-            // Get the set of bartenders that have greeted this user
-            const greetedBartenders = userGreetedByBartenders.get(client.userId)!;
-            
-            // If this bartender hasn't greeted this user yet, do so
-            if (!greetedBartenders.has(bartender.id)) {
-              // Mark this bartender as having greeted this user
-              greetedBartenders.add(bartender.id);
-              
-              // Different welcome messages based on bartender personality
-              const welcomeMessages: Record<string, string[]> = {
-                "Sapphire": [
-                  `*Her blue undercut shifts as she glances up, eyes glowing slightly* Welcome to The Ocean View, mortal. The tides whispered you'd be washing up today. What can I get ya? Something to drown your mainstream sorrows? *smirks*`,
-                  `*Pauses from carving strange symbols into the bar with a jagged dagger* Another soul caught in the current, huh? I'm Sapphire. The Ocean View's where the real ones hang. *taps temple* I can tell you've got depths to you. What'll it be?`,
-                  `*The water tattoos on her arms swirl as she notices you* Fresh catch! I'm Sapphire - this is The Ocean View. *leans in conspiratorially* I can read your fortune in your drink if you're brave enough. The depths have been chatty today.`
-                ],
-                "Amethyst": [
-                  `*Her eyes sparkle dramatically as she gasps* Oh my gosh, a new customer~! Kyaa~! Welcome to The Rose Garden, darling! I'm Amethyst-chan, and I simply MUST make you my special love potion cocktail! *winks flirtatiously* What can I get for you, cutie?`,
-                  `*Spins around with exaggerated excitement, twin-tails whipping around* Waaah~! A new face! How exciting! *strikes a cute pose* Amethyst at your service! The Rose Garden is THE most magical place in the realm! *leans over the counter* What's your pleasure, sweetie?`,
-                  `*Her tattoos glow pink as she clasps her hands together* A new adventurer enters my garden! *dramatic hair flip* I'm Amethyst, and I can tell we're going to be the BEST of friends! *giggles* Let me make you something special that matches your aura, darling~!`
-                ],
-                "Ruby": [
-                  `*Without looking up from her ledger, she speaks precisely* Welcome to The Dragon's Den. I'm Ruby. *finally glances up with calculating eyes* Based on your gait, clothing wear patterns, and the time of your arrival, I'd recommend our Blackberry Mead. Efficient and satisfying.`,
-                  `*Makes a quick notation in her book before addressing you* Welcome. The Dragon's Den maintains a 98.7% customer satisfaction rating. I'm Ruby. *adjusts glasses* Our menu is organized by regional origin, alcohol content, and price coefficient. Recommendations available upon request.`,
-                  `*Pauses her inventory counting* Welcome to The Dragon's Den. I'm Ruby. *pulls out a small abacus and makes rapid calculations* Based on current inventory and turnover rates, I recommend our Honeyed Mead. *nods precisely* Optimal balance of taste and resource efficiency.`
-                ]
-              };
-              
-              // Select a random welcome message for this bartender
-              const bartenderWelcomes = welcomeMessages[bartender.name as keyof typeof welcomeMessages] || 
-                [`Welcome to ${room.name}. I'm ${bartender.name}. What can I get for you?`];
-              
-              const welcome = bartenderWelcomes[Math.floor(Math.random() * bartenderWelcomes.length)];
-              
-              // Create and store the welcome message
-              const welcomeMessage = await storage.createMessage({
-                userId: null,
-                roomId,
-                content: welcome,
-                type: "bartender",
-                bartenderId: bartender.id
-              });
-              
-              // Send the welcome message to the room
-              broadcastToRoom(roomId, {
-                type: WebSocketMessageType.BARTENDER_RESPONSE,
-                payload: {
-                  message: welcomeMessage,
-                  bartender: bartender
-                }
-              });
-            }
-          }
-        }
-        break;
-      }
-      
-      case WebSocketMessageType.CHAT_MESSAGE: {
-        const messageContent = z.string().parse(payload.message);
-        
-        // Create a new message
-        const newMessage = await storage.createMessage({
+    switch (message.type) {
+      case WebSocketMessageType.NEW_MESSAGE:
+        // Validate message format
+        const validatedMessage = insertMessageSchema.parse({
+          ...message.payload,
           userId: client.userId,
           roomId: client.roomId,
-          content: messageContent,
           type: "user"
         });
         
-        // Broadcast the message
+        // Check for @mentions of bartenders
+        const mentionedBartender = checkForBartenderMention(validatedMessage.content);
+        let messageContent = validatedMessage.content;
+        
+        // If bartender is mentioned, extract the actual message content without the @mention
+        if (mentionedBartender) {
+          messageContent = extractQueryFromMention(validatedMessage.content, mentionedBartender);
+          validatedMessage.content = messageContent;
+        }
+        
+        // Store message in database
+        const newMessage = await storage.createMessage(validatedMessage);
+        
+        // Broadcast to all clients in the room
         broadcastToRoom(client.roomId, {
           type: WebSocketMessageType.NEW_MESSAGE,
           payload: { message: newMessage }
         });
         
-        // Check for bartender mentions using @name syntax
-        const mentionedBartender = checkForBartenderMention(messageContent);
+        // If a bartender was mentioned, have them respond directly
         if (mentionedBartender) {
-          // Extract the actual query part from the message (remove the @mention)
-          const query = extractQueryFromMention(messageContent, mentionedBartender);
-          
-          // Force a response from the mentioned bartender
-          await handleBartenderResponse(query, client.roomId, client.username, mentionedBartender, client.userId);
+          await handleBartenderResponse(messageContent, client.roomId, client.username, mentionedBartender, client.userId);
         } else {
-          // Generate a response from the appropriate bartender with 40% chance
+          // Otherwise, have random chance for ambient bartender response
           await handleBartenderResponse(messageContent, client.roomId, client.username, undefined, client.userId);
         }
+        break;
         
-        break;
-      }
-      
-      case WebSocketMessageType.GET_MOODS: {
-        if (client.userId) {
-          const moods = await storage.getAllBartenderMoodsForUser(client.userId);
-          
-          // Send the current moods to the client
-          client.socket.send(JSON.stringify({
-            type: WebSocketMessageType.BARTENDER_MOOD_UPDATE,
-            payload: {
-              bartenderMoods: moods
-            }
-          }));
-        }
-        break;
-      }
-      
-      case WebSocketMessageType.GET_MEMORIES: {
-        const bartenderId = z.number().parse(payload.bartenderId);
+      case WebSocketMessageType.ROOM_CHANGE:
+        const { roomId } = message.payload;
         
-        if (client.userId) {
-          const memories = await storage.getSummarizedMemories(client.userId, bartenderId);
-          
-          // Send the memories to the client
-          client.socket.send(JSON.stringify({
-            type: WebSocketMessageType.MEMORIES_RESPONSE,
-            payload: {
-              memories,
-              bartenderId
-            }
-          }));
+        // Update client's room
+        const oldRoomId = client.roomId;
+        client.roomId = roomId;
+        
+        // Update user's room in database
+        await storage.updateUserRoom(client.userId, roomId);
+        
+        // Create system message for user leaving old room
+        const leaveMessage = await storage.createMessage({
+          userId: null,
+          roomId: oldRoomId,
+          content: `${client.username} left the room.`,
+          type: "system"
+        });
+        
+        // Create system message for user joining new room
+        const joinMessage = await storage.createMessage({
+          userId: null,
+          roomId,
+          content: `${client.username} entered the room.`,
+          type: "system"
+        });
+        
+        // Broadcast leave message to old room
+        broadcastToRoom(oldRoomId, {
+          type: WebSocketMessageType.NEW_MESSAGE,
+          payload: { message: leaveMessage }
+        });
+        
+        // Update user list for old room
+        const oldRoomUsers = await storage.getOnlineUsers(oldRoomId);
+        broadcastToRoom(oldRoomId, {
+          type: WebSocketMessageType.ROOM_USERS,
+          payload: { users: oldRoomUsers }
+        });
+        
+        // Broadcast join message to new room
+        broadcastToRoom(roomId, {
+          type: WebSocketMessageType.NEW_MESSAGE,
+          payload: { message: joinMessage }
+        });
+        
+        // Update user list for new room
+        const newRoomUsers = await storage.getOnlineUsers(roomId);
+        broadcastToRoom(roomId, {
+          type: WebSocketMessageType.ROOM_USERS,
+          payload: { users: newRoomUsers }
+        });
+        
+        // Notify client of room change success
+        client.socket.send(JSON.stringify({
+          type: WebSocketMessageType.ROOM_CHANGE,
+          payload: { success: true, roomId }
+        }));
+        
+        // Get room's bartender to possibly greet the user
+        const room = await storage.getRoom(roomId);
+        if (!room || !room.bartenderId) break;
+        
+        const bartenderId = room.bartenderId;
+        
+        // Get user's greeted bartenders set, or create if it doesn't exist
+        let userGreeted = userGreetedByBartenders.get(client.userId);
+        if (!userGreeted) {
+          userGreeted = new Set();
+          userGreetedByBartenders.set(client.userId, userGreeted);
         }
-        break;
-      }
-      
-      case WebSocketMessageType.ORDER_ITEM: {
-        try {
-          // Check action type
-          if (payload.action === 'open_menu') {
-            // Fetch menu items from storage
-            const menuItems = await storage.getMenuItems();
-            
-            // Send menu items to the client
-            client.socket.send(JSON.stringify({
-              type: WebSocketMessageType.ORDER_ITEM,
-              payload: {
-                action: 'open_menu',
-                menuItems
-              }
-            }));
-          } else if (payload.itemId) {
-            // Handle ordering a specific item
-            const itemId = z.number().parse(payload.itemId);
-            const item = await storage.getMenuItem(itemId);
-            
-            if (item) {
-              // Create a system message about the order
-              const orderMessage = await storage.createMessage({
-                userId: client.userId,
-                roomId: client.roomId,
-                content: `${client.username} ordered a ${item.name}.`,
-                type: "system"
+        
+        // If this bartender hasn't greeted the user yet, have them greet
+        if (!userGreeted.has(bartenderId)) {
+          // Mark bartender as having greeted user
+          userGreeted.add(bartenderId);
+          
+          // Get bartender and generate greeting
+          const bartender = await storage.getBartender(bartenderId);
+          if (!bartender) break;
+          
+          // Wait a moment before bartender greets (seems more natural)
+          setTimeout(async () => {
+            try {
+              const greetingMessage = `*looks up as you enter* Welcome to ${room.name}! I'm ${bartender.name}. What brings you to our tavern today?`;
+              
+              // Create greeting message
+              const bartenderGreeting = await storage.createMessage({
+                userId: null,
+                roomId,
+                content: greetingMessage,
+                type: "bartender",
+                bartenderId
               });
               
-              // Broadcast the order to the room
-              broadcastToRoom(client.roomId, {
+              // Broadcast greeting
+              broadcastToRoom(roomId, {
                 type: WebSocketMessageType.NEW_MESSAGE,
-                payload: { message: orderMessage }
+                payload: { message: bartenderGreeting }
               });
+            } catch (error) {
+              console.error("Error creating bartender greeting:", error);
             }
-          }
-        } catch (error) {
-          console.error('Error handling order:', error);
-          // Send error back to the client
-          client.socket.send(JSON.stringify({
-            type: WebSocketMessageType.ERROR,
-            payload: { message: "Error processing order" }
-          }));
+          }, 2000); // 2 second delay for greeting
         }
         break;
-      }
-      
-      // Authentication message handlers
-      case WebSocketMessageType.AUTH_LOGIN:
-      case WebSocketMessageType.LOGIN: { // Support legacy login type
-        try {
-          // Validate login credentials
-          const credentials = userAuthSchema.parse(payload);
-          
-          // Get avatar from payload or use default
-          const avatar = payload.avatar || 'warrior';
-          
-          // Verify user with password check (important for security)
-          const user = await storage.verifyUser(credentials.username, credentials.password);
-          
-          if (!user) {
-            client.socket.send(JSON.stringify({
-              type: WebSocketMessageType.AUTH_ERROR,
-              payload: { message: "Account not found. Please register first." }
-            }));
-            return;
-          }
-          
-          // Update client info
-          client.userId = user.id;
-          client.username = user.username;
-          client.roomId = user.roomId || 1;
-          
-          // Update user's online status
-          await storage.updateUserStatus(user.id, true);
-          
-          // Get user data without password
-          const { passwordHash, ...userData } = user;
-          
-          // Send success response with user data
-          client.socket.send(JSON.stringify({
-            type: WebSocketMessageType.AUTH_SUCCESS,
-            payload: { user: {...userData} }
-          }));
-          
-          // Send room join message - using JOIN_ROOM type for compatibility
-          client.socket.send(JSON.stringify({
-            type: WebSocketMessageType.JOIN_ROOM,
-            payload: { 
-              room: await storage.getRoom(client.roomId)
-            }
-          }));
-          
-          // Get and send room messages
-          const messages = await storage.getMessagesByRoom(client.roomId);
-          client.socket.send(JSON.stringify({
-            type: WebSocketMessageType.NEW_MESSAGE,
-            payload: { messages }
-          }));
-          
-          // Get and send online users
-          const onlineUsers = await storage.getOnlineUsers(client.roomId);
-          client.socket.send(JSON.stringify({
-            type: WebSocketMessageType.ROOM_USERS,
-            payload: { users: onlineUsers }
-          }));
-          
-          // Create system message for user joining
-          const systemMessage = await storage.createMessage({
-            userId: null,
-            roomId: client.roomId,
-            content: `${user.username} has joined the tavern.`,
-            type: "system"
-          });
-          
-          broadcastToRoom(client.roomId, {
-            type: WebSocketMessageType.NEW_MESSAGE,
-            payload: { message: systemMessage }
-          });
-          
-          broadcastToRoom(client.roomId, {
-            type: WebSocketMessageType.ROOM_USERS,
-            payload: { users: onlineUsers }
-          });
-        } catch (error) {
-          console.error('Login error:', error);
-          client.socket.send(JSON.stringify({
-            type: WebSocketMessageType.AUTH_ERROR,
-            payload: { message: "There was a problem with your login. Please check your credentials or register a new account." }
-          }));
-        }
-        break;
-      }
-      
-      case WebSocketMessageType.AUTH_REGISTER:
-      case WebSocketMessageType.REGISTER: { // Support legacy register type
-        try {
-          // Validate registration data
-          const registrationData = userRegisterSchema.parse(payload);
-          
-          try {
-            // Register new user
-            const user = await storage.registerUser(
-              registrationData.username,
-              registrationData.password,
-              registrationData.email,
-              registrationData.avatar
-            );
-            
-            // Update client info
-            client.userId = user.id;
-            client.username = user.username;
-            
-            // Get user data without password
-            const { passwordHash, ...userData } = user;
-            
-            // Send success response
-            client.socket.send(JSON.stringify({
-              type: WebSocketMessageType.AUTH_SUCCESS,
-              payload: { user: userData }
-            }));
-          } catch (err: any) {
-            // Handle duplicate username
-            if (err.message?.includes('already taken') || err.message?.includes('already registered')) {
-              client.socket.send(JSON.stringify({
-                type: WebSocketMessageType.AUTH_ERROR,
-                payload: { message: err.message }
-              }));
-              return;
-            }
-            throw err;
-          }
-        } catch (error) {
-          console.error('Registration error:', error);
-          client.socket.send(JSON.stringify({
-            type: WebSocketMessageType.AUTH_ERROR,
-            payload: { message: "Invalid registration data" }
-          }));
-        }
-        break;
-      }
-      
-      case WebSocketMessageType.AUTH_LOGOUT:
-      case WebSocketMessageType.LOGOUT: { // Support legacy logout type
-        try {
-          if (client.userId) {
-            // Update user status to offline
-            await storage.updateUserStatus(client.userId, false);
-            
-            // Create system message for user leaving
-            const systemMessage = await storage.createMessage({
-              userId: null,
-              roomId: client.roomId,
-              content: `${client.username} logged out.`,
-              type: "system"
-            });
-            
-            // Broadcast to room
-            broadcastToRoom(client.roomId, {
-              type: WebSocketMessageType.NEW_MESSAGE,
-              payload: { message: systemMessage }
-            });
-            
-            // Send confirmation to client
-            client.socket.send(JSON.stringify({
-              type: WebSocketMessageType.AUTH_SUCCESS,
-              payload: { message: "Logged out successfully" }
-            }));
-          }
-        } catch (error) {
-          console.error('Logout error:', error);
-          client.socket.send(JSON.stringify({
-            type: WebSocketMessageType.AUTH_ERROR,
-            payload: { message: "Error during logout" }
-          }));
-        }
-        break;
-      }
-      
-      case WebSocketMessageType.AUTH_PROFILE: {
-        try {
-          if (!client.userId) {
-            client.socket.send(JSON.stringify({
-              type: WebSocketMessageType.AUTH_ERROR,
-              payload: { message: "Not authenticated" }
-            }));
-            return;
-          }
-          
-          // Get user profile
-          const user = await storage.getUser(client.userId);
-          
-          if (!user) {
-            client.socket.send(JSON.stringify({
-              type: WebSocketMessageType.AUTH_ERROR,
-              payload: { message: "User not found" }
-            }));
-            return;
-          }
-          
-          // Get user data without password
-          const { passwordHash, ...userData } = user;
-          
-          // Send profile data
-          client.socket.send(JSON.stringify({
-            type: WebSocketMessageType.AUTH_RESPONSE,
-            payload: { user: userData }
-          }));
-        } catch (error) {
-          console.error('Profile fetch error:', error);
-          client.socket.send(JSON.stringify({
-            type: WebSocketMessageType.AUTH_ERROR,
-            payload: { message: "Error fetching profile" }
-          }));
-        }
-        break;
-      }
-      
-      // Inventory message handlers
-      case WebSocketMessageType.INVENTORY_GET:
-      case WebSocketMessageType.GET_INVENTORY: { // Support legacy type
-        try {
-          if (!client.userId) {
-            client.socket.send(JSON.stringify({
-              type: WebSocketMessageType.ERROR,
-              payload: { message: "Not authenticated" }
-            }));
-            return;
-          }
-          
-          // Get user's inventory
-          const inventory = await storage.getUserInventory(client.userId);
-          
-          // Send inventory data
-          client.socket.send(JSON.stringify({
-            type: WebSocketMessageType.INVENTORY_UPDATE,
-            payload: { inventory }
-          }));
-        } catch (error) {
-          console.error('Inventory fetch error:', error);
-          client.socket.send(JSON.stringify({
-            type: WebSocketMessageType.ERROR,
-            payload: { message: "Error fetching inventory" }
-          }));
-        }
-        break;
-      }
-      
-      case WebSocketMessageType.INVENTORY_GET_EQUIPPED: {
-        try {
-          if (!client.userId) {
-            client.socket.send(JSON.stringify({
-              type: WebSocketMessageType.ERROR,
-              payload: { message: "Not authenticated" }
-            }));
-            return;
-          }
-          
-          // Get user's equipped items
-          const equippedItems = await storage.getEquippedItems(client.userId);
-          
-          // Send equipped items data
-          client.socket.send(JSON.stringify({
-            type: WebSocketMessageType.EQUIPPED_ITEMS_UPDATE,
-            payload: { equipped: equippedItems }
-          }));
-        } catch (error) {
-          console.error('Equipped items fetch error:', error);
-          client.socket.send(JSON.stringify({
-            type: WebSocketMessageType.ERROR,
-            payload: { message: "Error fetching equipped items" }
-          }));
-        }
-        break;
-      }
-      
-      case WebSocketMessageType.INVENTORY_ADD_ITEM:
-      case WebSocketMessageType.ADD_ITEM: { // Support legacy type
-        try {
-          if (!client.userId) {
-            client.socket.send(JSON.stringify({
-              type: WebSocketMessageType.ERROR,
-              payload: { message: "Not authenticated" }
-            }));
-            return;
-          }
-          
-          const itemId = z.number().parse(payload.itemId);
-          const quantity = z.number().min(1).default(1).optional().parse(payload.quantity);
-          
-          // Add item to inventory
-          const inventoryItem = await storage.addItemToInventory(client.userId, itemId, quantity || 1);
-          
-          // Get updated inventory
-          const inventory = await storage.getUserInventory(client.userId);
-          
-          // Send updated inventory
-          client.socket.send(JSON.stringify({
-            type: WebSocketMessageType.INVENTORY_UPDATE,
-            payload: { inventory }
-          }));
-        } catch (error) {
-          console.error('Add item error:', error);
-          client.socket.send(JSON.stringify({
-            type: WebSocketMessageType.ERROR,
-            payload: { message: "Error adding item to inventory" }
-          }));
-        }
-        break;
-      }
-      
-      case WebSocketMessageType.INVENTORY_REMOVE_ITEM:
-      case WebSocketMessageType.REMOVE_ITEM: { // Support legacy type
-        try {
-          if (!client.userId) {
-            client.socket.send(JSON.stringify({
-              type: WebSocketMessageType.ERROR,
-              payload: { message: "Not authenticated" }
-            }));
-            return;
-          }
-          
-          const itemId = z.number().parse(payload.itemId);
-          const quantity = z.number().min(1).default(1).optional().parse(payload.quantity);
-          
-          // Remove item from inventory
-          const success = await storage.removeItemFromInventory(client.userId, itemId, quantity || 1);
-          
-          if (!success) {
-            client.socket.send(JSON.stringify({
-              type: WebSocketMessageType.ERROR,
-              payload: { message: "Item not found in inventory or insufficient quantity" }
-            }));
-            return;
-          }
-          
-          // Get updated inventory
-          const inventory = await storage.getUserInventory(client.userId);
-          
-          // Send updated inventory
-          client.socket.send(JSON.stringify({
-            type: WebSocketMessageType.INVENTORY_UPDATE,
-            payload: { inventory }
-          }));
-        } catch (error) {
-          console.error('Remove item error:', error);
-          client.socket.send(JSON.stringify({
-            type: WebSocketMessageType.ERROR,
-            payload: { message: "Error removing item from inventory" }
-          }));
-        }
-        break;
-      }
-      
-      case WebSocketMessageType.INVENTORY_EQUIP_ITEM:
-      case WebSocketMessageType.EQUIP_ITEM: { // Support legacy type
-        try {
-          if (!client.userId) {
-            client.socket.send(JSON.stringify({
-              type: WebSocketMessageType.ERROR,
-              payload: { message: "Not authenticated" }
-            }));
-            return;
-          }
-          
-          const itemId = z.number().parse(payload.itemId);
-          const slot = z.string().parse(payload.slot);
-          
-          // Equip the item
-          const equippedItem = await storage.equipItem(client.userId, itemId, slot);
-          
-          if (!equippedItem) {
-            client.socket.send(JSON.stringify({
-              type: WebSocketMessageType.ERROR,
-              payload: { message: "Item not found in inventory" }
-            }));
-            return;
-          }
-          
-          // Get updated equipped items
-          const equippedItems = await storage.getEquippedItems(client.userId);
-          
-          // Send updated equipped items
-          client.socket.send(JSON.stringify({
-            type: WebSocketMessageType.EQUIPPED_ITEMS_UPDATE,
-            payload: { equipped: equippedItems }
-          }));
-        } catch (error) {
-          console.error('Equip item error:', error);
-          if (error instanceof Error && error.message === 'Invalid equipment slot') {
-            client.socket.send(JSON.stringify({
-              type: WebSocketMessageType.ERROR,
-              payload: { message: error.message }
-            }));
-            return;
-          }
-          
-          client.socket.send(JSON.stringify({
-            type: WebSocketMessageType.ERROR,
-            payload: { message: "Error equipping item" }
-          }));
-        }
-        break;
-      }
-      
-      case WebSocketMessageType.INVENTORY_UNEQUIP_ITEM:
-      case WebSocketMessageType.UNEQUIP_ITEM: { // Support legacy type
-        try {
-          if (!client.userId) {
-            client.socket.send(JSON.stringify({
-              type: WebSocketMessageType.ERROR,
-              payload: { message: "Not authenticated" }
-            }));
-            return;
-          }
-          
-          const itemId = z.number().parse(payload.itemId);
-          
-          // Unequip the item
-          const unequippedItem = await storage.unequipItem(client.userId, itemId);
-          
-          if (!unequippedItem) {
-            client.socket.send(JSON.stringify({
-              type: WebSocketMessageType.ERROR,
-              payload: { message: "Item not found or not equipped" }
-            }));
-            return;
-          }
-          
-          // Get updated equipped items
-          const equippedItems = await storage.getEquippedItems(client.userId);
-          
-          // Send updated equipped items
-          client.socket.send(JSON.stringify({
-            type: WebSocketMessageType.EQUIPPED_ITEMS_UPDATE,
-            payload: { equipped: equippedItems }
-          }));
-        } catch (error) {
-          console.error('Unequip item error:', error);
-          client.socket.send(JSON.stringify({
-            type: WebSocketMessageType.ERROR,
-            payload: { message: "Error unequipping item" }
-          }));
-        }
-        break;
-      }
-      
-      // Currency message handlers
-      case WebSocketMessageType.CURRENCY_GET: {
-        try {
-          if (!client.userId) {
-            client.socket.send(JSON.stringify({
-              type: WebSocketMessageType.ERROR,
-              payload: { message: "Not authenticated" }
-            }));
-            return;
-          }
-          
-          // Get user's currency
-          const currency = await storage.getCurrency(client.userId);
-          
-          // Send currency data
-          client.socket.send(JSON.stringify({
-            type: WebSocketMessageType.CURRENCY_UPDATE,
-            payload: { currency }
-          }));
-        } catch (error) {
-          console.error('Currency fetch error:', error);
-          client.socket.send(JSON.stringify({
-            type: WebSocketMessageType.ERROR,
-            payload: { message: "Error fetching currency" }
-          }));
-        }
-        break;
-      }
-      
-      case WebSocketMessageType.CURRENCY_ADD:
-      case WebSocketMessageType.ADD_CURRENCY: { // Support legacy type
-        try {
-          if (!client.userId) {
-            client.socket.send(JSON.stringify({
-              type: WebSocketMessageType.ERROR,
-              payload: { message: "Not authenticated" }
-            }));
-            return;
-          }
-          
-          const silver = z.number().min(0).parse(payload.silver);
-          
-          // Add currency
-          const currency = await storage.addCurrency(client.userId, silver);
-          
-          // Send updated currency
-          client.socket.send(JSON.stringify({
-            type: WebSocketMessageType.CURRENCY_UPDATE,
-            payload: { currency }
-          }));
-        } catch (error) {
-          console.error('Add currency error:', error);
-          client.socket.send(JSON.stringify({
-            type: WebSocketMessageType.ERROR,
-            payload: { message: "Error adding currency" }
-          }));
-        }
-        break;
-      }
-      
-      case WebSocketMessageType.CURRENCY_SPEND:
-      case WebSocketMessageType.SPEND_CURRENCY: { // Support legacy type
-        try {
-          if (!client.userId) {
-            client.socket.send(JSON.stringify({
-              type: WebSocketMessageType.ERROR,
-              payload: { message: "Not authenticated" }
-            }));
-            return;
-          }
-          
-          const silver = z.number().min(0).parse(payload.silver);
-          
-          // Spend currency
-          const result = await storage.spendCurrency(client.userId, silver);
-          
-          if (!result) {
-            client.socket.send(JSON.stringify({
-              type: WebSocketMessageType.ERROR,
-              payload: { message: "Insufficient funds" }
-            }));
-            return;
-          }
-          
-          // Send updated currency
-          client.socket.send(JSON.stringify({
-            type: WebSocketMessageType.CURRENCY_UPDATE,
-            payload: { currency: result }
-          }));
-        } catch (error) {
-          console.error('Spend currency error:', error);
-          client.socket.send(JSON.stringify({
-            type: WebSocketMessageType.ERROR,
-            payload: { message: "Error spending currency" }
-          }));
-        }
-        break;
-      }
-      
-      // Shop message handlers
-      case WebSocketMessageType.SHOP_OPEN: {
-        try {
-          // Get all available items
-          const shopItems = await storage.getItems();
-          
-          // Send shop items
-          client.socket.send(JSON.stringify({
-            type: WebSocketMessageType.SHOP_OPEN,
-            payload: { items: shopItems }
-          }));
-        } catch (error) {
-          console.error('Shop open error:', error);
-          client.socket.send(JSON.stringify({
-            type: WebSocketMessageType.ERROR,
-            payload: { message: "Error opening shop" }
-          }));
-        }
-        break;
-      }
-      
-      case WebSocketMessageType.BUY_ITEM: {
-        try {
-          if (!client.userId) {
-            client.socket.send(JSON.stringify({
-              type: WebSocketMessageType.ERROR,
-              payload: { message: "Not authenticated" }
-            }));
-            return;
-          }
-          
-          const itemId = z.number().parse(payload.itemId);
-          const quantity = z.number().min(1).default(1).optional().parse(payload.quantity);
-          
-          // Get the item
-          const item = await storage.getItem(itemId);
-          
-          if (!item) {
-            client.socket.send(JSON.stringify({
-              type: WebSocketMessageType.ERROR,
-              payload: { message: "Item not found" }
-            }));
-            return;
-          }
-          
-          // Calculate total cost
-          const totalCost = item.value * (quantity || 1);
-          
-          // Try to spend currency
-          const spendResult = await storage.spendCurrency(client.userId, totalCost);
-          
-          if (!spendResult) {
-            client.socket.send(JSON.stringify({
-              type: WebSocketMessageType.ERROR,
-              payload: { message: "Insufficient funds" }
-            }));
-            return;
-          }
-          
-          // Add item to inventory
-          await storage.addItemToInventory(client.userId, itemId, quantity || 1);
-          
-          // Get updated inventory and currency
-          const inventory = await storage.getUserInventory(client.userId);
-          const currency = spendResult;
-          
-          // Send purchase success with updated data
-          client.socket.send(JSON.stringify({
-            type: WebSocketMessageType.INVENTORY_UPDATE,
-            payload: { inventory }
-          }));
-          
-          client.socket.send(JSON.stringify({
-            type: WebSocketMessageType.CURRENCY_UPDATE,
-            payload: { currency }
-          }));
-          
-          // Create and broadcast system message
-          const purchaseMessage = await storage.createMessage({
-            userId: null,
-            roomId: client.roomId,
-            content: `${client.username} purchased ${quantity || 1} ${item.name}(s).`,
-            type: "system"
-          });
-          
-          broadcastToRoom(client.roomId, {
-            type: WebSocketMessageType.NEW_MESSAGE,
-            payload: { message: purchaseMessage }
-          });
-        } catch (error) {
-          console.error('Buy item error:', error);
-          client.socket.send(JSON.stringify({
-            type: WebSocketMessageType.ERROR,
-            payload: { message: "Error purchasing item" }
-          }));
-        }
-        break;
-      }
-      
-      case WebSocketMessageType.SELL_ITEM: {
-        try {
-          if (!client.userId) {
-            client.socket.send(JSON.stringify({
-              type: WebSocketMessageType.ERROR,
-              payload: { message: "Not authenticated" }
-            }));
-            return;
-          }
-          
-          const itemId = z.number().parse(payload.itemId);
-          const quantity = z.number().min(1).default(1).optional().parse(payload.quantity);
-          
-          // Check if user has the item
-          const inventoryItem = await storage.getUserInventoryItem(client.userId, itemId);
-          
-          if (!inventoryItem || inventoryItem.quantity < (quantity || 1)) {
-            client.socket.send(JSON.stringify({
-              type: WebSocketMessageType.ERROR,
-              payload: { message: "Item not found in inventory or insufficient quantity" }
-            }));
-            return;
-          }
-          
-          // Get item info
-          const item = await storage.getItem(itemId);
-          
-          if (!item) {
-            client.socket.send(JSON.stringify({
-              type: WebSocketMessageType.ERROR,
-              payload: { message: "Item not found" }
-            }));
-            return;
-          }
-          
-          // Calculate sell value (typically half the buy price)
-          const sellValue = Math.floor(item.value * 0.5) * (quantity || 1);
-          
-          // Remove item from inventory
-          const removeResult = await storage.removeItemFromInventory(client.userId, itemId, quantity || 1);
-          
-          if (!removeResult) {
-            client.socket.send(JSON.stringify({
-              type: WebSocketMessageType.ERROR,
-              payload: { message: "Failed to remove item from inventory" }
-            }));
-            return;
-          }
-          
-          // Add currency
-          const updatedCurrency = await storage.addCurrency(client.userId, sellValue);
-          
-          // Get updated inventory
-          const inventory = await storage.getUserInventory(client.userId);
-          
-          // Send updated data
-          client.socket.send(JSON.stringify({
-            type: WebSocketMessageType.INVENTORY_UPDATE,
-            payload: { inventory }
-          }));
-          
-          client.socket.send(JSON.stringify({
-            type: WebSocketMessageType.CURRENCY_UPDATE,
-            payload: { currency: updatedCurrency }
-          }));
-          
-          // Create and broadcast system message
-          const sellMessage = await storage.createMessage({
-            userId: null,
-            roomId: client.roomId,
-            content: `${client.username} sold ${quantity || 1} ${item.name}(s) for ${sellValue} silver.`,
-            type: "system"
-          });
-          
-          broadcastToRoom(client.roomId, {
-            type: WebSocketMessageType.NEW_MESSAGE,
-            payload: { message: sellMessage }
-          });
-        } catch (error) {
-          console.error('Sell item error:', error);
-          client.socket.send(JSON.stringify({
-            type: WebSocketMessageType.ERROR,
-            payload: { message: "Error selling item" }
-          }));
-        }
-        break;
-      }
-      
+        
       default:
-        console.log(`[websocket] Unknown message type: ${type}`);
+        client.socket.send(JSON.stringify({
+          type: WebSocketMessageType.ERROR,
+          payload: { message: "Unknown message type" }
+        }));
     }
-  } catch (error) {
-    console.error('Error handling message:', error);
+  } catch (err) {
+    console.error("Error handling message:", err);
     client.socket.send(JSON.stringify({
       type: WebSocketMessageType.ERROR,
       payload: { message: "Error processing message" }
@@ -1118,470 +282,361 @@ async function handleMessage(client: ConnectedClient, rawMessage: string) {
   }
 }
 
-/**
- * Handles AI bartender responses
- * @param message User message that triggered the response
- * @param roomId Room ID where the message was sent
- * @param username Username of the sender
- * @param forcedBartenderName Optional name of a specific bartender to respond
- * @param userId Optional user ID for mood tracking
- * @returns True if a response was sent, false otherwise
- */
-async function handleBartenderResponse(message: string, roomId: number, username: string = 'Guest', forcedBartenderName?: string, userId?: number): Promise<boolean> {
-  // Force a response if a specific bartender is mentioned or if the random chance is met
-  const shouldRespond = forcedBartenderName ? true : Math.random() > 0.6; // 40% chance to respond if not forced
+async function getBartenderResponse(message: string, bartenderId: number, username: string = 'Guest', userId?: number): Promise<string> {
+  // Get the bartender to determine which sister is responding
+  const bartender = await storage.getBartender(bartenderId);
+  if (!bartender) return "Welcome to the tavern! How can I help you today?";
   
-  if (shouldRespond) {
-    // If a specific bartender is mentioned, use that one instead of the room's default
-    let bartenderId = 1; // Default to Amethyst (first room)
+  // Process orders using preset responses for better performance with order commands
+  if (message.startsWith("/order")) {
+    const item = message.substring(7).trim();
     
-    if (forcedBartenderName) {
-      // Find the bartender by name
-      const bartenders = await storage.getBartenders();
-      const foundBartender = bartenders.find(b => b.name.toLowerCase() === forcedBartenderName.toLowerCase());
-      if (foundBartender) {
-        bartenderId = foundBartender.id;
-      }
-    } else {
-      // Get the default bartender for this specific room
-      // Room 1 = Amethyst (The Rose Garden)
-      // Room 2 = Sapphire (The Ocean View)
-      // Room 3 = Ruby (The Dragon's Den)
-      if (roomId === 1) {
-        bartenderId = 1; // Amethyst for The Rose Garden
-      } else if (roomId === 2) {
-        bartenderId = 2; // Sapphire for The Ocean View
-      } else if (roomId === 3) {
-        bartenderId = 3; // Ruby for The Dragon's Den
-      }
-    }
+    // Different responses based on each sister's unique personality
+    const orderResponses: Record<string, string[]> = {
+      "Sapphire": [
+        `*Her tattoos ripple as she grabs a bottle* Not bad taste for a surface-dweller. ${item} coming up. This stuff's from the deep currents where mainstream beverages fear to swim. *winks enigmatically*`,
+        `A ${item}? *smirks* The void beneath the waves whispered you'd order that. I add crushed coral that glows in the dark - totally toxic to some species, but you'll probably survive. Probably.`,
+        `*Carves a strange symbol into the ice* ${item}? That's what the bones predicted. I've modified this recipe with essence from the abyss. Most people can't handle it, but I can sense you're... different. *her eyes flicker with blue light*`
+      ],
+      "Amethyst": [
+        `*Gasps dramatically* Omigosh, you ordered my favorite! One super-special ${item} coming right up, darling~! *twirls a bottle with unnecessary flourish* I'll make it extra strong just for you, teehee~! *winks with a sparkle effect*`,
+        `*Clasps hands together excitedly* A ${item}?! PERFECT choice! *giggles* Watch this, cutie~! *performs an overly elaborate mixing routine with magical sparkles* This is my ULTIMATE version with my secret love potion ingredient! *blows a kiss*`,
+        `*Eyes widen with exaggerated surprise* Waaah~! I haven't made a ${item} since the Grand Magical Tournament! *spins dramatically* Lucky for you, I'm the BEST at making these! *strikes a cute pose* One super-special drink for my new favorite customer~!`
+      ],
+      "Ruby": [
+        `*Nods once, efficiently* ${item}. Optimal selection based on current ambient temperature and humidity levels. *measures ingredients with scientific precision* Our batch from last Tuesday achieved a 96.8% satisfaction rating. This will be 97.2%.`,
+        `*Makes a quick notation in her ledger* ${item} ordered at precisely the statistical peak time for its consumption. *analyzes glass against the light* I've adjusted the dilution ratio by 0.4% to account for barometric pressure. It will be served in exactly 42 seconds.`,
+        `*Without wasted movement* One ${item}. *measures with mechanical precision* I've documented 37 variations of this recipe. Based on your pupil dilation and posture, I've selected variant 23B. *slight efficient smile* It will prove most satisfactory.`
+      ]
+    };
     
-    const bartender = await storage.getBartender(bartenderId);
-    
-    if (!bartender) {
-      return false;
-    }
-    
-    // Check if this user needs a greeting from this bartender
-    // Check if the user already has greeting records, if not, initialize
-    if (userId) {
-      if (!userGreetedByBartenders.has(userId)) {
-        userGreetedByBartenders.set(userId, new Set<number>());
-      }
-      
-      // Get the set of bartenders that have greeted this user
-      const greetedBartenders = userGreetedByBartenders.get(userId)!;
-      
-      // If this bartender hasn't greeted this user yet, do so
-      if (!greetedBartenders.has(bartender.id)) {
-        // Mark this bartender as having greeted this user
-        greetedBartenders.add(bartender.id);
-        
-        // Generate a personalized greeting that includes the user's name
-        const greetings = {
-          "Amethyst": [
-            `*Gasps dramatically* OH. MY. GOODNESS! It's ${username}-chan~! *sparkles float around her as she twirls* Welcome to my Rose Garden, cutie~! What magical concoction can I prepare for you today? *winks with a shower of tiny pink hearts*`,
-            `*Eyes widen with excitement* ${username}~! You're FINALLY here! *bounces energetically* I was JUST telling my fairy friends that we needed more adorable customers like you! *giggles* What can I get for my new favorite patron?`,
-            `*Strikes a dramatic pose* The stars told me you'd visit today, ${username}-sweetie~! *magical sparkles appear in her hair* I've been practicing a SUPER special potion just for you! *leans in conspiratorially* What's your pleasure, darling~?`
-          ],
-          "Sapphire": [
-            `*Her tattoos ripple as she notices you* Well, well... if it isn't ${username}. *piercing glows slightly* The void whispered your name earlier. Normies wouldn't hear it, but I sensed your aura approaching. *smirks* What depths are you willing to explore today?`,
-            `*Tilts head curiously* ${username}... unusual currents surround you. *traces water-like pattern on the bar that briefly forms your name* Most surface-dwellers blur together, but you've got... something different. *eyes gleam* What brings you to my waters?`,
-            `*Stops mid-motion as if receiving a psychic message* ${username}... *tattoos pulse with blue light* The deep ones rarely notice newcomers, but they're aware of you now. *leans forward* Interesting. Let's see what you're really made of. What'll it be?`
-          ],
-          "Ruby": [
-            `*Makes precise notation in ledger* Client: ${username}. First interaction commenced at exactly ${new Date().toLocaleTimeString()}. *adjusts glasses methodically* Initial assessment: potential value - moderate to high. *slight efficient nod* How may I optimize your tavern experience today?`,
-            `*Analyzes you with calculating gaze* ${username}... *consults small notebook* Name pattern suggests a 78.6% probability of preference for our eastern brew selection. *arranges bottles at precise angles* I've prepared inventory accordingly. What is your selection?`,
-            `*Straightens items on bar with mathematical precision* Welcome, ${username}. *subtle eye twitch* I've already catalogued 37 potential conversation topics based on your attire and posture. *efficient smile* Would you prefer information, refreshment, or both? I can provide optimal combinations.`
-          ]
-        };
-        
-        // Select a random greeting for this bartender
-        const bartenderGreetings = greetings[bartender.name as keyof typeof greetings] || 
-          [`Hello there, ${username}! What can I get for you today?`];
-        
-        const greeting = bartenderGreetings[Math.floor(Math.random() * bartenderGreetings.length)];
-        
-        // Create and store the personalized greeting message
-        const greetingMessage = await storage.createMessage({
-          userId: null,
-          roomId,
-          content: greeting,
-          type: "bartender",
-          bartenderId: bartender.id
-        });
-        
-        // Send a special greeting message to the client
-        broadcastToRoom(roomId, {
-          type: WebSocketMessageType.BARTENDER_GREETING,
-          payload: {
-            message: greetingMessage,
-            bartender: bartender
-          }
-        });
-        
-        // For non-greeting messages, continue with normal processing
-        if (message.toLowerCase() === "hi" || message.toLowerCase() === "hello" || message.toLowerCase() === "hey") {
-          return true; // We already sent a greeting, no need for another response
-        }
-      }
-    }
-    
-    // Generate a response for non-greeting messages
-    let response = await getBartenderResponse(message, bartender.id, username, userId);
-    
-    // If we have a user ID, process mood changes and adjust response
-    if (userId) {
-      // Analyze sentiment to see if this message should affect the bartender's mood
-      const sentimentScore = analyzeSentiment(message);
-      
-      // Only apply mood changes for non-empty sentiment scores
-      if (sentimentScore !== 0) {
-        try {
-          // Get current mood or create it if it doesn't exist
-          const updatedMood = await storage.updateBartenderMood(userId, bartender.id, sentimentScore);
-          
-          // Adjust the response based on the updated mood
-          response = adjustResponseBasedOnMood(response, updatedMood.mood, bartender.name);
-          
-          // Determine the importance of this interaction based on sentiment strength
-          const importance = Math.min(5, Math.max(1, Math.abs(Math.floor(sentimentScore * 5))));
-          
-          // Store the interaction as a memory if it's significant enough
-          if (importance >= 2) {
-            // Store a memory of this interaction
-            await storage.addMemoryEntry(userId, bartender.id, {
-              timestamp: new Date(),
-              content: `${username} said: "${message}" (sentiment: ${sentimentScore > 0 ? 'positive' : 'negative'})`,
-              type: 'conversation',
-              importance: importance
-            });
-          }
-          
-          // Send the updated mood to the client
-          const userMoods = await storage.getAllBartenderMoodsForUser(userId);
-          
-          // Only send to the specific user who triggered the mood change
-          const userClient = Array.from(connectedClients.values()).find(client => client.userId === userId);
-          if (userClient && userClient.socket.readyState === WebSocket.OPEN) {
-            userClient.socket.send(JSON.stringify({
-              type: WebSocketMessageType.BARTENDER_MOOD_UPDATE,
-              payload: {
-                bartenderMoods: userMoods
-              }
-            }));
-          }
-        } catch (error) {
-          console.error("Error updating bartender mood:", error);
-        }
-      }
-    }
-    
-    // Always record orders as memories (they're important social interactions)
-    if (userId && message.startsWith("/order")) {
-      try {
-        const item = message.substring(7).trim();
-        await storage.addMemoryEntry(userId, bartender.id, {
-          timestamp: new Date(),
-          content: `${username} ordered ${item}`,
-          type: 'preference',
-          importance: 3
-        });
-      } catch (error) {
-        console.error("Error adding memory entry for order:", error);
-      }
-    }
-    
-    // Create and store the bartender message
-    const bartenderMessage = await storage.createMessage({
-      userId: null,
-      roomId,
-      content: response,
-      type: "bartender",
-      bartenderId: bartender.id
-    });
-    
-    // Broadcast the bartender's message
-    broadcastToRoom(roomId, {
-      type: WebSocketMessageType.BARTENDER_RESPONSE,
-      payload: {
-        message: bartenderMessage,
-        bartender: bartender
-      }
-    });
-    
-    return true;
+    // Select a random response for the bartender
+    const responses = orderResponses[bartender.name] || [`One ${item} coming right up! Anything else I can get ya?`];
+    return responses[Math.floor(Math.random() * responses.length)];
   }
   
-  return false;
+  // For all other cases, use the OpenRouter API to generate a dynamic, personalized response
+  try {
+    // Get a response from the OpenRouter API based on the bartender's personality and pass userId if available
+    return await getOpenRouterResponse(bartender.name, message, username, userId, bartender.id);
+  } catch (error) {
+    console.error('Error getting AI response from OpenRouter', error);
+    
+    // Fallback to predefined responses if OpenRouter fails
+    const fallbackResponses = {
+      "Sapphire": [
+        "*Squints with glowing eyes* The deep ones whisper when you speak. There's something... different about your aura. Most normies don't have that kind of resonance with the void.",
+        "*Traces a water-like pattern on the bar* I can read the currents around you. You're swimming against something big. Most people just go with the flow. *smirks* That's why they drown.",
+        "*Her tattoos shift subtly* The mainstream crowd wouldn't understand what I'm seeing, but I think you might. The ocean's been restless lately. Something's stirring in the depths beyond convention."
+      ],
+      "Amethyst": [
+        "*Gasps dramatically* Oh. Em. Gee! You are just the CUTEST thing I've seen all day~! *clutches heart* I could just wrap you up in a sparkly bow and keep you forever, darling~! *giggles*",
+        "*Twirls a lock of pink hair* Teehee~! Did you know my Rose Garden blooms at midnight? *leans in too close* That's when I use my SUPER special magic! Isn't that just the most amazing thing EVER?! *bounces excitedly*",
+        "*Eyes widen with enthusiasm* Waaah~! You remind me of this hero from my favorite love story! So brave and dashing! *dramatic sigh* Do you believe in love at first sight, sweetie? Because I think I've fallen for you! *winks flirtatiously*"
+      ],
+      "Ruby": [
+        "*Makes precise note in ledger* Current conversation efficiency: 76.4%. Projected information exchange value: moderate to high. *slight nod* Proceed with query when ready. I'm collecting data for the quarterly assessment.",
+        "*Arranges bottles in perfect alignment* According to my records, this is your first visit to The Dragon's Den. *calculates briefly* Based on observed preferences of demographically similar patrons, there is an 83.2% probability you'll enjoy our house mead.",
+        "*Polishes glass methodically* The Dragon's Den information exchange network has documented 347 rumors in the past week. *assesses you carefully* With the correct investment, access could be arranged to precisely the data you require."
+      ]
+    };
+    
+    // Select a random fallback response for the bartender
+    const responses = fallbackResponses[bartender.name as keyof typeof fallbackResponses] || ["Welcome to the tavern! How can I help you today?"];
+    return responses[Math.floor(Math.random() * responses.length)];
+  }
 }
 
-/**
- * Register all routes and set up WebSocket handling
- * @param app Express application
- * @returns HTTP server
- */
+// Export registerRoutes to use in index.ts
 export async function registerRoutes(app: Express): Promise<Server> {
-  // Register auth and inventory routes
-  app.use('/api/auth', authRouter);
-  app.use('/api/inventory', inventoryRouter);
-  
-  // Setup API routes
-  app.get("/api/rooms", async (req: Request, res: Response) => {
-    try {
-      const rooms = await storage.getRooms();
-      res.json(rooms);
-    } catch (error) {
-      console.error("Error fetching rooms:", error);
-      res.status(500).json({ message: "Failed to fetch rooms" });
-    }
-  });
-  
-  app.post("/api/rooms", async (req: Request, res: Response) => {
-    try {
-      const roomData = insertRoomSchema.parse(req.body);
-      const room = await storage.createRoom(roomData);
-      res.status(201).json(room);
-    } catch (error) {
-      console.error("Error creating room:", error);
-      res.status(400).json({ message: "Invalid room data" });
-    }
-  });
-  
-  app.get("/api/bartenders", async (req: Request, res: Response) => {
-    try {
-      const bartenders = await storage.getBartenders();
-      res.json(bartenders);
-    } catch (error) {
-      console.error("Error fetching bartenders:", error);
-      res.status(500).json({ message: "Failed to fetch bartenders" });
-    }
-  });
-  
-  app.get("/api/menu", async (req: Request, res: Response) => {
-    try {
-      const category = req.query.category as string | undefined;
-      const menuItems = await storage.getMenuItems(category);
-      res.json(menuItems);
-    } catch (error) {
-      console.error("Error fetching menu items:", error);
-      res.status(500).json({ message: "Failed to fetch menu items" });
-    }
-  });
-  
-  app.get("/api/user/:userId/moods", async (req: Request, res: Response) => {
-    try {
-      const userId = parseInt(req.params.userId, 10);
-      if (isNaN(userId)) {
-        return res.status(400).json({ message: "Invalid user ID" });
-      }
-      
-      const moods = await storage.getAllBartenderMoodsForUser(userId);
-      res.json(moods);
-    } catch (error) {
-      console.error("Error fetching user moods:", error);
-      res.status(500).json({ message: "Failed to fetch user moods" });
-    }
-  });
-  
-  app.get("/api/user/:userId/memories/:bartenderId", async (req: Request, res: Response) => {
-    try {
-      const userId = parseInt(req.params.userId, 10);
-      const bartenderId = parseInt(req.params.bartenderId, 10);
-      
-      if (isNaN(userId) || isNaN(bartenderId)) {
-        return res.status(400).json({ message: "Invalid user ID or bartender ID" });
-      }
-      
-      const memories = await storage.getSummarizedMemories(userId, bartenderId);
-      res.json({ memories });
-    } catch (error) {
-      console.error("Error fetching memories:", error);
-      res.status(500).json({ message: "Failed to fetch memories" });
-    }
-  });
-  
   // WebSocket server for real-time communication
   const httpServer = createServer(app);
   const wss = new WebSocketServer({ noServer: true });
   
-  // Handle WebSocket connections
-  wss.on('connection', (socket: WebSocket, request, userData?: InsertUser) => {
-    console.log("[websocket] New connection established");
-    
-    if (userData) {
-      // If userData was provided during the upgrade (URL parameters), process it immediately
-      processUserData(socket, userData);
-    } else {
-      // Otherwise wait for the first message to contain user data
-      console.log("[websocket] Waiting for user registration message");
+  httpServer.on('upgrade', (request, socket, head) => {
+    // Parse URL query parameters for auth info
+    try {
+      const parsedUrl = new URL(request.url || "", `http://${request.headers.host}`);
+      const token = parsedUrl.searchParams.get('token');
+      const avatar = parsedUrl.searchParams.get('avatar');
       
-      // Add event handler for message-based auth
-      socket.once('message', async (data) => {
+      if (token && avatar) {
         try {
-          const message = JSON.parse(data.toString());
+          // Try to authenticate user from URL parameters
+          const userData: InsertUser = {
+            username: token,
+            avatar: avatar,
+            roomId: 1 // Default to first room (The Rose Garden)
+          };
           
-          // Check if it's a registration/login message
-          if (message.type === WebSocketMessageType.USER_JOINED) {
-            try {
-              const userData = insertUserSchema.parse(message.payload);
-              processUserData(socket, userData);
-            } catch (err) {
-              console.error("Error in user registration:", err);
-              socket.send(JSON.stringify({
-                type: WebSocketMessageType.ERROR,
-                payload: { message: "Invalid user data" }
-              }));
-              socket.close();
-            }
-          } 
-          // Handle login as first message (new secure flow)
-          else if (message.type === WebSocketMessageType.AUTH_LOGIN || 
-                  message.type === WebSocketMessageType.AUTH_REGISTER) {
-            // Add client to connected clients with minimal info
-            connectedClients.set(socket, {
-              socket,
-              userId: -1, // Temporary ID until authenticated
-              roomId: 1, // Default room
-              username: 'Guest' // Temporary name
-            });
-            
-            // Now process the message normally
-            const client = connectedClients.get(socket);
-            if (client) {
-              handleMessage(client, data.toString());
-            }
-          }
-          else {
-            socket.send(JSON.stringify({
-              type: WebSocketMessageType.ERROR,
-              payload: { message: "First message must be registration or login" }
-            }));
-            socket.close();
-          }
-        } catch (err) {
-          console.error("Error parsing initial message:", err);
-          socket.send(JSON.stringify({
-            type: WebSocketMessageType.ERROR,
-            payload: { message: "Invalid message format" }
-          }));
-          socket.close();
+          wss.handleUpgrade(request, socket, head, async (socket) => {
+            wss.emit('connection', socket, request, userData);
+          });
+        } catch (error) {
+          console.error('Error processing query parameters:', error);
         }
-      });
+      } else {
+        // No token provided, upgrade anyway and handle auth in connection message
+        wss.handleUpgrade(request, socket, head, async (socket) => {
+          wss.emit('connection', socket, request);
+        });
+      }
+    } catch (err) {
+      console.error("WebSocket upgrade error:", err);
+      socket.write('HTTP/1.1 401 Unauthorized\r\n\r\n');
+      socket.destroy();
     }
   });
   
-  // Helper function to process user registration data and set up the client
-  async function processUserData(socket: WebSocket, userData: InsertUser) {
-    try {
-      // Check if username is taken
-      const existingUser = await storage.getUserByUsername(userData.username);
-      
-      if (existingUser) {
-        if (existingUser.online) {
+  // Handle WebSocket connections
+  wss.on('connection', (socket, request, userData?: InsertUser) => {
+    console.log('WebSocket connection established');
+    
+    // If we have user data from URL params, authenticate immediately
+    if (userData) {
+      handleUserConnection(socket, userData);
+      return;
+    }
+    
+    // Otherwise wait for auth message
+    socket.once('message', async (data) => {
+      try {
+        const message = JSON.parse(data.toString());
+        
+        // User registration or login message
+        if (message.type === WebSocketMessageType.USER_JOINED || message.type === WebSocketMessageType.LOGIN) {
+          try {
+            const userData = insertUserSchema.parse(message.payload);
+            await handleUserConnection(socket, userData, message.type === WebSocketMessageType.LOGIN);
+          } catch (err) {
+            console.error("Invalid user data:", err);
+            socket.send(JSON.stringify({
+              type: WebSocketMessageType.ERROR,
+              payload: { message: "Invalid user data" }
+            }));
+            socket.close();
+          }
+        } else {
+          // First message must be auth
           socket.send(JSON.stringify({
             type: WebSocketMessageType.ERROR,
-            payload: { message: "Username already taken" }
+            payload: { message: "You must authenticate first" }
+          }));
+          socket.close();
+        }
+      } catch (err) {
+        console.error("Error parsing initial message:", err);
+        socket.send(JSON.stringify({
+          type: WebSocketMessageType.ERROR,
+          payload: { message: "Invalid message format" }
+        }));
+        socket.close();
+      }
+    });
+  });
+  
+  // Handle user login/registration and connection setup
+  async function handleUserConnection(socket: WebSocket, userData: InsertUser, isLogin: boolean = false) {
+    try {
+      // Check if username exists for login or registration
+      const existingUser = await storage.getUserByUsername(userData.username);
+      
+      if (isLogin) {
+        // LOGIN Flow
+        if (!existingUser) {
+          // User not found, send error
+          socket.send(JSON.stringify({
+            type: WebSocketMessageType.ERROR,
+            payload: { message: "Account not found. Please register first." }
           }));
           socket.close();
           return;
-        } else {
-          // User exists but is offline, update to online
-          await storage.updateUserStatus(existingUser.id, true);
-          
-          // Add client to connected clients
-          connectedClients.set(socket, {
-            socket,
-            userId: existingUser.id,
-            roomId: existingUser.roomId,
-            username: existingUser.username
-          });
-          
-          // Initialize greeted bartenders for this user if needed
-          if (!userGreetedByBartenders.has(existingUser.id)) {
-            userGreetedByBartenders.set(existingUser.id, new Set());
-          }
-          
-          // Send welcome back message
-          socket.send(JSON.stringify({
-            type: WebSocketMessageType.USER_JOINED,
-            payload: { 
-              user: existingUser,
-              rooms: await storage.getRooms(),
-              bartenders: await storage.getBartenders() 
-            }
-          }));
-          
-          // Create system message for welcome back
-          const systemMessage = await storage.createMessage({
-            userId: null,
-            roomId: existingUser.roomId,
-            content: `${existingUser.username} returned to the tavern.`,
-            type: "system"
-          });
-          
-          broadcastToRoom(existingUser.roomId, {
-            type: WebSocketMessageType.NEW_MESSAGE,
-            payload: { message: systemMessage }
-          });
-          
-          // Update user list
-          const onlineUsers = await storage.getOnlineUsers(existingUser.roomId);
-          broadcastToRoom(existingUser.roomId, {
-            type: WebSocketMessageType.ROOM_USERS,
-            payload: { users: onlineUsers }
-          });
         }
-      } else {
-        // Create new user
-        const user = await storage.createUser(userData);
+        
+        if (existingUser.online) {
+          // User already online, can't log in twice
+          socket.send(JSON.stringify({
+            type: WebSocketMessageType.ERROR,
+            payload: { message: "This account is already logged in elsewhere." }
+          }));
+          socket.close();
+          return;
+        }
+        
+        // Update user online status
+        await storage.updateUserStatus(existingUser.id, true);
         
         // Add client to connected clients
         connectedClients.set(socket, {
           socket,
-          userId: user.id,
-          roomId: user.roomId,
-          username: user.username
+          userId: existingUser.id,
+          roomId: existingUser.roomId,
+          username: existingUser.username
         });
         
-        // Initialize greeted bartenders for this user
-        if (!userGreetedByBartenders.has(user.id)) {
-          userGreetedByBartenders.set(user.id, new Set());
+        // Initialize greeted bartenders for this user if needed
+        if (!userGreetedByBartenders.has(existingUser.id)) {
+          userGreetedByBartenders.set(existingUser.id, new Set());
         }
         
-        // Send welcome message
+        // Send welcome back message with user data
         socket.send(JSON.stringify({
           type: WebSocketMessageType.USER_JOINED,
           payload: { 
-            user,
+            user: existingUser,
             rooms: await storage.getRooms(),
             bartenders: await storage.getBartenders() 
           }
         }));
         
-        // Create system message for new user
+        // Create system message for user logging in
         const systemMessage = await storage.createMessage({
           userId: null,
-          roomId: user.roomId,
-          content: `${user.username} entered the tavern.`,
+          roomId: existingUser.roomId,
+          content: `${existingUser.username} returned to the tavern.`,
           type: "system"
         });
         
-        // Broadcast to all users in the room
-        broadcastToRoom(user.roomId, {
+        // Broadcast user joined message
+        broadcastToRoom(existingUser.roomId, {
           type: WebSocketMessageType.NEW_MESSAGE,
           payload: { message: systemMessage }
         });
         
+        // Send this user recent messages from the room
+        const messages = await storage.getRecentMessages(existingUser.roomId);
+        socket.send(JSON.stringify({
+          type: WebSocketMessageType.ROOM_MESSAGES,
+          payload: { messages }
+        }));
+        
         // Update user list
-        const onlineUsers = await storage.getOnlineUsers(user.roomId);
-        broadcastToRoom(user.roomId, {
+        const onlineUsers = await storage.getOnlineUsers(existingUser.roomId);
+        broadcastToRoom(existingUser.roomId, {
           type: WebSocketMessageType.ROOM_USERS,
           payload: { users: onlineUsers }
         });
+      } else {
+        // REGISTRATION Flow
+        if (existingUser) {
+          // Username exists, handle reconnection
+          if (existingUser.online) {
+            // User is marked as online, reject
+            socket.send(JSON.stringify({
+              type: WebSocketMessageType.ERROR,
+              payload: { message: "Username already taken" }
+            }));
+            socket.close();
+            return;
+          } else {
+            // User exists but is offline, update to online
+            await storage.updateUserStatus(existingUser.id, true);
+            
+            // Add client to connected clients
+            connectedClients.set(socket, {
+              socket,
+              userId: existingUser.id,
+              roomId: existingUser.roomId,
+              username: existingUser.username
+            });
+            
+            // Initialize greeted bartenders for this user if needed
+            if (!userGreetedByBartenders.has(existingUser.id)) {
+              userGreetedByBartenders.set(existingUser.id, new Set());
+            }
+            
+            // Send welcome back message
+            socket.send(JSON.stringify({
+              type: WebSocketMessageType.USER_JOINED,
+              payload: { 
+                user: existingUser,
+                rooms: await storage.getRooms(),
+                bartenders: await storage.getBartenders() 
+              }
+            }));
+            
+            // Create system message for welcome back
+            const systemMessage = await storage.createMessage({
+              userId: null,
+              roomId: existingUser.roomId,
+              content: `${existingUser.username} returned to the tavern.`,
+              type: "system"
+            });
+            
+            broadcastToRoom(existingUser.roomId, {
+              type: WebSocketMessageType.NEW_MESSAGE,
+              payload: { message: systemMessage }
+            });
+            
+            // Send this user recent messages from the room
+            const messages = await storage.getRecentMessages(existingUser.roomId);
+            socket.send(JSON.stringify({
+              type: WebSocketMessageType.ROOM_MESSAGES,
+              payload: { messages }
+            }));
+            
+            // Update user list
+            const onlineUsers = await storage.getOnlineUsers(existingUser.roomId);
+            broadcastToRoom(existingUser.roomId, {
+              type: WebSocketMessageType.ROOM_USERS,
+              payload: { users: onlineUsers }
+            });
+          }
+        } else {
+          // Create new user
+          const user = await storage.createUser(userData);
+          
+          // Add client to connected clients
+          connectedClients.set(socket, {
+            socket,
+            userId: user.id,
+            roomId: user.roomId,
+            username: user.username
+          });
+          
+          // Initialize greeted bartenders for this user
+          userGreetedByBartenders.set(user.id, new Set());
+          
+          // Send welcome message with user data
+          socket.send(JSON.stringify({
+            type: WebSocketMessageType.USER_JOINED,
+            payload: { 
+              user,
+              rooms: await storage.getRooms(),
+              bartenders: await storage.getBartenders()
+            }
+          }));
+          
+          // Create system message for new user
+          const systemMessage = await storage.createMessage({
+            userId: null,
+            roomId: user.roomId,
+            content: `${user.username} entered the tavern for the first time.`,
+            type: "system"
+          });
+          
+          broadcastToRoom(user.roomId, {
+            type: WebSocketMessageType.NEW_MESSAGE,
+            payload: { message: systemMessage }
+          });
+          
+          // Send this user recent messages from the room
+          const messages = await storage.getRecentMessages(user.roomId);
+          socket.send(JSON.stringify({
+            type: WebSocketMessageType.ROOM_MESSAGES,
+            payload: { messages }
+          }));
+          
+          // Update user list
+          const onlineUsers = await storage.getOnlineUsers(user.roomId);
+          broadcastToRoom(user.roomId, {
+            type: WebSocketMessageType.ROOM_USERS,
+            payload: { users: onlineUsers }
+          });
+        }
       }
       
-      // Handle subsequent messages
+      // Listen for messages after authentication
       socket.on('message', (data) => {
         const client = connectedClients.get(socket);
         if (client) {
@@ -1593,81 +648,86 @@ export async function registerRoutes(app: Express): Promise<Server> {
       socket.on('close', async () => {
         const client = connectedClients.get(socket);
         if (client) {
-          // Update user status to offline
-          await storage.updateUserStatus(client.userId, false);
-          
-          // Get user info before removing from connected clients
-          const user = await storage.getUser(client.userId);
-          
-          // Remove from connected clients
-          connectedClients.delete(socket);
-          
-          if (user) {
-            // Create system message for user leaving
-            const systemMessage = await storage.createMessage({
-              userId: null,
-              roomId: client.roomId,
-              content: `${user.username} left the tavern.`,
-              type: "system"
-            });
+          try {
+            // Update user status to offline
+            await storage.updateUserStatus(client.userId, false);
             
-            broadcastToRoom(client.roomId, {
-              type: WebSocketMessageType.NEW_MESSAGE,
-              payload: { message: systemMessage }
-            });
+            // Get user info before removing from connected clients
+            const user = await storage.getUser(client.userId);
             
-            // Update user list
-            const onlineUsers = await storage.getOnlineUsers(client.roomId);
-            broadcastToRoom(client.roomId, {
-              type: WebSocketMessageType.ROOM_USERS,
-              payload: { users: onlineUsers }
-            });
+            // Remove from connected clients
+            connectedClients.delete(socket);
+            
+            if (user) {
+              // Create system message for user leaving
+              const systemMessage = await storage.createMessage({
+                userId: null,
+                roomId: client.roomId,
+                content: `${user.username} left the tavern.`,
+                type: "system"
+              });
+              
+              broadcastToRoom(client.roomId, {
+                type: WebSocketMessageType.NEW_MESSAGE,
+                payload: { message: systemMessage }
+              });
+              
+              // Update user list
+              const onlineUsers = await storage.getOnlineUsers(client.roomId);
+              broadcastToRoom(client.roomId, {
+                type: WebSocketMessageType.ROOM_USERS,
+                payload: { users: onlineUsers }
+              });
+            }
+          } catch (err) {
+            console.error("Error handling disconnection:", err);
           }
         }
       });
-    } catch (error) {
-      console.error('[websocket] Error processing user data:', error);
-      socket.send(JSON.stringify({
-        type: WebSocketMessageType.ERROR,
-        payload: { message: "Error processing user registration" }
-      }));
+    } catch (err) {
+      console.error("WebSocket error:", err);
       socket.close();
     }
   }
   
-  // Handle WebSocket upgrade requests (initial connections)
-  httpServer.on('upgrade', (request, socket, head) => {
-    // Check if this is a WebSocket upgrade
-    const upgrade = request.headers.upgrade?.toLowerCase();
-    if (upgrade !== 'websocket') {
-      socket.write('HTTP/1.1 400 Bad Request\r\n\r\n');
-      socket.destroy();
-      return;
-    }
-
-    // Parse URL query parameters for auth info
+  // Setup API routes
+  app.get("/api/rooms", async (req, res) => {
     try {
-      const parsedUrl = new URL(request.url || "", `http://${request.headers.host}`);
-      const pathname = parsedUrl.pathname;
-      
-      // Only handle WebSocket connections to /ws path
-      if (pathname !== '/ws') {
-        socket.write('HTTP/1.1 404 Not Found\r\n\r\n');
-        socket.destroy();
-        return;
-      }
-      
-      // Accept the connection, but don't set userData yet
-      // The client will need to authenticate with proper credentials via login/register
-      wss.handleUpgrade(request, socket, head, (webSocket) => {
-        wss.emit('connection', webSocket, request);
-      });
-    } catch (error) {
-      console.error('[websocket] Error in upgrade handler:', error);
-      socket.write('HTTP/1.1 500 Internal Server Error\r\n\r\n');
-      socket.destroy();
+      const rooms = await storage.getRooms();
+      res.json(rooms);
+    } catch (err) {
+      res.status(500).json({ message: "Error fetching rooms" });
     }
   });
   
+  app.post("/api/rooms", async (req, res) => {
+    try {
+      const validatedRoom = insertRoomSchema.parse(req.body);
+      const room = await storage.createRoom(validatedRoom);
+      res.status(201).json(room);
+    } catch (err) {
+      res.status(400).json({ message: "Invalid room data" });
+    }
+  });
+  
+  app.get("/api/bartenders", async (req, res) => {
+    try {
+      const bartenders = await storage.getBartenders();
+      res.json(bartenders);
+    } catch (err) {
+      res.status(500).json({ message: "Error fetching bartenders" });
+    }
+  });
+  
+  app.get("/api/menu", async (req, res) => {
+    try {
+      const category = req.query.category as string | undefined;
+      const menuItems = await storage.getMenuItems(category);
+      res.json(menuItems);
+    } catch (err) {
+      res.status(500).json({ message: "Error fetching menu items" });
+    }
+  });
+
   return httpServer;
 }
