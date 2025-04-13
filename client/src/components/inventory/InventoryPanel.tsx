@@ -130,44 +130,75 @@ const InventoryPanel: React.FC<InventoryPanelProps> = ({ isOpen = true, onClose 
 
   if (!isOpen) return null;
 
+  // Stone block pattern for background
+  const stonePattern = `url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI2MCIgaGVpZ2h0PSI2MCIgdmlld0JveD0iMCAwIDYwIDYwIj48cmVjdCB4PSIwIiB5PSIwIiB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIGZpbGw9IiMyYzE4MTAiLz48cGF0aCBkPSJNMCAwIEwzMCAwIEwzMCAzMCBMMCAzMCBaIiBmaWxsPSIjM2EyNDE5IiBzdHJva2U9IiM0NTJlMWYiIHN0cm9rZS13aWR0aD0iMSIvPjxwYXRoIGQ9Ik0zMCAwIEw2MCAwIEw2MCAzMCBMMzAgMzAgWiIgZmlsbD0iIzJjMTgxMCIgc3Ryb2tlPSIjNDUyZTFmIiBzdHJva2Utd2lkdGg9IjEiLz48cGF0aCBkPSJNMCAzMCBMMzAgMzAgTDMwIDYwIEwwIDYwIFoiIGZpbGw9IiMyYzE4MTAiIHN0cm9rZT0iIzQ1MmUxZiIgc3Ryb2tlLXdpZHRoPSIxIi8+PHBhdGggZD0iTTMwIDMwIEw2MCAzMCBMNjAgNjAgTDMwIDYwIFoiIGZpbGw9IiMzYTI0MTkiIHN0cm9rZT0iIzQ1MmUxZiIgc3Ryb2tlLXdpZHRoPSIxIi8+PC9zdmc+')`;
+  
+  // Wood grain pattern for header
+  const woodPattern = `url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyMDAiIGhlaWdodD0iMjAiIHZpZXdCb3g9IjAgMCAyMDAgMjAiPjxyZWN0IHg9IjAiIHk9IjAiIHdpZHRoPSIyMDAiIGhlaWdodD0iMjAiIGZpbGw9IiM4YjQ1MTMiLz48cGF0aCBkPSJNMCAwIEMyMCAwLCA0MCAxMCwgNjAgNSBDODAgMCwgMTAwIDEwLCAxMjAgMTUgQzE0MCAyMCwgMTYwIDEwLCAxODAgNSBDMjAwIDAsIDIyMCAxMCwgMjQwIDE1IEMyNjAgMjAsIDI4MCAxMCwgMzAwIDUgQzMyMCAwLCAzNDAgMTAsIDM2MCAxNSBDMzgwIDIwLCA0MDAgMTAsIDQyMCA1IEwgNDIwIDIwIEwgMCAyMCBaIiBmaWxsPSIjOGI0NTEzIiBzdHJva2U9IiM3YTM1MDMiIHN0cm9rZS13aWR0aD0iMC41IiBvcGFjaXR5PSIwLjUiLz48L3N2Zz4=')`;
+
   return (
-    <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center">
-      <div className="bg-white rounded-lg shadow-lg w-4/5 max-w-4xl h-4/5 flex flex-col overflow-hidden">
-        <div className="p-4 flex justify-between items-center border-b">
-          <h2 className="text-xl font-bold">Inventory</h2>
+    <div className="fixed inset-0 z-50 bg-black/70 flex items-center justify-center">
+      <div 
+        className="rounded-lg shadow-2xl w-4/5 max-w-4xl h-4/5 flex flex-col overflow-hidden border-4 border-[#8B4513]"
+        style={{ 
+          backgroundImage: stonePattern,
+          backgroundRepeat: 'repeat',
+          boxShadow: '0 0 20px rgba(0, 0, 0, 0.8), inset 0 0 10px rgba(0, 0, 0, 0.5)'
+        }}
+      >
+        <div 
+          className="p-4 flex justify-between items-center border-b-4 border-[#8B4513]"
+          style={{ 
+            backgroundImage: woodPattern,
+            backgroundRepeat: 'repeat-x',
+            backgroundColor: '#8B4513'
+          }}
+        >
+          <h2 className="text-xl font-bold text-[#FFD700] font-['Press_Start_2P'] tracking-wider">INVENTORY</h2>
           <div className="flex items-center space-x-4">
-            <div className="flex items-center">
-              <span className="text-yellow-500 mr-1">⚱️</span>
-              <span>{inventory.gold} gold</span>
+            <div className="flex items-center bg-[#3A2419] px-3 py-1 rounded border border-[#8B4513]">
+              <span className="text-[#FFD700] mr-1">⚱️</span>
+              <span className="text-[#FFD700] font-bold">{inventory.gold} gold</span>
             </div>
-            <div className="flex items-center">
-              <span className="text-gray-500 mr-1">⚖️</span>
-              <span>{inventory.currentWeight}/{inventory.maxWeight} weight</span>
+            <div className="flex items-center bg-[#3A2419] px-3 py-1 rounded border border-[#8B4513]">
+              <span className="text-[#E8D6B3] mr-1">⚖️</span>
+              <span className="text-[#E8D6B3]">{inventory.currentWeight}/{inventory.maxWeight} weight</span>
             </div>
-            <Button variant="ghost" size="sm" onClick={onClose}>
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={onClose}
+              className="bg-[#3A2419] text-[#FFD700] border-2 border-[#8B4513] hover:bg-[#2C1810]"
+            >
               Close
             </Button>
           </div>
         </div>
         
         <Tabs defaultValue="backpack" className="flex-1 flex flex-col overflow-hidden">
-          <TabsList className="justify-start px-4 pt-2">
+          <TabsList className="justify-start px-4 pt-2 bg-[#5A4439] border-b-2 border-[#8B4513]">
             <TabsTrigger 
               value="backpack" 
               onClick={() => setActiveTab('backpack')}
+              className="data-[state=active]:bg-[#8B4513] data-[state=active]:text-[#FFD700] data-[state=active]:border-[#4A3429] text-[#E8D6B3] data-[state=active]:font-bold"
             >
+              <span className="mr-2">🎒</span>
               Backpack
             </TabsTrigger>
             <TabsTrigger 
               value="equipment" 
               onClick={() => setActiveTab('equipment')}
+              className="data-[state=active]:bg-[#8B4513] data-[state=active]:text-[#FFD700] data-[state=active]:border-[#4A3429] text-[#E8D6B3] data-[state=active]:font-bold"
             >
+              <span className="mr-2">⚔️</span>
               Equipment
             </TabsTrigger>
             <TabsTrigger 
               value="quests" 
               onClick={() => setActiveTab('quests')}
+              className="data-[state=active]:bg-[#8B4513] data-[state=active]:text-[#FFD700] data-[state=active]:border-[#4A3429] text-[#E8D6B3] data-[state=active]:font-bold"
             >
+              <span className="mr-2">📜</span>
               Quest Items
             </TabsTrigger>
           </TabsList>
@@ -203,7 +234,7 @@ const InventoryPanel: React.FC<InventoryPanelProps> = ({ isOpen = true, onClose 
                     {Array.from({ length: Math.max(0, 24 - inventoryItems.length) }).map((_, i) => (
                       <div 
                         key={`empty-${i}`}
-                        className="h-16 w-16 border-2 border-dashed border-gray-300 rounded"
+                        className="h-16 w-16 border-2 border-dashed border-[#8B4513] rounded bg-[#2C1810]"
                       />
                     ))}
                   </div>
@@ -215,10 +246,16 @@ const InventoryPanel: React.FC<InventoryPanelProps> = ({ isOpen = true, onClose 
             <TabsContent value="equipment" className="flex-1 overflow-auto p-4">
               <div className="grid grid-cols-3 gap-4 h-full">
                 <div className="col-span-2 flex justify-center">
-                  <div className="relative w-64 h-80 border-2 border-gray-300 rounded-lg mt-4">
+                  <div 
+                    className="relative w-64 h-80 border-2 border-[#8B4513] rounded-lg mt-4 bg-[#2C1810]"
+                    style={{
+                        backgroundImage: "url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI0MCIgaGVpZ2h0PSI0MCIgdmlld0JveD0iMCAwIDQwIDQwIj48cmVjdCB4PSIwIiB5PSIwIiB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIGZpbGw9IiMzYTI0MTkiIG9wYWNpdHk9IjAuOCIvPjxwYXRoIGQ9Ik0wIDAgTDEwIDAgTDEwIDEwIEwwIDEwIFoiIGZpbGw9IiM0YTM0MjkiIG9wYWNpdHk9IjAuMiIvPjxwYXRoIGQ9Ik0yMCAwIEwzMCAwIEwzMCAxMCBMMjAgMTAgWiIgZmlsbD0iIzRhMzQyOSIgb3BhY2l0eT0iMC4yIi8+PHBhdGggZD0iTTEwIDEwIEwyMCAxMCBMMjAgMjAgTDEwIDIwIFoiIGZpbGw9IiM0YTM0MjkiIG9wYWNpdHk9IjAuMiIvPjxwYXRoIGQ9Ik0zMCAxMCBMNDAgMTAgTDQwIDIwIEwzMCAyMCBaIiBmaWxsPSIjNGEzNDI5IiBvcGFjaXR5PSIwLjIiLz48cGF0aCBkPSJNMCAyMCBMMTAgMjAgTDEwIDMwIEwwIDMwIFoiIGZpbGw9IiM0YTM0MjkiIG9wYWNpdHk9IjAuMiIvPjxwYXRoIGQ9Ik0yMCAyMCBMMzAgMjAgTDMwIDMwIEwyMCAzMCBaIiBmaWxsPSIjNGEzNDI5IiBvcGFjaXR5PSIwLjIiLz48cGF0aCBkPSJNMTAgMzAgTDIwIDMwIEwyMCA0MCBMMTAgNDAgWiIgZmlsbD0iIzRhMzQyOSIgb3BhY2l0eT0iMC4yIi8+PHBhdGggZD0iTTMwIDMwIEw0MCAzMCBMNDAgNDAgTDMwIDQwIFoiIGZpbGw9IiM0YTM0MjkiIG9wYWNpdHk9IjAuMiIvPjwvc3ZnPg==')",
+                        backgroundRepeat: "repeat",
+                    }}
+                  >
                     {/* Character silhouette */}
-                    <div className="absolute inset-0 flex items-center justify-center opacity-10">
-                      <svg className="w-52 h-52" viewBox="0 0 24 24" fill="currentColor">
+                    <div className="absolute inset-0 flex items-center justify-center opacity-20">
+                      <svg className="w-52 h-52" viewBox="0 0 24 24" fill="#E8D6B3">
                         <path d="M12 2C9.79 2 8 3.79 8 6s1.79 4 4 4 4-1.79 4-4-1.79-4-4-4zm0 12c-4.41 0-8 3.59-8 8h16c0-4.41-3.59-8-8-8z" />
                       </svg>
                     </div>
@@ -316,11 +353,11 @@ const InventoryPanel: React.FC<InventoryPanelProps> = ({ isOpen = true, onClose 
                   </div>
                 </div>
                 
-                <div className="border-l pl-4">
-                  <h3 className="font-medium mb-2">Accessories</h3>
+                <div className="border-l border-[#8B4513] pl-4">
+                  <h3 className="font-bold text-[#FFD700] mb-2">Accessories</h3>
                   <div className="grid grid-cols-2 gap-2">
                     <div>
-                      <p className="text-xs text-gray-500 mb-1">Neck</p>
+                      <p className="text-xs text-[#E8D6B3] mb-1">Neck</p>
                       <Droppable droppableId="equipment-neck">
                         {(provided) => (
                           <div

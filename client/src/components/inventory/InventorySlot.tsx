@@ -18,11 +18,11 @@ interface InventorySlotProps {
 
 // Map rarity to CSS classes
 const rarityClasses = {
-  common: 'border-gray-400 bg-gray-100',
-  uncommon: 'border-green-400 bg-green-50',
-  rare: 'border-blue-400 bg-blue-50',
-  epic: 'border-purple-400 bg-purple-50',
-  legendary: 'border-amber-400 bg-amber-50'
+  common: 'border-[#8B7359] bg-[#3A2419]',
+  uncommon: 'border-[#10b981] bg-[#3A2419]',
+  rare: 'border-[#3b82f6] bg-[#3A2419]',
+  epic: 'border-[#a78bfa] bg-[#3A2419]',
+  legendary: 'border-[#fbbf24] bg-[#3A2419]'
 };
 
 // Map category to icon placeholder (you could replace these with actual SVG icons)
@@ -47,7 +47,7 @@ const InventorySlot: React.FC<InventorySlotProps> = ({ item, index, slotId, onCl
             ref={provided.innerRef}
             {...provided.draggableProps}
             {...provided.dragHandleProps}
-            className="h-16 w-16 border-2 border-dashed border-gray-300 rounded flex items-center justify-center text-gray-400 bg-gray-50"
+            className="h-16 w-16 border-2 border-dashed border-[#8B4513] rounded flex items-center justify-center text-[#8B7359] bg-[#2C1810]"
           >
             <span className="text-xs">Empty</span>
           </div>
@@ -75,7 +75,7 @@ const InventorySlot: React.FC<InventorySlotProps> = ({ item, index, slotId, onCl
                     ? <img src={item.icon} alt={item.name} className="h-8 w-8 object-contain" /> 
                     : categoryIcons[item.category as keyof typeof categoryIcons]}
                 </div>
-                <div className="text-xs font-medium truncate max-w-full px-1">
+                <div className="text-xs font-medium truncate max-w-full px-1 text-[#E8D6B3]">
                   {item.name}
                 </div>
                 
@@ -87,26 +87,34 @@ const InventorySlot: React.FC<InventorySlotProps> = ({ item, index, slotId, onCl
                 )}
               </div>
             </TooltipTrigger>
-            <TooltipContent className="w-64 p-0 border-2" side="right">
-              <div className={`p-2 ${rarityClasses[item.rarity]} rounded`}>
-                <h4 className="font-bold text-sm">{item.name}</h4>
-                <p className="text-xs text-gray-600 capitalize">{item.rarity} {item.category}</p>
-                <p className="text-xs mt-1">{item.description}</p>
+            <TooltipContent className="w-64 p-0 border-2 border-[#8B4513]" side="right">
+              <div className={`p-3 ${rarityClasses[item.rarity]} rounded`} 
+                style={{
+                  backgroundImage: "url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI0MCIgaGVpZ2h0PSI0MCIgdmlld0JveD0iMCAwIDQwIDQwIj48cmVjdCB4PSIwIiB5PSIwIiB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIGZpbGw9IiMzYTI0MTkiIG9wYWNpdHk9IjAuOCIvPjxwYXRoIGQ9Ik0wIDAgTDEwIDAgTDEwIDEwIEwwIDEwIFoiIGZpbGw9IiM0YTM0MjkiIG9wYWNpdHk9IjAuMiIvPjxwYXRoIGQ9Ik0yMCAwIEwzMCAwIEwzMCAxMCBMMjAgMTAgWiIgZmlsbD0iIzRhMzQyOSIgb3BhY2l0eT0iMC4yIi8+PHBhdGggZD0iTTEwIDEwIEwyMCAxMCBMMjAgMjAgTDEwIDIwIFoiIGZpbGw9IiM0YTM0MjkiIG9wYWNpdHk9IjAuMiIvPjxwYXRoIGQ9Ik0zMCAxMCBMNDAgMTAgTDQwIDIwIEwzMCAyMCBaIiBmaWxsPSIjNGEzNDI5IiBvcGFjaXR5PSIwLjIiLz48cGF0aCBkPSJNMCAyMCBMMTAgMjAgTDEwIDMwIEwwIDMwIFoiIGZpbGw9IiM0YTM0MjkiIG9wYWNpdHk9IjAuMiIvPjxwYXRoIGQ9Ik0yMCAyMCBMMzAgMjAgTDMwIDMwIEwyMCAzMCBaIiBmaWxsPSIjNGEzNDI5IiBvcGFjaXR5PSIwLjIiLz48cGF0aCBkPSJNMTAgMzAgTDIwIDMwIEwyMCA0MCBMMTAgNDAgWiIgZmlsbD0iIzRhMzQyOSIgb3BhY2l0eT0iMC4yIi8+PHBhdGggZD0iTTMwIDMwIEw0MCAzMCBMNDAgNDAgTDMwIDQwIFoiIGZpbGw9IiM0YTM0MjkiIG9wYWNpdHk9IjAuMiIvPjwvc3ZnPg==')",
+                  backgroundRepeat: "repeat",
+                }}
+              >
+                <div className="bg-[#3A2419] p-2 rounded border border-[#8B4513] shadow-inner mb-2">
+                  <h4 className="font-bold text-sm text-[#FFD700]">{item.name}</h4>
+                  <p className="text-xs text-[#E8D6B3] capitalize">{item.rarity} {item.category}</p>
+                </div>
+                
+                <p className="text-xs mt-1 text-[#E8D6B3]">{item.description}</p>
                 
                 {item.effects && item.effects.length > 0 && (
-                  <div className="mt-2">
-                    <h5 className="text-xs font-bold">Effects:</h5>
+                  <div className="mt-2 border-t border-[#8B4513] pt-2">
+                    <h5 className="text-xs font-bold text-[#FFD700]">Effects:</h5>
                     <ul className="text-xs pl-2">
                       {item.effects.map((effect, idx) => (
-                        <li key={idx} className="text-gray-700">{effect.description}</li>
+                        <li key={idx} className="text-[#E8D6B3]">{effect.description}</li>
                       ))}
                     </ul>
                   </div>
                 )}
                 
-                <div className="flex justify-between text-xs mt-2">
-                  <span>Value: {item.value} gold</span>
-                  <span>Weight: {item.weight}</span>
+                <div className="flex justify-between text-xs mt-2 pt-2 border-t border-[#8B4513]">
+                  <span className="text-[#FFD700]">Value: {item.value} gold</span>
+                  <span className="text-[#E8D6B3]">Weight: {item.weight}</span>
                 </div>
               </div>
             </TooltipContent>
