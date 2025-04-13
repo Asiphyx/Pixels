@@ -3,7 +3,8 @@ import { bartenders } from "@shared/schema";
 import { storage } from './storage';
 
 // Load the API key from environment variables
-const OPENROUTER_API_KEY = process.env.OPEN_ROUTER_API;
+const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY;
+console.log("OpenRouter API Key available:", !!OPENROUTER_API_KEY);
 
 // Bartender personalities and backstories for the API prompt
 const bartenderBios = {
@@ -94,9 +95,11 @@ export async function getOpenRouterResponse(
   bartenderId?: number
 ): Promise<string> {
   if (!OPENROUTER_API_KEY) {
-    console.warn("OPEN_ROUTER_API is not set. Using fallback responses.");
+    console.warn("OPENROUTER_API_KEY is not set. Using fallback responses.");
     throw new Error("OpenRouter API key is not configured");
   }
+  
+  console.log("Getting AI response for bartender:", bartenderName);
 
   try {
     // Get bartender bio and traits

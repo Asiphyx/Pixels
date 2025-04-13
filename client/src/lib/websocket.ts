@@ -111,15 +111,35 @@ export const useWebSocketStore = create<WebSocketState>((set, get) => ({
           connected: true
         });
         
-        // Fetch available rooms
+        // Fetch available rooms and set default ones if API fails
         fetch('/api/rooms')
           .then(res => res.json())
           .then(rooms => {
             console.log('Available rooms:', rooms);
-            set({ rooms });
+            // Set rooms if we got valid response
+            if (Array.isArray(rooms) && rooms.length > 0) {
+              set({ rooms });
+            } else {
+              // Fallback default rooms if API returns empty
+              console.log('Using fallback room data');
+              const defaultRooms = [
+                { id: 1, name: "The Rose Garden", description: "A warm and inviting space with Amethyst's sweet service." },
+                { id: 2, name: "The Ocean View", description: "A thoughtful atmosphere where Sapphire offers clever insights." },
+                { id: 3, name: "The Dragon's Den", description: "An exciting corner where Ruby shares thrilling tales." }
+              ];
+              set({ rooms: defaultRooms });
+            }
           })
           .catch(err => {
             console.error('Failed to fetch rooms:', err);
+            // Fallback default rooms if API fails
+            console.log('Using fallback room data after API failure');
+            const defaultRooms = [
+              { id: 1, name: "The Rose Garden", description: "A warm and inviting space with Amethyst's sweet service." },
+              { id: 2, name: "The Ocean View", description: "A thoughtful atmosphere where Sapphire offers clever insights." },
+              { id: 3, name: "The Dragon's Den", description: "An exciting corner where Ruby shares thrilling tales." }
+            ];
+            set({ rooms: defaultRooms });
           });
         
         // Save avatar selection for later use
