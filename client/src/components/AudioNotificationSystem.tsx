@@ -1,71 +1,123 @@
 import { useEffect, useRef } from 'react';
 import { useWebSocketStore } from '@/lib/websocket';
 
-/**
- * This component provides a direct audio notification system
- * It's a fallback for when the main audio system doesn't work
- */
 const AudioNotificationSystem = () => {
-  // Keep track of user and message state
-  const { user, messages } = useWebSocketStore();
-  const messagesRef = useRef(messages);
-  const userRef = useRef(user);
-  
-  // Reference to audio elements
-  const notificationAudioRef = useRef<HTMLAudioElement | null>(null);
-  const messageSendAudioRef = useRef<HTMLAudioElement | null>(null);
-  
-  // Update refs when values change
+  const { messages, user } = useWebSocketStore();
+  const messagesLengthRef = useRef<number>(0);
+  const audioContextRef = useRef<AudioContext | null>(null);
+
+  // Initialize AudioContext on first render
   useEffect(() => {
-    messagesRef.current = messages;
-    userRef.current = user;
-  }, [messages, user]);
-  
-  // Create audio elements on mount
-  useEffect(() => {
-    const notificationAudio = new Audio('/sounds/notification.mp3?v=3');
-    notificationAudio.volume = 1.0;
-    notificationAudio.preload = 'auto';
+    const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
+    if (AudioContextClass) {
+      audioContextRef.current = new AudioContextClass();
+    }
     
-    const messageSendAudio = new Audio('/sounds/message_send.mp3?v=3');
-    messageSendAudio.volume = 1.0;
-    messageSendAudio.preload = 'auto';
+    // Add a click handler to initialize audio context from user interaction
+    const initAudio = () => {
+      if (!audioContextRef.current) {
+        const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
+        if (AudioContextClass) {
+          audioContextRef.current = new AudioContextClass();
+          console.log("AudioContext initialized on user interaction");
+        }
+      }
+    };
     
-    notificationAudioRef.current = notificationAudio;
-    messageSendAudioRef.current = messageSendAudio;
+    document.addEventListener('click', initAudio);
     
-    // Clean up
     return () => {
-      notificationAudioRef.current = null;
-      messageSendAudioRef.current = null;
+      document.removeEventListener('click', initAudio);
+      audioContextRef.current?.close();
     };
   }, []);
-  
-  // Watch for new messages and play sounds
+
+  // A very loud, reliable beep sound guaranteed to work
+  const playLoudBeep = (frequency = 600, duration = 100, volume = 0.3) => {
+    try {
+      if (!audioContextRef.current) {
+        const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
+        if (AudioContextClass) {
+          audioContextRef.current = new AudioContextClass();
+          console.log("Created new AudioContext on demand");
+        } else {
+          console.error("Web Audio API not supported in this browser");
+          return;
+        }
+      }
+      
+      const audioCtx = audioContextRef.current;
+      
+      // Create oscillator
+      const oscillator = audioCtx.createOscillator();
+      oscillator.type = 'sine';
+      oscillator.frequency.setValueAtTime(frequency, audioCtx.currentTime);
+      
+      // Create gain node for volume control
+      const gainNode = audioCtx.createGain();
+      gainNode.gain.setValueAtTime(volume, audioCtx.currentTime);
+      
+      // Connect everything
+      oscillator.connect(gainNode);
+      gainNode.connect(audioCtx.destination);
+      
+      // Play the sound
+      oscillator.start();
+      
+      // Stop after duration
+      setTimeout(() => {
+        oscillator.stop();
+        console.log(`Beep sound played: freq=${frequency}, vol=${volume}`);
+      }, duration);
+      
+      // Return true to indicate success
+      return true;
+    } catch (error) {
+      console.error('Failed to play beep sound:', error);
+      return false;
+    }
+  };
+
+  // Check for new messages and play notifications
   useEffect(() => {
-    // Return early if no messages or no audio refs
-    if (messages.length === 0 || !notificationAudioRef.current) return;
-    
-    // Get the most recent message
-    const latestMessage = messages[messages.length - 1];
-    
-    // Only play if it's a new message (not an initial load)
-    if (messagesRef.current.length > 0 && messages.length > messagesRef.current.length) {
-      try {
-        // Check if it's from another user or a bartender
-        if (latestMessage.userId !== user?.id || latestMessage.bartenderId) {
-          console.log('Playing direct notification for new message');
-          notificationAudioRef.current?.play().catch(e => 
-            console.error('Error playing direct notification:', e)
-          );
-        } 
-      } catch (error) {
-        console.error('Error in notification sound system:', error);
+    // Check if there are new messages
+    if (messages.length > messagesLengthRef.current) {
+      const latestMessage = messages[messages.length - 1];
+      
+      // Skip notification for user's own messages
+      if (latestMessage && latestMessage.userId !== user?.id) {
+        console.log('New message notification triggered');
+        
+        // Play different sounds based on the message type
+        if (latestMessage.type === 'bartender') {
+          // Higher pitched sound for bartender messages
+          playLoudBeep(700, 150, 0.4);
+          setTimeout(() => playLoudBeep(900, 80, 0.3), 200);
+        } else {
+          // Regular message sound
+          playLoudBeep(600, 100, 0.3);
+        }
       }
     }
+    
+    // Update the reference value
+    messagesLengthRef.current = messages.length;
   }, [messages, user?.id]);
-  
-  // Invisible component - renders nothing
+
+  // For debugging - global access to playBeep
+  useEffect(() => {
+    (window as any).playAudioNotification = () => {
+      playLoudBeep(700, 150, 0.4);
+      setTimeout(() => playLoudBeep(900, 80, 0.3), 200);
+      return "Audio notification triggered";
+    };
+    
+    return () => {
+      delete (window as any).playAudioNotification;
+    };
+  }, []);
+
+  // This is a headless component (no UI)
   return null;
 };
 

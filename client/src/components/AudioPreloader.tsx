@@ -1,100 +1,86 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useState } from 'react';
 
 /**
- * This component creates and preloads notification audio elements
- * It's an invisible component that only handles audio management
+ * Preloads audio context and sets up additional audio functions
+ * Acts as an additional redundant system for audio playback
  */
 const AudioPreloader = () => {
-  // Create refs for the audio elements
-  const notificationRef = useRef<HTMLAudioElement | null>(null);
-  const messageRef = useRef<HTMLAudioElement | null>(null);
-  
-  // Load and initialize audio elements
+  const [initialized, setInitialized] = useState(false);
+
   useEffect(() => {
-    // Create the audio elements
-    notificationRef.current = new Audio('/sounds/notification.mp3?v=preload');
-    messageRef.current = new Audio('/sounds/message_send.mp3?v=preload');
+    if (initialized) return;
+
+    // Initialize on user interaction
+    const initAudio = () => {
+      // Create test beep function using Audio nodes
+      const playTestBeep = () => {
+        try {
+          // Create context
+          const AudioContext = window.AudioContext || (window as any).webkitAudioContext;
+          if (!AudioContext) {
+            console.error('Web Audio API not supported');
+            return false;
+          }
+          
+          const context = new AudioContext();
+          
+          // Create oscillator for beep
+          const oscillator = context.createOscillator();
+          oscillator.type = 'triangle';
+          oscillator.frequency.setValueAtTime(800, context.currentTime);
+          
+          // Create gain node for volume
+          const gainNode = context.createGain();
+          gainNode.gain.setValueAtTime(0.5, context.currentTime);
+          
+          // Connect nodes
+          oscillator.connect(gainNode);
+          gainNode.connect(context.destination);
+          
+          // Play beep
+          oscillator.start();
+          setTimeout(() => {
+            oscillator.stop();
+            // Optional cleanup
+            setTimeout(() => {
+              context.close().catch(e => console.error('Error closing audio context:', e));
+            }, 100);
+          }, 200);
+          
+          return true;
+        } catch (error) {
+          console.error('Error in test beep:', error);
+          return false;
+        }
+      };
+
+      // Make function globally available
+      (window as any).playTestBeep = playTestBeep;
+      
+      // Don't immediately play a sound as it might be annoying
+      // Instead, we'll make the function available for testing
+      
+      // Mark as initialized
+      setInitialized(true);
+      
+      // Remove event listener
+      document.removeEventListener('click', initAudio);
+    };
     
-    // Set attributes
-    if (notificationRef.current) {
-      notificationRef.current.preload = 'auto';
-      notificationRef.current.volume = 1.0;
-    }
-    
-    if (messageRef.current) {
-      messageRef.current.preload = 'auto';
-      messageRef.current.volume = 1.0;
-    }
+    // Add event listener to initialize on first click
+    document.addEventListener('click', initAudio);
     
     // Cleanup
     return () => {
-      notificationRef.current = null;
-      messageRef.current = null;
-    };
-  }, []);
-  
-  // Expose a global function for playing notification sounds
-  useEffect(() => {
-    // Define global play function
-    (window as any).playNotificationSound = () => {
-      console.log('Explicit notification sound play requested');
-      try {
-        // Create a fresh audio element
-        const audio = new Audio('/sounds/notification.mp3?v=' + Date.now());
-        audio.volume = 1.0;
-        const playPromise = audio.play();
-        
-        if (playPromise) {
-          playPromise.then(() => {
-            console.log('Notification sound played successfully!');
-          }).catch(error => {
-            console.error('Failed to play notification sound:', error);
-          });
-        }
-      } catch (e) {
-        console.error('Error playing notification:', e);
+      document.removeEventListener('click', initAudio);
+      // Remove global function
+      if ((window as any).playTestBeep) {
+        delete (window as any).playTestBeep;
       }
     };
-    
-    return () => {
-      delete (window as any).playNotificationSound;
-    };
-  }, []);
-  
-  // Try to play a notification sound when a user clicks anywhere on the document
-  useEffect(() => {
-    const handleClick = () => {
-      console.log('Document clicked - trying to play notification');
-      try {
-        if (notificationRef.current) {
-          notificationRef.current.currentTime = 0;
-          const playPromise = notificationRef.current.play();
-          
-          if (playPromise) {
-            playPromise.then(() => {
-              console.log('Click-triggered notification played successfully!');
-              // Remove listener if we succeed
-              document.removeEventListener('click', handleClick);
-            }).catch(e => {
-              console.error('Click-triggered notification failed:', e);
-            });
-          }
-        }
-      } catch (e) {
-        console.error('Error in click notification:', e);
-      }
-    };
-    
-    // Add click listener
-    document.addEventListener('click', handleClick);
-    
-    return () => {
-      document.removeEventListener('click', handleClick);
-    };
-  }, []);
-  
-  // This component doesn't render anything visible
-  return null;
+  }, [initialized]);
+
+  return null; // This is a headless component
 };
 
 export default AudioPreloader;

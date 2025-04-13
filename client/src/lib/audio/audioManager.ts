@@ -291,6 +291,53 @@ class AudioManager {
   getCategoryVolume(category: SoundCategory): number {
     return this.config.categoryVolumes[category] * this.config.masterVolume;
   }
+  
+  /**
+   * Play a simple beep sound using Web Audio API (most reliable method)
+   * @param options - Options for the beep sound
+   */
+  playBeep(options: { 
+    frequency?: number; 
+    duration?: number; 
+    volume?: number;
+    type?: OscillatorType;
+  } = {}): void {
+    try {
+      const {
+        frequency = 800,
+        duration = 100,
+        volume = 0.1,
+        type = 'sine'
+      } = options;
+      
+      // Create audio context
+      const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+      
+      // Create oscillator and gain nodes
+      const oscillator = audioContext.createOscillator();
+      const gainNode = audioContext.createGain();
+      
+      // Set oscillator properties
+      oscillator.type = type;
+      oscillator.frequency.setValueAtTime(frequency, audioContext.currentTime);
+      
+      // Set volume based on gain and category volume
+      const effectiveVolume = volume * this.getCategoryVolume('ui');
+      gainNode.gain.setValueAtTime(effectiveVolume, audioContext.currentTime);
+      
+      // Connect nodes
+      oscillator.connect(gainNode);
+      gainNode.connect(audioContext.destination);
+      
+      // Start and stop oscillator
+      oscillator.start();
+      oscillator.stop(audioContext.currentTime + (duration / 1000));
+      
+      console.log('Played direct beep sound using Web Audio API');
+    } catch (error) {
+      console.error('Failed to play beep sound:', error);
+    }
+  }
 
   /**
    * Calculate the effective volume for a sound, taking into account all factors

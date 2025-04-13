@@ -23,33 +23,62 @@ const ChatMessages: FC = () => {
       if (latestMessage && latestMessage.userId !== user?.id) {
         console.log('New message detected - playing notification sound');
         
-        // Try all notification methods
-        
-        // 1. Try using the global sound functions
-        if ((window as any).playNotificationSound) {
-          (window as any).playNotificationSound();
-        }
-        
+        // Try our most reliable methods first
         if (latestMessage.type === 'bartender') {
-          // For bartender messages, also try the alert sound
-          if ((window as any).playAlertSound) {
-            setTimeout(() => {
-              (window as any).playAlertSound();
-            }, 300);
-          }
+          // For bartender messages
           
-          // 2. Also try through our system
-          tavernSoundscape.playUiSound('notification', 1.0);
-        } else if (latestMessage.type === 'user') {
+          // Try from SimpleSoundSystem (priority 1 - most reliable)
+          if ((window as any).playAlertNotification) {
+            (window as any).playAlertNotification();
+          } 
+          // Try from AudioNotificationSystem (priority 2)
+          else if ((window as any).playAudioNotification) {
+            (window as any).playAudioNotification();
+          }
+          // Try the direct very loud beep (priority 3)
+          else if ((window as any).playVeryLoudBeep) {
+            (window as any).playVeryLoudBeep(700, 150, 0.6);
+            setTimeout(() => (window as any).playVeryLoudBeep(900, 80, 0.4), 200);
+          }
+          // Last resorts
+          else {
+            // Try older methods as final fallbacks
+            if ((window as any).playAlertSound) {
+              (window as any).playAlertSound();
+            }
+            
+            // Also try through our legacy system
+            setTimeout(() => {
+              tavernSoundscape.playUiSound('notification', 1.0);
+            }, 100);
+          }
+        } else {
           // For user messages
-          tavernSoundscape.playUiSound('notification', 1.0);
-        }
-        
-        // Fallback to basic beep as a last resort
-        if ((window as any).playBeep) {
-          setTimeout(() => {
-            (window as any).playBeep();
-          }, 100);
+          
+          // Try from SimpleSoundSystem (priority 1 - most reliable)
+          if ((window as any).playMessageNotification) {
+            (window as any).playMessageNotification();
+          } 
+          // Try from AudioNotificationSystem (priority 2)
+          else if ((window as any).playAudioNotification) {
+            (window as any).playAudioNotification();
+          }
+          // Try the direct very loud beep (priority 3)
+          else if ((window as any).playVeryLoudBeep) {
+            (window as any).playVeryLoudBeep(600, 100, 0.5);
+          }
+          // Last resorts
+          else {
+            // Try older methods as final fallbacks
+            if ((window as any).playNotificationSound) {
+              (window as any).playNotificationSound();
+            }
+            
+            // Also try through our legacy system
+            setTimeout(() => {
+              tavernSoundscape.playUiSound('notification', 1.0);
+            }, 100);
+          }
         }
       }
     }
@@ -126,37 +155,49 @@ const ChatMessages: FC = () => {
     }
   };
 
-  // Function to test audio directly
+  // Function to test audio directly - using the most reliable approaches
   const playTestSound = () => {
     try {
       console.log('Playing test sounds directly...');
       
-      // Try using global sound functions first
-      if ((window as any).playNotificationSound) {
-        (window as any).playNotificationSound();
+      // Try our loudest, most reliable sound method first (from SimpleSoundSystem)
+      if ((window as any).playVeryLoudBeep) {
+        (window as any).playVeryLoudBeep(440, 100, 0.6); 
+        setTimeout(() => (window as any).playVeryLoudBeep(880, 100, 0.8), 150);
       }
       
-      if ((window as any).playAlertSound) {
-        setTimeout(() => {
-          (window as any).playAlertSound();
-        }, 500);
-      }
+      // Try our multi-tone notification
+      setTimeout(() => {
+        if ((window as any).playMessageNotification) {
+          (window as any).playMessageNotification();
+        }
+      }, 500);
       
-      if ((window as any).playMessageSound) {
-        setTimeout(() => {
-          (window as any).playMessageSound();
-        }, 1000);
-      }
+      // Try our alert notification
+      setTimeout(() => {
+        if ((window as any).playAlertNotification) {
+          (window as any).playAlertNotification();
+        }
+      }, 1000);
       
-      // Try beep as final fallback
-      if ((window as any).playBeep) {
-        setTimeout(() => {
-          (window as any).playBeep();
-        }, 1500);
-      }
+      // Try the test beep from AudioPreloader
+      setTimeout(() => {
+        if ((window as any).playTestBeep) {
+          (window as any).playTestBeep();
+        }
+      }, 1500);
       
-      // Also try through our system
-      tavernSoundscape.playUiSound('notification', 1.0);
+      // Try AudioNotificationSystem's beep
+      setTimeout(() => {
+        if ((window as any).playAudioNotification) {
+          (window as any).playAudioNotification();
+        }
+      }, 2000);
+      
+      // Also try old methods as a last resort
+      setTimeout(() => {
+        tavernSoundscape.playUiSound('notification', 1.0);
+      }, 2500);
       
     } catch (e) {
       console.error('Error in test sound:', e);
