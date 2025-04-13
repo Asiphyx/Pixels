@@ -4,6 +4,7 @@ import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import NotFound from "@/pages/not-found";
 import Tavern from "@/pages/Tavern";
+import ClearLocalData from "@/components/ClearLocalData";
 
 function Router() {
   return (
@@ -17,6 +18,7 @@ function Router() {
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
+      <ClearLocalData />
       <Router />
       <Toaster />
     </QueryClientProvider>

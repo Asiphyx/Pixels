@@ -42,15 +42,13 @@ const CharacterSelection: FC = () => {
   // Validation state
   const [validationError, setValidationError] = useState<string | null>(null);
   
-  // Auto-login if enabled and we have saved credentials from local storage
+  // Pre-fill the username if we have it stored
   useEffect(() => {
     const savedUsername = localStorage.getItem(STORAGE_KEY_USERNAME);
-    if (!user && rememberMe && savedUsername && savedUsername.trim() && !isLoggingIn && !isRegistering) {
-      // This is a temporary solution until we implement session-based authentication
-      // We'll auto-connect using the legacy system for now
-      connect(savedUsername, selectedAvatar);
+    if (savedUsername && savedUsername.trim()) {
+      setUsername(savedUsername);
     }
-  }, [user, rememberMe, isLoggingIn, isRegistering, connect, selectedAvatar]);
+  }, []);
   
   // Handle login/register form submission
   const handleSubmit = () => {
@@ -259,7 +257,7 @@ const CharacterSelection: FC = () => {
                   onChange={(e) => setRememberMe(e.target.checked)}
                 />
                 <label htmlFor="remember-me" className="ml-2 text-sm text-[#E8D6B3] font-['VT323']">
-                  Remember me
+                  Remember my username
                 </label>
               </div>
               
