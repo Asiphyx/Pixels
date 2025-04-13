@@ -214,7 +214,7 @@ const InventoryPanel: React.FC<InventoryPanelProps> = ({ isOpen = true, onClose 
                     className="flex flex-wrap gap-2"
                   >
                     {inventoryItems.length === 0 ? (
-                      <div className="text-gray-500 italic w-full text-center p-4">
+                      <div className="text-[#8B7359] italic w-full text-center p-4 bg-[#2C1810] rounded border border-[#8B4513]">
                         Your inventory is empty.
                       </div>
                     ) : (
@@ -377,7 +377,7 @@ const InventoryPanel: React.FC<InventoryPanelProps> = ({ isOpen = true, onClose 
                     </div>
                     
                     <div>
-                      <p className="text-xs text-gray-500 mb-1">Hands</p>
+                      <p className="text-xs text-[#E8D6B3] mb-1">Hands</p>
                       <Droppable droppableId="equipment-hands">
                         {(provided) => (
                           <div
@@ -397,7 +397,7 @@ const InventoryPanel: React.FC<InventoryPanelProps> = ({ isOpen = true, onClose 
                     </div>
                     
                     <div>
-                      <p className="text-xs text-gray-500 mb-1">Waist</p>
+                      <p className="text-xs text-[#E8D6B3] mb-1">Waist</p>
                       <Droppable droppableId="equipment-waist">
                         {(provided) => (
                           <div
@@ -417,7 +417,7 @@ const InventoryPanel: React.FC<InventoryPanelProps> = ({ isOpen = true, onClose 
                     </div>
                     
                     <div>
-                      <p className="text-xs text-gray-500 mb-1">Legs</p>
+                      <p className="text-xs text-[#E8D6B3] mb-1">Legs</p>
                       <Droppable droppableId="equipment-legs">
                         {(provided) => (
                           <div
@@ -437,7 +437,7 @@ const InventoryPanel: React.FC<InventoryPanelProps> = ({ isOpen = true, onClose 
                     </div>
                     
                     <div>
-                      <p className="text-xs text-gray-500 mb-1">Ring 1</p>
+                      <p className="text-xs text-[#E8D6B3] mb-1">Ring 1</p>
                       <Droppable droppableId="equipment-ring1">
                         {(provided) => (
                           <div
@@ -457,7 +457,7 @@ const InventoryPanel: React.FC<InventoryPanelProps> = ({ isOpen = true, onClose 
                     </div>
                     
                     <div>
-                      <p className="text-xs text-gray-500 mb-1">Ring 2</p>
+                      <p className="text-xs text-[#E8D6B3] mb-1">Ring 2</p>
                       <Droppable droppableId="equipment-ring2">
                         {(provided) => (
                           <div
@@ -477,7 +477,7 @@ const InventoryPanel: React.FC<InventoryPanelProps> = ({ isOpen = true, onClose 
                     </div>
                     
                     <div>
-                      <p className="text-xs text-gray-500 mb-1">Trinket 1</p>
+                      <p className="text-xs text-[#E8D6B3] mb-1">Trinket 1</p>
                       <Droppable droppableId="equipment-trinket1">
                         {(provided) => (
                           <div
@@ -497,7 +497,7 @@ const InventoryPanel: React.FC<InventoryPanelProps> = ({ isOpen = true, onClose 
                     </div>
                     
                     <div>
-                      <p className="text-xs text-gray-500 mb-1">Trinket 2</p>
+                      <p className="text-xs text-[#E8D6B3] mb-1">Trinket 2</p>
                       <Droppable droppableId="equipment-trinket2">
                         {(provided) => (
                           <div
@@ -530,7 +530,7 @@ const InventoryPanel: React.FC<InventoryPanelProps> = ({ isOpen = true, onClose 
                     className="flex flex-wrap gap-2"
                   >
                     {inventoryItems.filter(i => i.category === 'quest').length === 0 ? (
-                      <div className="text-gray-500 italic w-full text-center p-4">
+                      <div className="text-[#8B7359] italic w-full text-center p-4 bg-[#2C1810] rounded border border-[#8B4513]">
                         You don't have any quest items.
                       </div>
                     ) : (
@@ -556,30 +556,35 @@ const InventoryPanel: React.FC<InventoryPanelProps> = ({ isOpen = true, onClose 
         
         {/* Item details dialog */}
         <Dialog open={showItemDetails} onOpenChange={setShowItemDetails}>
-          <DialogContent>
+          <DialogContent className="border-4 border-[#8B4513] bg-[#2C1810] text-[#E8D6B3]" style={{
+            backgroundImage: "url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI0MCIgaGVpZ2h0PSI0MCIgdmlld0JveD0iMCAwIDQwIDQwIj48cmVjdCB4PSIwIiB5PSIwIiB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIGZpbGw9IiMzYTI0MTkiIG9wYWNpdHk9IjAuOCIvPjxwYXRoIGQ9Ik0wIDAgTDEwIDAgTDEwIDEwIEwwIDEwIFoiIGZpbGw9IiM0YTM0MjkiIG9wYWNpdHk9IjAuMiIvPjxwYXRoIGQ9Ik0yMCAwIEwzMCAwIEwzMCAxMCBMMjAgMTAgWiIgZmlsbD0iIzRhMzQyOSIgb3BhY2l0eT0iMC4yIi8+PHBhdGggZD0iTTEwIDEwIEwyMCAxMCBMMjAgMjAgTDEwIDIwIFoiIGZpbGw9IiM0YTM0MjkiIG9wYWNpdHk9IjAuMiIvPjxwYXRoIGQ9Ik0zMCAxMCBMNDAgMTAgTDQwIDIwIEwzMCAyMCBaIiBmaWxsPSIjNGEzNDI5IiBvcGFjaXR5PSIwLjIiLz48cGF0aCBkPSJNMCAyMCBMMTAgMjAgTDEwIDMwIEwwIDMwIFoiIGZpbGw9IiM0YTM0MjkiIG9wYWNpdHk9IjAuMiIvPjxwYXRoIGQ9Ik0yMCAyMCBMMzAgMjAgTDMwIDMwIEwyMCAzMCBaIiBmaWxsPSIjNGEzNDI5IiBvcGFjaXR5PSIwLjIiLz48cGF0aCBkPSJNMTAgMzAgTDIwIDMwIEwyMCA0MCBMMTAgNDAgWiIgZmlsbD0iIzRhMzQyOSIgb3BhY2l0eT0iMC4yIi8+PHBhdGggZD0iTTMwIDMwIEw0MCAzMCBMNDAgNDAgTDMwIDQwIFoiIGZpbGw9IiM0YTM0MjkiIG9wYWNpdHk9IjAuMiIvPjwvc3ZnPg==')",
+            backgroundRepeat: "repeat",
+          }}>
             {selectedItem && (
               <>
-                <DialogHeader>
-                  <DialogTitle className="flex items-center">
-                    <span className="mr-2">
+                <DialogHeader className="bg-[#3A2419] p-3 rounded border border-[#8B4513] shadow-inner">
+                  <DialogTitle className="flex items-center text-[#FFD700]">
+                    <span className="mr-2 text-2xl">
                       {selectedItem.icon.startsWith('http') 
                         ? <img src={selectedItem.icon} alt={selectedItem.name} className="h-6 w-6 object-contain" /> 
                         : categoryIcons[selectedItem.category as keyof typeof categoryIcons]}
                     </span>
                     {selectedItem.name}
                   </DialogTitle>
-                  <DialogDescription>
+                  <DialogDescription className="text-[#E8D6B3]">
                     <span className="capitalize">{selectedItem.rarity} {selectedItem.category}</span>
                   </DialogDescription>
                 </DialogHeader>
                 <div className="py-4">
-                  <p className="text-sm mb-4">{selectedItem.description}</p>
+                  <div className="bg-[#3A2419] p-3 rounded border border-[#8B4513] mb-4">
+                    <p className="text-sm text-[#E8D6B3]">{selectedItem.description}</p>
+                  </div>
                   
                   {selectedItem.effects && selectedItem.effects.length > 0 && (
                     <>
-                      <Separator className="my-2" />
-                      <h4 className="font-semibold text-sm mb-1">Effects:</h4>
-                      <ul className="text-sm pl-5 list-disc space-y-1">
+                      <Separator className="my-2 bg-[#8B4513]" />
+                      <h4 className="font-semibold text-sm mb-1 text-[#FFD700]">Effects:</h4>
+                      <ul className="text-sm pl-5 list-disc space-y-1 text-[#E8D6B3]">
                         {selectedItem.effects.map((effect, idx) => (
                           <li key={idx}>{effect.description}</li>
                         ))}
@@ -587,33 +592,44 @@ const InventoryPanel: React.FC<InventoryPanelProps> = ({ isOpen = true, onClose 
                     </>
                   )}
                   
-                  <Separator className="my-2" />
-                  <div className="grid grid-cols-2 text-sm">
+                  <Separator className="my-2 bg-[#8B4513]" />
+                  <div className="grid grid-cols-2 text-sm bg-[#3A2419] p-3 rounded border border-[#8B4513]">
                     <div>
-                      <p><span className="font-medium">Value:</span> {selectedItem.value} gold</p>
-                      <p><span className="font-medium">Weight:</span> {selectedItem.weight} units</p>
+                      <p className="mb-1"><span className="font-medium text-[#FFD700]">Value:</span> <span className="text-[#FFD700]">{selectedItem.value} gold</span></p>
+                      <p><span className="font-medium text-[#E8D6B3]">Weight:</span> <span className="text-[#E8D6B3]">{selectedItem.weight} units</span></p>
                     </div>
                     <div>
-                      <p><span className="font-medium">Stackable:</span> {selectedItem.stackable ? 'Yes' : 'No'}</p>
+                      <p className="mb-1"><span className="font-medium text-[#E8D6B3]">Stackable:</span> <span className="text-[#E8D6B3]">{selectedItem.stackable ? 'Yes' : 'No'}</span></p>
                       {selectedItem.stackable && selectedItem.quantity && (
-                        <p><span className="font-medium">Quantity:</span> {selectedItem.quantity}</p>
+                        <p className="mb-1"><span className="font-medium text-[#E8D6B3]">Quantity:</span> <span className="text-[#E8D6B3]">{selectedItem.quantity}</span></p>
                       )}
-                      <p><span className="font-medium">Usable:</span> {selectedItem.usable ? 'Yes' : 'No'}</p>
-                      <p><span className="font-medium">Equippable:</span> {selectedItem.equippable ? 'Yes' : 'No'}</p>
+                      <p className="mb-1"><span className="font-medium text-[#E8D6B3]">Usable:</span> <span className="text-[#E8D6B3]">{selectedItem.usable ? 'Yes' : 'No'}</span></p>
+                      <p><span className="font-medium text-[#E8D6B3]">Equippable:</span> <span className="text-[#E8D6B3]">{selectedItem.equippable ? 'Yes' : 'No'}</span></p>
                     </div>
                   </div>
                 </div>
                 <DialogFooter className="flex justify-between">
-                  <Button variant="destructive" onClick={handleDropItem}>
+                  <Button 
+                    variant="destructive" 
+                    onClick={handleDropItem}
+                    className="bg-[#8B0000] hover:bg-[#A00000] border border-[#8B4513]"
+                  >
                     Drop
                   </Button>
                   <div className="space-x-2">
                     {selectedItem.usable && (
-                      <Button onClick={handleUseItem}>
+                      <Button 
+                        onClick={handleUseItem}
+                        className="bg-[#8B4513] hover:bg-[#9B5523] text-[#FFD700] border-none"
+                      >
                         Use
                       </Button>
                     )}
-                    <Button variant="outline" onClick={() => setShowItemDetails(false)}>
+                    <Button 
+                      variant="outline" 
+                      onClick={() => setShowItemDetails(false)}
+                      className="border-[#8B4513] text-[#E8D6B3] hover:bg-[#3A2419] hover:text-[#FFD700]"
+                    >
                       Close
                     </Button>
                   </div>
