@@ -11,6 +11,8 @@ import { tavernSoundscape } from '@/lib/audio/tavernSoundscape';
 import { audioManager } from '@/lib/audio/audioManager';
 import { InventoryButton, InventoryItemPicker } from './inventory';
 import AudioNotificationSystem from './AudioNotificationSystem';
+import AudioPreloader from './AudioPreloader';
+import SimpleSoundSystem from './SimpleSoundSystem';
 
 const TavernApp: FC = () => {
   const { user, showMenu, toggleMenu } = useWebSocketStore();
@@ -195,8 +197,10 @@ const TavernApp: FC = () => {
       {/* Menu */}
       {showMenu && <TavernMenu onClose={handleMenuToggle} />}
       
-      {/* Invisible component that handles audio notifications directly */}
+      {/* Invisible components that handle audio notifications directly */}
       <AudioNotificationSystem />
+      <AudioPreloader />
+      <SimpleSoundSystem />
     </div>
   );
 };
