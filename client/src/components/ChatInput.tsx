@@ -79,38 +79,64 @@ const ChatInput: FC = () => {
               <div className="p-2 text-[#FFD700] font-['VT323'] text-sm border-b border-[#8B4513]">
                 Mention a bartender
               </div>
-              {/* Match bartender to room by default */}
+              
+              {/* Current room bartender with special highlighting */}
               <div 
-                className="p-2 hover:bg-[#8B4513] cursor-pointer text-[#E8D6B3] font-['VT323']"
+                className="p-2 hover:bg-[#8B4513] cursor-pointer font-['VT323'] flex items-center border-l-4 border-[#FFD700]"
                 onClick={() => insertMention(roomId === 1 ? "Amethyst" : roomId === 2 ? "Sapphire" : "Ruby")}
               >
-                {roomId === 1 ? "Amethyst" : roomId === 2 ? "Sapphire" : "Ruby"} (current room)
+                <div className="w-6 h-6 mr-2 flex items-center justify-center rounded-full bg-[#8B4513] text-[#FFD700]">★</div>
+                <div>
+                  <div className="text-[#FFD700]">
+                    {roomId === 1 ? "Amethyst" : roomId === 2 ? "Sapphire" : "Ruby"}
+                  </div>
+                  <div className="text-[#E8D6B3] text-xs opacity-70">
+                    Currently serving in this room
+                  </div>
+                </div>
               </div>
+              
               {/* All bartenders options */}
               {roomId !== 1 && (
                 <div 
-                  className="p-2 hover:bg-[#8B4513] cursor-pointer text-[#E8D6B3] font-['VT323']"
+                  className="p-2 hover:bg-[#8B4513] cursor-pointer text-[#E8D6B3] font-['VT323'] flex items-center"
                   onClick={() => insertMention("Amethyst")}
                 >
-                  Amethyst (The Rose Garden)
+                  <div className="w-6 h-6 mr-2 flex items-center justify-center rounded-full bg-[#4A3429] text-[#E8D6B3]">1</div>
+                  <div>
+                    <div className="text-[#E8D6B3]">Amethyst</div>
+                    <div className="text-[#E8D6B3] text-xs opacity-70">Serving in The Rose Garden</div>
+                  </div>
                 </div>
               )}
               {roomId !== 2 && (
                 <div 
-                  className="p-2 hover:bg-[#8B4513] cursor-pointer text-[#E8D6B3] font-['VT323']"
+                  className="p-2 hover:bg-[#8B4513] cursor-pointer text-[#E8D6B3] font-['VT323'] flex items-center"
                   onClick={() => insertMention("Sapphire")}
                 >
-                  Sapphire (The Ocean View)
+                  <div className="w-6 h-6 mr-2 flex items-center justify-center rounded-full bg-[#4A3429] text-[#E8D6B3]">2</div>
+                  <div>
+                    <div className="text-[#E8D6B3]">Sapphire</div>
+                    <div className="text-[#E8D6B3] text-xs opacity-70">Serving in The Ocean View</div>
+                  </div>
                 </div>
               )}
               {roomId !== 3 && (
                 <div 
-                  className="p-2 hover:bg-[#8B4513] cursor-pointer text-[#E8D6B3] font-['VT323']"
+                  className="p-2 hover:bg-[#8B4513] cursor-pointer text-[#E8D6B3] font-['VT323'] flex items-center"
                   onClick={() => insertMention("Ruby")}
                 >
-                  Ruby (The Dragon's Den)
+                  <div className="w-6 h-6 mr-2 flex items-center justify-center rounded-full bg-[#4A3429] text-[#E8D6B3]">3</div>
+                  <div>
+                    <div className="text-[#E8D6B3]">Ruby</div>
+                    <div className="text-[#E8D6B3] text-xs opacity-70">Serving in The Dragon's Den</div>
+                  </div>
                 </div>
               )}
+              
+              <div className="p-2 border-t border-[#8B4513] text-[#E8D6B3] text-xs opacity-70">
+                Tip: You can also manually type @BartenderName in your message
+              </div>
             </div>
           )}
         </div>
