@@ -154,15 +154,27 @@ export const useWebSocketStore = create<WebSocketState>((set, get) => ({
               break;
               
             case WebSocketMessageType.NEW_MESSAGE:
-              set(state => ({ 
-                messages: [...state.messages, data.payload.message] 
-              }));
+              console.log("New message received:", data.payload.message);
+              // Check if message has the required properties before adding
+              if (data.payload.message && typeof data.payload.message === 'object' && data.payload.message.content) {
+                set(state => ({ 
+                  messages: [...state.messages, data.payload.message] 
+                }));
+              } else {
+                console.error("Invalid message format received:", data.payload.message);
+              }
               break;
               
             case WebSocketMessageType.BARTENDER_RESPONSE:
-              set(state => ({ 
-                messages: [...state.messages, data.payload.message] 
-              }));
+              console.log("Bartender response received:", data.payload.message);
+              // Check if message has the required properties before adding
+              if (data.payload.message && typeof data.payload.message === 'object' && data.payload.message.content) {
+                set(state => ({ 
+                  messages: [...state.messages, data.payload.message] 
+                }));
+              } else {
+                console.error("Invalid bartender message format received:", data.payload.message);
+              }
               break;
               
             case WebSocketMessageType.ROOM_USERS:
