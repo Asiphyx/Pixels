@@ -1592,28 +1592,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return;
       }
       
-      const token = parsedUrl.searchParams.get('token');
-      const avatar = parsedUrl.searchParams.get('avatar');
-      
-      if (token && avatar) {
-        try {
-          // Try to authenticate user from URL parameters
-          const userData: InsertUser = {
-            username: token,
-            avatar: avatar,
-            roomId: 1 // Default to first room (The Rose Garden)
-          };
-          
-          wss.handleUpgrade(request, socket, head, (webSocket) => {
-            wss.emit('connection', webSocket, request, userData);
-          });
-          return; // Important: return early to avoid continuing
-        } catch (error) {
-          console.error('[websocket] Error processing query parameters:', error);
-        }
-      }
-      
-      // If we reach here, no credentials were in the URL or they were invalid
+      // Accept the connection, but don't set userData yet
+      // The client will need to authenticate with proper credentials via login/register
       wss.handleUpgrade(request, socket, head, (webSocket) => {
         wss.emit('connection', webSocket, request);
       });
