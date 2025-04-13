@@ -6,15 +6,32 @@ import { z } from "zod";
 export const users = pgTable("users", {
   id: serial("id").primaryKey(),
   username: text("username").notNull().unique(),
+  email: text("email").unique(),
+  passwordHash: text("password_hash"),
   avatar: text("avatar").notNull(),
   roomId: integer("room_id").notNull().default(1),
   joinedAt: timestamp("joined_at").defaultNow(),
-  online: boolean("online").default(true)
+  online: boolean("online").default(true),
+  // Player stats
+  level: integer("level").default(1),
+  // Player currencies
+  silver: integer("silver").default(0),
+  gold: integer("gold").default(0)
 });
 
 export const insertUserSchema = createInsertSchema(users).omit({
   id: true,
-  joinedAt: true
+  joinedAt: true,
+  passwordHash: true
+});
+
+export const userAuthSchema = z.object({
+  username: z.string().min(3).max(50),
+  password: z.string().min(6),
+});
+
+export const userRegisterSchema = userAuthSchema.extend({
+  email: z.string().email().optional(),
 });
 
 // Chat Room model
@@ -111,6 +128,72 @@ export const memoryEntrySchema = z.object({
   importance: z.number().min(1).max(5) // 1-5 scale of importance
 });
 
+// Inventory Item model
+export const items = pgTable("items", {
+  id: serial("id").primaryKey(),
+  name: text("name").notNull(),
+  description: text("description").notNull(),
+  type: text("type").notNull(), // weapon, armor, consumable, quest, etc.
+  rarity: text("rarity").notNull().default("common"), // common, uncommon, rare, epic, legendary
+  value: integer("value").notNull(), // Value in silver
+  weight: integer("weight").notNull(), // Weight in arbitrary units
+  stackable: boolean("stackable").default(false),
+  maxStack: integer("max_stack").default(1),
+  icon: text("icon").notNull().default("default_item"),
+  stats: jsonb("stats").notNull().default('{}'), // For damage, defense, effects, etc.
+  createdAt: timestamp("created_at").defaultNow()
+});
+
+export const insertItemSchema = createInsertSchema(items).omit({
+  id: true,
+  createdAt: true
+});
+
+// User Inventory model
+export const userInventory = pgTable("user_inventory", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull(),
+  itemId: integer("item_id").notNull(),
+  quantity: integer("quantity").notNull().default(1),
+  equipped: boolean("equipped").default(false),
+  equipSlot: text("equip_slot"), // head, chest, weapon, etc. - null if not equippable
+  updatedAt: timestamp("updated_at").defaultNow()
+});
+
+export const insertUserInventorySchema = createInsertSchema(userInventory).omit({
+  id: true,
+  updatedAt: true
+});
+
+// Equipment Slots model to define valid slot types
+export const equipmentSlotTypes = z.enum([
+  'head',
+  'neck',
+  'chest',
+  'hands',
+  'waist',
+  'legs',
+  'feet',
+  'mainHand',
+  'offHand',
+  'ring1',
+  'ring2',
+  'trinket'
+]);
+
+// Define item stats schema
+export const itemStatsSchema = z.object({
+  damage: z.number().optional(),
+  defense: z.number().optional(),
+  health: z.number().optional(),
+  mana: z.number().optional(),
+  strength: z.number().optional(),
+  dexterity: z.number().optional(),
+  intelligence: z.number().optional(),
+  effects: z.array(z.string()).optional(),
+  requirements: z.record(z.string(), z.number()).optional(),
+});
+
 // Type definitions
 export type User = typeof users.$inferSelect;
 export type InsertUser = z.infer<typeof insertUserSchema>;
@@ -127,6 +210,14 @@ export type InsertBartender = z.infer<typeof insertBartenderSchema>;
 export type MenuItem = typeof menuItems.$inferSelect;
 export type InsertMenuItem = z.infer<typeof insertMenuItemSchema>;
 
+export type Item = typeof items.$inferSelect;
+export type InsertItem = z.infer<typeof insertItemSchema>;
+export type ItemStats = z.infer<typeof itemStatsSchema>;
+
+export type UserInventory = typeof userInventory.$inferSelect;
+export type InsertUserInventory = z.infer<typeof insertUserInventorySchema>;
+export type EquipmentSlot = z.infer<typeof equipmentSlotTypes>;
+
 export type BartenderMood = typeof bartenderMoods.$inferSelect;
 export type InsertBartenderMood = z.infer<typeof insertBartenderMoodSchema>;
 
@@ -136,6 +227,7 @@ export type MemoryEntry = z.infer<typeof memoryEntrySchema>;
 
 // Websocket message types
 export enum WebSocketMessageType {
+  // Existing message types
   JOIN_ROOM = 'join_room',
   LEAVE_ROOM = 'leave_room',
   SEND_MESSAGE = 'send_message',
@@ -153,6 +245,33 @@ export enum WebSocketMessageType {
   GET_MOODS = 'get_moods',
   GET_MEMORIES = 'get_memories',
   MEMORIES_RESPONSE = 'memories_response',
+  
+  // Authentication message types
+  LOGIN = 'login',
+  REGISTER = 'register',
+  LOGOUT = 'logout',
+  AUTH_RESPONSE = 'auth_response',
+  
+  // Inventory message types
+  GET_INVENTORY = 'get_inventory',
+  INVENTORY_UPDATE = 'inventory_update',
+  EQUIP_ITEM = 'equip_item',
+  UNEQUIP_ITEM = 'unequip_item',
+  USE_ITEM = 'use_item',
+  ADD_ITEM = 'add_item',
+  REMOVE_ITEM = 'remove_item',
+  
+  // Currency message types
+  CURRENCY_UPDATE = 'currency_update',
+  ADD_CURRENCY = 'add_currency',
+  SPEND_CURRENCY = 'spend_currency',
+  
+  // Shop/transaction message types
+  SHOP_OPEN = 'shop_open',
+  BUY_ITEM = 'buy_item',
+  SELL_ITEM = 'sell_item',
+  
+  // Error messages
   ERROR = 'error'
 }
 
