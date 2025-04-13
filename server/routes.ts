@@ -422,11 +422,33 @@ async function handleMessage(client: ConnectedClient, rawMessage: string) {
             }
           }));
           
-          // Get and send room messages
+          // Get room messages and send each one individually
           const messages = await storage.getMessagesByRoom(client.roomId);
+          
+          // First send the array as a JOIN_ROOM payload
+          client.socket.send(JSON.stringify({
+            type: WebSocketMessageType.JOIN_ROOM,
+            payload: { 
+              room: await storage.getRoom(client.roomId),
+              messages
+            }
+          }));
+          
+          // Add a welcome system message
+          const welcomeMessage = {
+            id: Date.now(),
+            content: `${client.username} has joined the tavern.`,
+            type: 'system',
+            userId: null,
+            roomId: client.roomId,
+            bartenderId: null,
+            timestamp: new Date()
+          };
+          
+          // Send the welcome message (using proper message format)
           client.socket.send(JSON.stringify({
             type: WebSocketMessageType.NEW_MESSAGE,
-            payload: { messages }
+            payload: { message: welcomeMessage }
           }));
           
           // Get and send online users

@@ -151,7 +151,7 @@ export const useWebSocketStore = create<WebSocketState>((set, get) => ({
               if (data.payload && data.payload.room) {
                 // Make sure messages is always a valid array
                 const validMessages = (data.payload.messages || []).filter(
-                  msg => msg && typeof msg === 'object' && msg.content
+                  (msg: any) => msg && typeof msg === 'object' && msg.content
                 );
                 
                 set({ 
@@ -165,26 +165,44 @@ export const useWebSocketStore = create<WebSocketState>((set, get) => ({
               break;
               
             case WebSocketMessageType.NEW_MESSAGE:
-              console.log("New message received:", data.payload.message);
-              // Check if message has the required properties before adding
+              console.log("New message received:", data.payload);
+              
+              // Handle both single message and array of messages
               if (data.payload.message && typeof data.payload.message === 'object' && data.payload.message.content) {
+                // Single message case
                 set(state => ({ 
                   messages: [...state.messages, data.payload.message] 
                 }));
+                console.log("Added single message to chat:", data.payload.message.content);
+              } else if (Array.isArray(data.payload.messages)) {
+                // Array of messages case (legacy support)
+                const validMessages = data.payload.messages.filter(
+                  (msg: any) => msg && typeof msg === 'object' && msg.content
+                );
+                
+                if (validMessages.length > 0) {
+                  set(state => ({ 
+                    messages: [...state.messages, ...validMessages] 
+                  }));
+                  console.log("Added multiple messages to chat:", validMessages.length);
+                }
               } else {
-                console.error("Invalid message format received:", data.payload.message);
+                console.error("Invalid message format received:", data.payload);
               }
               break;
               
             case WebSocketMessageType.BARTENDER_RESPONSE:
-              console.log("Bartender response received:", data.payload.message);
-              // Check if message has the required properties before adding
+              console.log("Bartender response received:", data.payload);
+              
+              // Handle both single message and array of messages
               if (data.payload.message && typeof data.payload.message === 'object' && data.payload.message.content) {
+                // Single message case
                 set(state => ({ 
                   messages: [...state.messages, data.payload.message] 
                 }));
+                console.log("Added bartender message to chat:", data.payload.message.content);
               } else {
-                console.error("Invalid bartender message format received:", data.payload.message);
+                console.error("Invalid bartender message format received:", data.payload);
               }
               break;
               
