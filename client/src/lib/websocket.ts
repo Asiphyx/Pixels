@@ -185,11 +185,31 @@ export const useWebSocketStore = create<WebSocketState>((set, get) => ({
                   (msg: any) => msg && typeof msg === 'object' && msg.content
                 );
                 
-                set({ 
-                  roomId: data.payload.room.id,
-                  messages: validMessages
+                set(state => {
+                  // Only set messages if we received them, otherwise keep existing messages
+                  const messages = validMessages.length > 0 ? validMessages : state.messages;
+                  
+                  console.log(`Setting roomId to ${data.payload.room.id} with ${messages.length} messages`);
+                  return { 
+                    roomId: data.payload.room.id,
+                    messages: messages
+                  };
                 });
-                console.log("Set room with valid messages:", validMessages.length);
+                
+                // Immediately fetch messages for this room in case they weren't included
+                if (!data.payload.messages || validMessages.length === 0) {
+                  fetch(`/api/rooms/${data.payload.room.id}/messages`)
+                    .then(res => res.json())
+                    .then(messages => {
+                      if (Array.isArray(messages) && messages.length > 0) {
+                        console.log(`Fetched ${messages.length} messages for room ${data.payload.room.id}`);
+                        set({ messages });
+                      }
+                    })
+                    .catch(err => {
+                      console.error("Error fetching room messages:", err);
+                    });
+                }
               } else {
                 console.error("Invalid JOIN_ROOM data:", data.payload);
               }

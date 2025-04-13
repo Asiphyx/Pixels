@@ -128,9 +128,12 @@ async function handleMessage(client: ConnectedClient, rawMessage: string) {
     switch (type) {
       case WebSocketMessageType.JOIN_ROOM: {
         const roomId = z.number().parse(payload.roomId);
+        console.log(`User ${client.userId} (${client.username}) attempting to join room ${roomId}`);
+        
         const room = await storage.getRoom(roomId);
         
         if (!room) {
+          console.error(`Room ${roomId} not found`);
           client.socket.send(JSON.stringify({
             type: WebSocketMessageType.ERROR,
             payload: { message: "Room not found" }
@@ -138,21 +141,26 @@ async function handleMessage(client: ConnectedClient, rawMessage: string) {
           return;
         }
         
+        console.log(`Room found: ${room.name} (${room.id})`);
+        
         // Update client's room
         const oldRoomId = client.roomId;
         client.roomId = roomId;
         
         // Update user's room in storage
         await storage.updateUserRoom(client.userId, roomId);
+        console.log(`User ${client.userId} room updated to ${roomId} in storage`);
         
         // Get recent messages
         const messages = await storage.getMessagesByRoom(roomId);
+        console.log(`Retrieved ${messages.length} messages for room ${roomId}`);
         
         // Send room info and messages to client
         client.socket.send(JSON.stringify({
           type: WebSocketMessageType.JOIN_ROOM,
           payload: { room, messages }
         }));
+        console.log(`Sent JOIN_ROOM response to client with room ${room.name} and ${messages.length} messages`);
         
         // Notify others in old room that user left
         broadcastToRoom(oldRoomId, {
@@ -1144,7 +1152,7 @@ async function handleBartenderResponse(message: string, roomId: number, username
   // Force a response if a specific bartender is mentioned or if the random chance is met
   const shouldRespond = forcedBartenderName ? true : Math.random() > 0.6; // 40% chance to respond if not forced
   
-  console.log(`Handling bartender response: shouldRespond=${shouldRespond}, message="${message}", roomId=${roomId}, username="${username}", forcedBartenderName=${forcedBartenderName || 'none'}`);
+  console.log(`Handling bartender response: shouldRespond=${shouldRespond}, message="${message}", roomId=${roomId}, username="${username}", forcedBartenderName=${forcedBartenderName || 'none'}, userId=${userId || 'none'}`);
   
   if (shouldRespond) {
     // If a specific bartender is mentioned, use that one instead of the room's default
@@ -1155,7 +1163,6 @@ async function handleBartenderResponse(message: string, roomId: number, username
       console.log(`Looking for bartender by name: "${forcedBartenderName}"`);
       const bartenders = await storage.getBartenders();
       console.log(`Available bartenders:`, bartenders.map(b => ({id: b.id, name: b.name})));
-      
       const foundBartender = bartenders.find(b => b.name.toLowerCase() === forcedBartenderName.toLowerCase());
       if (foundBartender) {
         bartenderId = foundBartender.id;
@@ -1355,6 +1362,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error fetching rooms:", error);
       res.status(500).json({ message: "Failed to fetch rooms" });
+    }
+  });
+  
+  app.get("/api/rooms/:roomId/messages", async (req: Request, res: Response) => {
+    try {
+      const roomId = parseInt(req.params.roomId, 10);
+      if (isNaN(roomId)) {
+        return res.status(400).json({ message: "Invalid room ID" });
+      }
+      
+      const messages = await storage.getMessagesByRoom(roomId);
+      console.log(`Fetched ${messages.length} messages for room ${roomId} via API`);
+      res.json(messages);
+    } catch (error) {
+      console.error(`Error fetching messages for room ${req.params.roomId}:`, error);
+      res.status(500).json({ message: "Failed to fetch room messages" });
     }
   });
   
