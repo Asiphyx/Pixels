@@ -1,17 +1,38 @@
-import { FC, useEffect, useRef } from 'react';
+import { FC, useEffect, useRef, useState } from 'react';
 import { useWebSocketStore } from '@/lib/websocket';
 import { Message } from '@shared/schema';
 import { BartenderAvatar } from '@/assets/svgs/bartenders';
 import { PatronAvatar } from '@/assets/svgs/tavern-patrons';
+import { tavernSoundscape } from '@/lib/audio/tavernSoundscape';
 
 const ChatMessages: FC = () => {
   const { messages, user, onlineUsers } = useWebSocketStore();
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const messagesLengthRef = useRef<number>(0);
 
-  // Auto scroll to bottom on new messages
+  // Auto scroll to bottom on new messages and play notification sound
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages]);
+    
+    // If there are more messages than before, play a notification sound
+    // Only when it's not a message from the current user
+    if (messages.length > messagesLengthRef.current) {
+      const latestMessage = messages[messages.length - 1];
+      
+      // Don't play notification sound for the current user's messages
+      if (latestMessage && latestMessage.userId !== user?.id) {
+        // Play different sounds based on message type
+        if (latestMessage.type === 'bartender') {
+          tavernSoundscape.playUiSound('notification');
+        } else if (latestMessage.type === 'user') {
+          tavernSoundscape.playUiSound('notification');
+        }
+      }
+    }
+    
+    // Update the reference for next comparison
+    messagesLengthRef.current = messages.length;
+  }, [messages, user?.id]);
 
   const renderMessage = (message: Message) => {
     switch (message.type) {

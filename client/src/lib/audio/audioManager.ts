@@ -193,7 +193,14 @@ class AudioManager {
     const effectiveVolume = newVolume * this.getCategoryVolume(sound.category);
     
     if (playId !== undefined) {
-      sound.howl.fade(sound.howl.volume(playId), effectiveVolume, duration, playId);
+      try {
+        const currentVolume = sound.howl.volume(playId);
+        if (typeof currentVolume === 'number') {
+          sound.howl.fade(currentVolume, effectiveVolume, duration, playId);
+        }
+      } catch (error) {
+        console.error('Error fading sound with ID', id, error);
+      }
     } else {
       // Get all playing instances
       const playingIds = this.playing.get(id) || [];
@@ -202,8 +209,15 @@ class AudioManager {
       sound.volume = newVolume;
       
       // Apply fade to all currently playing instances
-      playingIds.forEach(id => {
-        sound.howl.fade(sound.howl.volume(id), effectiveVolume, duration, id);
+      playingIds.forEach(playId => {
+        try {
+          const currentVolume = sound.howl.volume(playId);
+          if (typeof currentVolume === 'number') {
+            sound.howl.fade(currentVolume, effectiveVolume, duration, playId);
+          }
+        } catch (error) {
+          console.error('Error fading sound with ID', id, error);
+        }
       });
     }
   }
