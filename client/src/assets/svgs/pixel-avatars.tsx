@@ -1,7 +1,7 @@
 import { FC } from 'react';
 
 // Import PNG avatar images from assets directory
-import bard from '@/assets/images/backgroundless/ruby.png';
+import bard from '@/assets/images/characters/PixelBard.png';
 import knight from '@/assets/images/backgroundless/sapphire.png';
 import wizard from '@/assets/images/backgroundless/amethyst.png';
 import merchant from '@/assets/images/backgroundless/emerald.png';
@@ -40,14 +40,14 @@ export const PixelAvatar: FC<PixelAvatarProps> = ({ name, size = 32, className =
   
   return (
     <div 
-      className={`bg-[#3A2419] rounded-full overflow-hidden flex items-center justify-center ${className}`}
+      className={`bg-[#3A2419] overflow-hidden flex items-center justify-center ${className}`}
       style={{ width: size, height: size }}
       title={RoleDescriptions[lowerName as keyof typeof RoleDescriptions] || ""}
     >
       <img 
         src={avatarSrc} 
         alt={`${name} avatar`}
-        className="w-full h-full object-cover"
+        className="w-full h-full object-contain"
       />
     </div>
   );
