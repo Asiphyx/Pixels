@@ -239,69 +239,51 @@ const InventoryPanel: FC<InventoryPanelProps> = ({ onClose }) => {
                 const isSelected = selectedSlot === slot.id;
                 
                 return (
-                  <Droppable key={slot.id} droppableId={`equipment-${slot.id}`}>
-                    {(provided, snapshot) => (
-                      <div 
-                        ref={provided.innerRef}
-                        {...provided.droppableProps}
-                        className={`${slot.className} flex flex-col items-center`}
-                      >
-                        <div 
-                          className={`equipment-slot w-12 h-12 rounded border-2 
-                                    ${equippedItem 
-                                      ? 'bg-[#1C0E05] border-[#A05723]' 
-                                      : 'bg-[#2C1810] border-[#614119]'}
-                                    ${isSelected ? 'ring-2 ring-[#FFD700]' : ''}
-                                    ${snapshot.isDraggingOver ? 'border-[#FFD700] ring-2 ring-[#FFD700]' : ''}
-                                    flex items-center justify-center cursor-pointer
-                                    hover:border-[#9B5523] transition-colors`}
-                          onClick={() => !equippedItem && handleSlotSelect(slot.id as EquipmentSlot)}
-                          style={equippedItem ? {
-                            boxShadow: 'inset 0 0 10px rgba(0,0,0,0.6)'
-                          } : {}}
-                        >
-                          {equippedItem ? (
-                            <Draggable 
-                              draggableId={`equip-${equippedItem.itemId}`}
-                              index={0}
+                  <div 
+                    key={slot.id}
+                    className={`${slot.className} flex flex-col items-center`}
+                  >
+                    <div 
+                      className={`equipment-slot w-12 h-12 rounded border-2 
+                                ${equippedItem 
+                                  ? 'bg-[#1C0E05] border-[#A05723]' 
+                                  : 'bg-[#2C1810] border-[#614119]'}
+                                ${isSelected ? 'ring-2 ring-[#FFD700]' : ''}
+                                flex items-center justify-center cursor-pointer
+                                hover:border-[#9B5523] transition-colors`}
+                      onClick={() => !equippedItem && handleSlotSelect(slot.id as EquipmentSlot)}
+                      style={equippedItem ? {
+                        boxShadow: 'inset 0 0 10px rgba(0,0,0,0.6)'
+                      } : {}}
+                    >
+                      {equippedItem ? (
+                        <div className="relative group">
+                          <div className="w-10 h-10 flex items-center justify-center">
+                            <span className={`text-lg ${getRarityColor(equippedItem.item.rarity)}`}>
+                              {equippedItem.item.icon === 'default_item' ? '⚔️' : equippedItem.item.icon}
+                            </span>
+                          </div>
+                          
+                          {/* Tooltip */}
+                          <div className="tooltip-content invisible group-hover:visible absolute left-1/2 transform -translate-x-1/2 top-full mt-1 z-30
+                                          bg-[#1C0E05] text-[#E8D6B3] p-2 rounded shadow-lg border border-[#8B4513] text-xs whitespace-nowrap">
+                            <div className={`font-bold ${getRarityColor(equippedItem.item.rarity)}`}>{equippedItem.item.name}</div>
+                            <button 
+                              className="mt-1 px-2 py-1 text-xs bg-[#3A2419] hover:bg-[#4A3429] rounded text-[#E8D6B3]"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleUnequip(equippedItem.itemId);
+                              }}
                             >
-                              {(provided, snapshot) => (
-                                <div 
-                                  ref={provided.innerRef}
-                                  {...provided.draggableProps}
-                                  {...provided.dragHandleProps}
-                                  className={`relative group w-10 h-10 flex items-center justify-center
-                                            ${snapshot.isDragging ? 'opacity-70' : ''}`}
-                                >
-                                  <span className={`text-lg ${getRarityColor(equippedItem.item.rarity)}`}>
-                                    {equippedItem.item.icon === 'default_item' ? '⚔️' : equippedItem.item.icon}
-                                  </span>
-                                  
-                                  {/* Tooltip */}
-                                  <div className="tooltip-content invisible group-hover:visible absolute left-1/2 transform -translate-x-1/2 top-full mt-1 z-30
-                                                  bg-[#1C0E05] text-[#E8D6B3] p-2 rounded shadow-lg border border-[#8B4513] text-xs whitespace-nowrap">
-                                    <div className={`font-bold ${getRarityColor(equippedItem.item.rarity)}`}>{equippedItem.item.name}</div>
-                                    <button 
-                                      className="mt-1 px-2 py-1 text-xs bg-[#3A2419] hover:bg-[#4A3429] rounded text-[#E8D6B3]"
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        handleUnequip(equippedItem.itemId);
-                                      }}
-                                    >
-                                      Unequip
-                                    </button>
-                                  </div>
-                                </div>
-                              )}
-                            </Draggable>
-                          ) : (
-                            <span className="text-[#E8D6B3] text-xs drop-shadow-md">{slot.label}</span>
-                          )}
-                          {provided.placeholder}
+                              Unequip
+                            </button>
+                          </div>
                         </div>
-                      </div>
-                    )}
-                  </Droppable>
+                      ) : (
+                        <span className="text-[#E8D6B3] text-xs drop-shadow-md">{slot.label}</span>
+                      )}
+                    </div>
+                  </div>
                 );
               })}
             </div>
@@ -328,63 +310,42 @@ const InventoryPanel: FC<InventoryPanelProps> = ({ onClose }) => {
               ))}
             </div>
             
-            <Droppable droppableId="inventory" direction="horizontal">
-              {(provided, snapshot) => (
+            <div className="items-grid grid grid-cols-4 gap-2 mt-3 flex-grow overflow-y-auto p-2 bg-[#1C0E05] bg-opacity-60 rounded">
+              {Object.values(groupedInventory).flat().map((item, index) => (
                 <div 
-                  ref={provided.innerRef} 
-                  {...provided.droppableProps} 
-                  className="items-grid grid grid-cols-4 gap-2 mt-3 flex-grow overflow-y-auto p-2 bg-[#1C0E05] bg-opacity-60 rounded"
+                  key={item.id}
+                  className={`item-slot relative p-1 rounded border-2
+                            ${selectedItem?.id === item.id 
+                              ? 'bg-[#4A3429] border-[#FFD700]' 
+                              : 'bg-[#2C1810] border-[#614119]'}
+                            hover:border-[#9B5523] cursor-pointer transition-colors
+                            flex flex-col items-center justify-center`}
+                  onClick={() => setSelectedItem(selectedItem?.id === item.id ? null : item)}
+                  style={{
+                    boxShadow: 'inset 0 0 5px rgba(0,0,0,0.4)'
+                  }}
                 >
-                  {Object.values(groupedInventory).flat().map((item, index) => (
-                    <Draggable 
-                      key={item.id}
-                      draggableId={`item-${item.itemId}`}
-                      index={index}
-                      isDragDisabled={!!item.equipped}
-                    >
-                      {(provided, snapshot) => (
-                        <div 
-                          ref={provided.innerRef}
-                          {...provided.draggableProps}
-                          {...provided.dragHandleProps}
-                          className={`item-slot relative p-1 rounded border-2
-                                    ${selectedItem?.id === item.id 
-                                      ? 'bg-[#4A3429] border-[#FFD700]' 
-                                      : 'bg-[#2C1810] border-[#614119]'}
-                                    ${snapshot.isDragging ? 'border-[#FFD700] opacity-70' : ''}
-                                    hover:border-[#9B5523] cursor-pointer transition-colors
-                                    flex flex-col items-center justify-center`}
-                          onClick={() => setSelectedItem(selectedItem?.id === item.id ? null : item)}
-                          style={{
-                            boxShadow: 'inset 0 0 5px rgba(0,0,0,0.4)'
-                          }}
-                        >
-                          <div className="w-10 h-10 flex items-center justify-center">
-                            <span className={`text-lg ${getRarityColor(item.item.rarity)}`}>
-                              {item.item.icon === 'default_item' ? '⚔️' : item.item.icon}
-                            </span>
-                          </div>
-                          <div className="text-[#E8D6B3] text-xs mt-1 truncate max-w-full px-1">
-                            {item.item.name}
-                          </div>
-                          {item.quantity > 1 && (
-                            <div className="absolute top-0 right-0 bg-[#8B4513] text-[#E8D6B3] rounded-bl text-xs px-1">
-                              {item.quantity}
-                            </div>
-                          )}
-                          {item.equipped && (
-                            <div className="absolute top-0 left-0 bg-[#FFD700] text-[#2C1810] rounded-br text-xs px-1">
-                              E
-                            </div>
-                          )}
-                        </div>
-                      )}
-                    </Draggable>
-                  ))}
-                  {provided.placeholder}
+                  <div className="w-10 h-10 flex items-center justify-center">
+                    <span className={`text-lg ${getRarityColor(item.item.rarity)}`}>
+                      {item.item.icon === 'default_item' ? '⚔️' : item.item.icon}
+                    </span>
+                  </div>
+                  <div className="text-[#E8D6B3] text-xs mt-1 truncate max-w-full px-1">
+                    {item.item.name}
+                  </div>
+                  {item.quantity > 1 && (
+                    <div className="absolute top-0 right-0 bg-[#8B4513] text-[#E8D6B3] rounded-bl text-xs px-1">
+                      {item.quantity}
+                    </div>
+                  )}
+                  {item.equipped && (
+                    <div className="absolute top-0 left-0 bg-[#FFD700] text-[#2C1810] rounded-br text-xs px-1">
+                      E
+                    </div>
+                  )}
                 </div>
-              )}
-            </Droppable>
+              ))}
+            </div>
           </div>
         </div>
         
@@ -443,8 +404,8 @@ const InventoryPanel: FC<InventoryPanelProps> = ({ onClose }) => {
             </div>
           </div>
         )}
+        </div>
       </div>
-    </div>
     </DragDropContext>
   );
 };
