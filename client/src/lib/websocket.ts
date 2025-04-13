@@ -429,5 +429,179 @@ export const useWebSocketStore = create<WebSocketState>((set, get) => ({
         }
       }));
     }
+  },
+  
+  // Authentication functions
+  login: (username, password) => {
+    const { socket } = get();
+    
+    if (!socket) return;
+    
+    set({ isLoggingIn: true, authError: null });
+    
+    socket.send(JSON.stringify({
+      type: WebSocketMessageType.AUTH_LOGIN,
+      payload: {
+        username,
+        password
+      }
+    }));
+  },
+  
+  register: (username, password, email, avatar) => {
+    const { socket } = get();
+    
+    if (!socket) return;
+    
+    set({ isRegistering: true, authError: null });
+    
+    socket.send(JSON.stringify({
+      type: WebSocketMessageType.AUTH_REGISTER,
+      payload: {
+        username,
+        password,
+        email,
+        avatar
+      }
+    }));
+  },
+  
+  logout: () => {
+    const { socket } = get();
+    
+    if (!socket) return;
+    
+    socket.send(JSON.stringify({
+      type: WebSocketMessageType.AUTH_LOGOUT,
+      payload: {}
+    }));
+  },
+  
+  // Inventory functions
+  getInventory: () => {
+    const { socket, user } = get();
+    
+    if (!socket || !user) return;
+    
+    socket.send(JSON.stringify({
+      type: WebSocketMessageType.INVENTORY_GET,
+      payload: {}
+    }));
+  },
+  
+  getEquippedItems: () => {
+    const { socket, user } = get();
+    
+    if (!socket || !user) return;
+    
+    socket.send(JSON.stringify({
+      type: WebSocketMessageType.INVENTORY_GET_EQUIPPED,
+      payload: {}
+    }));
+  },
+  
+  equipItem: (itemId, slot) => {
+    const { socket, user } = get();
+    
+    if (!socket || !user) return;
+    
+    socket.send(JSON.stringify({
+      type: WebSocketMessageType.INVENTORY_EQUIP_ITEM,
+      payload: {
+        itemId,
+        slot
+      }
+    }));
+  },
+  
+  unequipItem: (itemId) => {
+    const { socket, user } = get();
+    
+    if (!socket || !user) return;
+    
+    socket.send(JSON.stringify({
+      type: WebSocketMessageType.INVENTORY_UNEQUIP_ITEM,
+      payload: {
+        itemId
+      }
+    }));
+  },
+  
+  buyItem: (itemId, quantity = 1) => {
+    const { socket, user } = get();
+    
+    if (!socket || !user) return;
+    
+    socket.send(JSON.stringify({
+      type: WebSocketMessageType.BUY_ITEM,
+      payload: {
+        itemId,
+        quantity
+      }
+    }));
+  },
+  
+  sellItem: (itemId, quantity = 1) => {
+    const { socket, user } = get();
+    
+    if (!socket || !user) return;
+    
+    socket.send(JSON.stringify({
+      type: WebSocketMessageType.SELL_ITEM,
+      payload: {
+        itemId,
+        quantity
+      }
+    }));
+  },
+  
+  useItem: (itemId) => {
+    const { socket, user } = get();
+    
+    if (!socket || !user) return;
+    
+    socket.send(JSON.stringify({
+      type: WebSocketMessageType.USE_ITEM,
+      payload: {
+        itemId
+      }
+    }));
+  },
+  
+  // Currency functions
+  getCurrency: () => {
+    const { socket, user } = get();
+    
+    if (!socket || !user) return;
+    
+    socket.send(JSON.stringify({
+      type: WebSocketMessageType.CURRENCY_GET,
+      payload: {}
+    }));
+  },
+  
+  // UI toggle functions
+  toggleInventory: () => {
+    set(state => ({ showInventory: !state.showInventory, showShop: false }));
+    // Fetch inventory data if we don't have any
+    if (!get().inventory.length) {
+      get().getInventory();
+      get().getEquippedItems();
+    }
+  },
+  
+  toggleShop: () => {
+    const { showShop, socket } = get();
+    
+    if (showShop) {
+      set({ showShop: false });
+    } else if (socket) {
+      // Request shop items
+      socket.send(JSON.stringify({
+        type: WebSocketMessageType.SHOP_OPEN,
+        payload: {}
+      }));
+      set({ showInventory: false });
+    }
   }
 }));

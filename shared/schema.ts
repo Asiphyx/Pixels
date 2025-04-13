@@ -281,6 +281,7 @@ export enum WebSocketMessageType {
   CURRENCY_GET = 'currency_get',
   CURRENCY_ADD = 'currency_add',
   CURRENCY_SPEND = 'currency_spend',
+  CURRENCY_UPDATE = 'currency_update',
   ADD_CURRENCY = 'add_currency',     // Legacy support
   SPEND_CURRENCY = 'spend_currency', // Legacy support
   
