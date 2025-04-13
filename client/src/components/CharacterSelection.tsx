@@ -8,6 +8,15 @@ const STORAGE_KEY_AVATAR = 'tavern_selected_avatar';
 const STORAGE_KEY_AUTO_LOGIN = 'tavern_auto_login';
 const STORAGE_KEY_USERNAME = 'tavern_username';
 
+// Helper function to clear all local storage data
+const clearAllLocalData = () => {
+  localStorage.removeItem(STORAGE_KEY_USERNAME);
+  localStorage.removeItem(STORAGE_KEY_AVATAR);
+  localStorage.removeItem(STORAGE_KEY_AUTO_LOGIN);
+  localStorage.removeItem('tavern_auto_connect');
+  console.log('Local storage data cleared');
+};
+
 enum AuthMode {
   LOGIN = 'login',
   REGISTER = 'register',
@@ -369,9 +378,20 @@ const CharacterSelection: FC = () => {
         
         {/* Footer */}
         <div className="modal-footer bg-gradient-to-r from-[#614119] via-[#8B4513] to-[#614119] p-3 border-t-4 border-[#2C1810] text-center">
-          <p className="font-['VT323'] text-[#E8D6B3] text-sm">
-            Enter the Fantasy Tavern and embark on an adventure!
-          </p>
+          <div className="flex justify-between items-center">
+            <button 
+              onClick={clearAllLocalData}
+              className="font-['VT323'] text-red-300 text-xs px-2 py-1 bg-[#2C1810] border border-red-900 rounded hover:bg-red-900 hover:bg-opacity-30"
+            >
+              Clear Local Data
+            </button>
+            
+            <p className="font-['VT323'] text-[#E8D6B3] text-sm">
+              Enter the Fantasy Tavern and embark on an adventure!
+            </p>
+            
+            <div className="w-[100px]"></div> {/* Empty div for balance */}
+          </div>
         </div>
       </div>
     </div>
