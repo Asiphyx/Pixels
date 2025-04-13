@@ -116,8 +116,12 @@ const ChatMessages: FC = () => {
 
   return (
     <div 
-      className="flex-grow p-4 overflow-y-auto font-['VT323'] text-lg text-[#E8D6B3]"
-      style={{ maxHeight: 'calc(100vh - 400px)' }}
+      className="flex-grow p-4 overflow-y-auto overflow-x-hidden font-['VT323'] text-lg text-[#E8D6B3] custom-scrollbar"
+      style={{ 
+        maxHeight: 'calc(100vh - 400px)',
+        scrollbarWidth: 'thin',
+        scrollbarColor: '#8B4513 transparent'
+      }}
     >
       {messages.length === 0 ? (
         <div className="flex items-center justify-center h-full text-center text-[#8B4513] opacity-50">
