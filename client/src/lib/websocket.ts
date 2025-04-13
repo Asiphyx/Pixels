@@ -111,6 +111,17 @@ export const useWebSocketStore = create<WebSocketState>((set, get) => ({
           connected: true
         });
         
+        // Fetch available rooms
+        fetch('/api/rooms')
+          .then(res => res.json())
+          .then(rooms => {
+            console.log('Available rooms:', rooms);
+            set({ rooms });
+          })
+          .catch(err => {
+            console.error('Failed to fetch rooms:', err);
+          });
+        
         // Save avatar selection for later use
         if (avatar) {
           localStorage.setItem('tavern_selected_avatar', avatar);
