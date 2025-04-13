@@ -6,17 +6,27 @@ import CharacterSelection from './CharacterSelection';
 import TavernMenu from './TavernMenu';
 import InventoryPanel from './InventoryPanel';
 import { useWebSocketStore } from '@/lib/websocket';
-import { Menu, Package, ShoppingBag } from 'lucide-react';
+import { Menu, Package, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
-const TavernApp: FC = () => {
+interface TavernAppProps {
+  loading?: boolean;
+}
+
+const TavernApp: FC<TavernAppProps> = ({ loading = false }) => {
   const { 
     user, 
     showMenu, 
     toggleMenu,
     showInventory,
-    toggleInventory
+    toggleInventory,
+    rooms
   } = useWebSocketStore();
+  
+  // Log rooms state to help debug
+  useEffect(() => {
+    console.log("Current rooms state in TavernApp:", rooms);
+  }, [rooms]);
 
   return (
     <div className="tavern-app min-h-screen flex flex-col">

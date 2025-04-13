@@ -111,36 +111,49 @@ export const useWebSocketStore = create<WebSocketState>((set, get) => ({
           connected: true
         });
         
-        // Fetch available rooms and set default ones if API fails
-        fetch('/api/rooms')
-          .then(res => res.json())
-          .then(rooms => {
-            console.log('Available rooms:', rooms);
-            // Set rooms if we got valid response
-            if (Array.isArray(rooms) && rooms.length > 0) {
-              set({ rooms });
-            } else {
-              // Fallback default rooms if API returns empty
-              console.log('Using fallback room data');
-              const defaultRooms = [
-                { id: 1, name: "The Rose Garden", description: "A warm and inviting space with Amethyst's sweet service." },
-                { id: 2, name: "The Ocean View", description: "A thoughtful atmosphere where Sapphire offers clever insights." },
-                { id: 3, name: "The Dragon's Den", description: "An exciting corner where Ruby shares thrilling tales." }
-              ];
-              set({ rooms: defaultRooms });
-            }
-          })
-          .catch(err => {
-            console.error('Failed to fetch rooms:', err);
-            // Fallback default rooms if API fails
-            console.log('Using fallback room data after API failure');
+        // Load rooms with more robust error handling
+        const loadRooms = async () => {
+          try {
+            // First, use default rooms as an initial state
             const defaultRooms = [
               { id: 1, name: "The Rose Garden", description: "A warm and inviting space with Amethyst's sweet service." },
               { id: 2, name: "The Ocean View", description: "A thoughtful atmosphere where Sapphire offers clever insights." },
               { id: 3, name: "The Dragon's Den", description: "An exciting corner where Ruby shares thrilling tales." }
             ];
+            
+            // Set initial rooms from defaults to ensure UI has data
             set({ rooms: defaultRooms });
-          });
+            
+            // Then try to load the actual rooms from the API
+            console.log('Fetching rooms from API...');
+            const response = await fetch('/api/rooms');
+            
+            if (!response.ok) {
+              throw new Error(`Failed to fetch rooms: ${response.status} ${response.statusText}`);
+            }
+            
+            const rooms = await response.json();
+            console.log('API returned rooms:', rooms);
+            
+            // Only update if we got valid rooms
+            if (Array.isArray(rooms) && rooms.length > 0) {
+              console.log('Setting rooms from API:', rooms);
+              set({ rooms: rooms });
+              return rooms;
+            } else {
+              console.warn('API returned empty rooms array, keeping defaults');
+              return defaultRooms;
+            }
+          } catch (error) {
+            console.error('Error loading rooms:', error);
+            return get().rooms; // Return current rooms (defaults)
+          }
+        };
+        
+        // Execute the room loading function
+        loadRooms().then(rooms => {
+          console.log('Loaded rooms successfully:', rooms);
+        });
         
         // Save avatar selection for later use
         if (avatar) {
