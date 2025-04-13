@@ -15,10 +15,21 @@ export interface IStorage {
   // User operations
   getUser(id: number): Promise<User | undefined>;
   getUserByUsername(username: string): Promise<User | undefined>;
+  getUserByEmail(email: string): Promise<User | undefined>;
   createUser(user: InsertUser): Promise<User>;
   updateUserRoom(userId: number, roomId: number): Promise<User | undefined>;
   updateUserStatus(userId: number, online: boolean): Promise<User | undefined>;
+  updateUserPassword(userId: number, passwordHash: string): Promise<User | undefined>;
   getOnlineUsers(roomId: number): Promise<User[]>;
+  
+  // Authentication operations
+  registerUser(username: string, password: string, email?: string, avatar?: string): Promise<User>;
+  verifyUser(username: string, password: string): Promise<User | null>;
+  
+  // Currency operations
+  addCurrency(userId: number, silver: number): Promise<{silver: number, gold: number}>;
+  spendCurrency(userId: number, silver: number): Promise<{silver: number, gold: number} | null>;
+  getCurrency(userId: number): Promise<{silver: number, gold: number}>;
   
   // Room operations
   getRoom(id: number): Promise<Room | undefined>;
@@ -52,6 +63,19 @@ export interface IStorage {
   addMemoryEntry(userId: number, bartenderId: number, entry: MemoryEntry): Promise<BartenderMemory>;
   getMemoryEntries(userId: number, bartenderId: number, limit?: number): Promise<MemoryEntry[]>;
   getSummarizedMemories(userId: number, bartenderId: number, maxEntries?: number): Promise<string>;
+  
+  // Inventory operations
+  getItems(): Promise<Item[]>;
+  getItem(id: number): Promise<Item | undefined>;
+  createItem(item: InsertItem): Promise<Item>;
+  
+  getUserInventory(userId: number): Promise<(UserInventory & {item: Item})[]>;
+  getUserInventoryItem(userId: number, itemId: number): Promise<UserInventory | undefined>;
+  addItemToInventory(userId: number, itemId: number, quantity?: number): Promise<UserInventory>;
+  removeItemFromInventory(userId: number, itemId: number, quantity?: number): Promise<boolean>;
+  equipItem(userId: number, itemId: number, slot: string): Promise<UserInventory | null>;
+  unequipItem(userId: number, itemId: number): Promise<UserInventory | null>;
+  getEquippedItems(userId: number): Promise<(UserInventory & {item: Item})[]>;
 }
 
 export class MemStorage implements IStorage {
@@ -575,6 +599,18 @@ export class DatabaseStorage implements IStorage {
   async getUserByUsername(username: string): Promise<User | undefined> {
     const [user] = await db.select().from(users).where(eq(users.username, username));
     return user || undefined;
+  }
+  
+  async getUserByEmail(email: string): Promise<User | undefined> {
+    const [user] = await db.select().from(users).where(eq(users.email, email));
+    return user || undefined;
+  }
+  
+  async updateUserPassword(userId: number, passwordHash: string): Promise<User | undefined> {
+    await db.update(users)
+      .set({ passwordHash })
+      .where(eq(users.id, userId));
+    return this.getUser(userId);
   }
 
   async createUser(insertUser: InsertUser): Promise<User> {

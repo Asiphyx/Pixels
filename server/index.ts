@@ -3,6 +3,7 @@ import { registerRoutes, clearConnectedClients } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
 import { seedDatabase } from "./seed";
 import { resetUserOnlineStatus } from "./storage";
+import { runMigrations } from "./dbMigration";
 
 const app = express();
 app.use(express.json());
@@ -39,14 +40,21 @@ app.use((req, res, next) => {
 });
 
 (async () => {
-  // Seed the database with default data if needed
-  await seedDatabase();
-  
-  // Reset all user online statuses to prevent "username already taken" errors on restart
-  await resetUserOnlineStatus();
-  
-  // Clear any connected clients that might be lingering in memory
-  clearConnectedClients();
+  try {
+    // Run database migrations to ensure schema is up-to-date
+    await runMigrations();
+    
+    // Seed the database with default data if needed
+    await seedDatabase();
+    
+    // Reset all user online statuses to prevent "username already taken" errors on restart
+    await resetUserOnlineStatus();
+    
+    // Clear any connected clients that might be lingering in memory
+    clearConnectedClients();
+  } catch (err) {
+    console.error("Error during server startup:", err);
+  }
   
   const server = await registerRoutes(app);
 
