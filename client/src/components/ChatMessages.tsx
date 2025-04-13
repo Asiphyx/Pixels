@@ -14,6 +14,12 @@ const ChatMessages: FC = () => {
   }, [messages]);
 
   const renderMessage = (message: Message) => {
+    // Check if message has a valid type before proceeding
+    if (!message || !message.type) {
+      console.error("Invalid message object:", message);
+      return null;
+    }
+    
     switch (message.type) {
       case 'user':
         // Get the user that sent this message
@@ -21,7 +27,7 @@ const ChatMessages: FC = () => {
 
         // Get the avatar for this user
         const avatarString = isCurrentUser 
-          ? user?.avatar 
+          ? user?.avatar || 'bard' 
           : onlineUsers.find(u => u.id === message.userId)?.avatar || 'bard';
 
         return (
@@ -121,11 +127,13 @@ const ChatMessages: FC = () => {
           </div>
         </div>
       ) : (
-        messages.map((message, index) => (
-          <div key={index} className="mb-4 animate-fadeIn">
-            {renderMessage(message)}
-          </div>
-        ))
+        messages
+          .filter(message => message && typeof message === 'object')
+          .map((message, index) => (
+            <div key={index} className="mb-4 animate-fadeIn">
+              {renderMessage(message)}
+            </div>
+          ))
       )}
       <div ref={messagesEndRef} />
     </div>
