@@ -432,6 +432,19 @@ export const useWebSocketStore = create<WebSocketState>((set, get) => ({
     
     console.log(`Sending message to room ${roomId}:`, content);
     
+    // Add a temporary local message to show immediately
+    set(state => ({
+      messages: [...state.messages, {
+        id: Date.now(),
+        content: content,
+        type: type,
+        userId: user.id,
+        roomId: roomId,
+        bartenderId: null,
+        timestamp: new Date()
+      }]
+    }));
+    
     const message = {
       type: WebSocketMessageType.CHAT_MESSAGE,
       payload: {
