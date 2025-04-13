@@ -64,38 +64,61 @@ const CharacterSelection: FC = () => {
       return;
     }
     
-    if (mode === AuthMode.REGISTER) {
-      if (password !== confirmPassword) {
-        setValidationError('Passwords do not match');
-        return;
-      }
+    // Save preferences
+    localStorage.setItem(STORAGE_KEY_USERNAME, username);
+    localStorage.setItem(STORAGE_KEY_AVATAR, selectedAvatar);
+    localStorage.setItem(STORAGE_KEY_AUTO_LOGIN, rememberMe.toString());
+    
+    // First ensure we have a connection before sending auth messages
+    if (!socket) {
+      console.log('Establishing WebSocket connection first...');
+      connect(username, selectedAvatar);
       
-      if (password.length < 6) {
-        setValidationError('Password must be at least 6 characters');
-        return;
-      }
-      
-      if (email && !email.includes('@')) {
-        setValidationError('Please enter a valid email address');
-        return;
-      }
-      
-      // Save preferences
-      localStorage.setItem(STORAGE_KEY_USERNAME, username);
-      localStorage.setItem(STORAGE_KEY_AVATAR, selectedAvatar);
-      localStorage.setItem(STORAGE_KEY_AUTO_LOGIN, rememberMe.toString());
-      
-      // Register
-      register(username, password, email, selectedAvatar);
+      // Small delay to allow connection to establish
+      setTimeout(() => {
+        if (mode === AuthMode.REGISTER) {
+          performRegistration();
+        } else {
+          performLogin();
+        }
+      }, 500);
     } else {
-      // Save preferences
-      localStorage.setItem(STORAGE_KEY_USERNAME, username);
-      localStorage.setItem(STORAGE_KEY_AVATAR, selectedAvatar);
-      localStorage.setItem(STORAGE_KEY_AUTO_LOGIN, rememberMe.toString());
-      
-      // Login
-      login(username, password);
+      // We already have a connection, proceed directly
+      if (mode === AuthMode.REGISTER) {
+        performRegistration();
+      } else {
+        performLogin();
+      }
     }
+  };
+  
+  // Separate function for registration validation and execution
+  const performRegistration = () => {
+    if (password !== confirmPassword) {
+      setValidationError('Passwords do not match');
+      return;
+    }
+    
+    if (password.length < 6) {
+      setValidationError('Password must be at least 6 characters');
+      return;
+    }
+    
+    if (email && !email.includes('@')) {
+      setValidationError('Please enter a valid email address');
+      return;
+    }
+    
+    // Register
+    console.log('Registering with:', username, 'avatar:', selectedAvatar);
+    register(username, password, email, selectedAvatar);
+  };
+  
+  // Separate function for login execution
+  const performLogin = () => {
+    // Login
+    console.log('Logging in with:', username);
+    login(username, password);
   };
   
   // Update stored avatar when selection changes
