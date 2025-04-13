@@ -9,9 +9,10 @@ const ChatPanel: FC = () => {
   console.log("Available rooms:", rooms);
   console.log("Current room ID:", roomId);
 
-  const handleRoomSwitch = (roomId: number) => {
-    console.log(`Manually switching to room ID: ${roomId}`);
-    joinRoom(roomId);
+  // Simplified room switching
+  const handleJoinRoom = (id: number) => {
+    console.log(`Switching to room with ID: ${id}`);
+    joinRoom(id);
   };
 
   return (
@@ -20,14 +21,15 @@ const ChatPanel: FC = () => {
       <div className="room-tabs p-2 border-b-4 border-[#8B4513] flex overflow-x-auto gap-2">
         {rooms && rooms.length > 0 ? (
           rooms.map(room => (
-            <div 
+            <button 
               key={room.id}
-              className={`cursor-pointer py-1 px-3 bg-[#8B4513] text-[#E8D6B3] font-['VT323'] text-lg rounded-sm transition-all
+              type="button"
+              className={`py-1 px-3 bg-[#8B4513] text-[#E8D6B3] font-['VT323'] text-lg rounded-sm transition-all
                         ${roomId === room.id ? 'bg-[#FFD700] text-[#2C1810]' : 'hover:bg-opacity-80'}`}
-              onClick={() => handleRoomSwitch(room.id)}
+              onClick={() => handleJoinRoom(room.id)}
             >
               {room.name}
-            </div>
+            </button>
           ))
         ) : (
           <div className="text-[#E8D6B3] text-sm italic">Loading rooms...</div>
