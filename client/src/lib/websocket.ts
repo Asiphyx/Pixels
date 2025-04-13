@@ -147,10 +147,21 @@ export const useWebSocketStore = create<WebSocketState>((set, get) => ({
               break;
               
             case WebSocketMessageType.JOIN_ROOM:
-              set({ 
-                roomId: data.payload.room.id,
-                messages: data.payload.messages || []
-              });
+              console.log("JOIN_ROOM received:", data.payload);
+              if (data.payload && data.payload.room) {
+                // Make sure messages is always a valid array
+                const validMessages = (data.payload.messages || []).filter(
+                  msg => msg && typeof msg === 'object' && msg.content
+                );
+                
+                set({ 
+                  roomId: data.payload.room.id,
+                  messages: validMessages
+                });
+                console.log("Set room with valid messages:", validMessages.length);
+              } else {
+                console.error("Invalid JOIN_ROOM data:", data.payload);
+              }
               break;
               
             case WebSocketMessageType.NEW_MESSAGE:
@@ -434,10 +445,11 @@ export const useWebSocketStore = create<WebSocketState>((set, get) => ({
   toggleMenu: () => {
     const { showMenu, socket } = get();
     
-    if (showMenu) {
-      set({ showMenu: false });
-    } else if (socket) {
-      // Request menu items directly with ORDER_ITEM type
+    // Toggle menu state regardless of socket connection
+    set(state => ({ showMenu: !state.showMenu }));
+    
+    // If menu is being opened and socket exists, request menu items
+    if (!showMenu && socket) {
       socket.send(JSON.stringify({
         type: WebSocketMessageType.ORDER_ITEM,
         payload: {
