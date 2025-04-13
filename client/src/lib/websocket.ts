@@ -47,11 +47,13 @@ export const useWebSocketStore = create<WebSocketState>((set, get) => ({
       // Create a new WebSocket connection
       const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
       const host = window.location.host; // Use the current host for both dev and prod
+      
       // Ensure we're connecting to the /ws endpoint with proper parameters
+      // Make sure we're using the exact URL format that the server expects
       const wsUrl = `${protocol}//${host}/ws?token=${encodeURIComponent(username)}&avatar=${encodeURIComponent(avatar)}`;
       console.log('Connecting to WebSocket URL:', wsUrl);
       
-      // Set up a WebSocket with explicit error handling
+      // Set up a WebSocket with explicit error handling and better error reporting
       const socket = new WebSocket(wsUrl);
       
       socket.onopen = () => {
