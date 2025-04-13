@@ -1,12 +1,12 @@
 import { FC } from 'react';
 
 // Import PNG avatar images from assets directory
-import bard from '@/assets/ruby_avatar.png';
-import knight from '@/assets/sapphire_avatar.png';
-import wizard from '@/assets/amethyst_avatar.png';
-import merchant from '@/assets/amethyst_new.png';
-import ranger from '@/assets/ruby_new.png';
-import rogue from '@/assets/sapphire_new.png';
+import bard from '@/assets/images/backgroundless/ruby.png';
+import knight from '@/assets/images/backgroundless/sapphire.png';
+import wizard from '@/assets/images/backgroundless/amethyst.png';
+import merchant from '@/assets/images/backgroundless/emerald.png';
+import ranger from '@/assets/images/backgroundless/jade.png';
+import rogue from '@/assets/images/backgroundless/indigo.png';
 
 // Map avatar names to their PNG images
 export const PixelAvatarMap = {
@@ -24,6 +24,16 @@ export interface PixelAvatarProps {
   className?: string;
 }
 
+// Map avatar names to RPG class descriptions
+export const RoleDescriptions = {
+  bard: "A charismatic performer with magical music",
+  knight: "A stalwart defender with heavy armor and weapons",
+  wizard: "A master of arcane magic and spellcasting",
+  merchant: "A trader with shrewd business skills",
+  ranger: "A wilderness expert and skilled archer",
+  rogue: "A stealthy scout with nimble reflexes"
+};
+
 export const PixelAvatar: FC<PixelAvatarProps> = ({ name, size = 32, className = "" }) => {
   const lowerName = name.toLowerCase();
   const avatarSrc = PixelAvatarMap[lowerName as keyof typeof PixelAvatarMap] || PixelAvatarMap.knight;
@@ -32,6 +42,7 @@ export const PixelAvatar: FC<PixelAvatarProps> = ({ name, size = 32, className =
     <div 
       className={`bg-[#2C1810] rounded-full overflow-hidden flex items-center justify-center ${className}`}
       style={{ width: size, height: size }}
+      title={RoleDescriptions[lowerName as keyof typeof RoleDescriptions] || ""}
     >
       <img 
         src={avatarSrc} 
