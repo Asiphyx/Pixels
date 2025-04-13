@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { WebSocketMessageType, WebSocketMessage, User, Room, Message, Bartender, MenuItem, BartenderMood } from '@shared/schema';
+import { WebSocketMessageType, WebSocketMessage, User, Room, Message, Bartender, MenuItem, BartenderMood, UserInventory, Item } from '@shared/schema';
 
 // Define the websocket store state
 interface WebSocketState {
@@ -15,6 +15,19 @@ interface WebSocketState {
   showMenu: boolean;
   bartenderMoods: BartenderMood[];
   
+  // Inventory and currency state
+  inventory: (UserInventory & { item: Item })[];
+  equippedItems: { [slot: string]: (UserInventory & { item: Item }) | null };
+  currency: { silver: number; gold: number };
+  showInventory: boolean;
+  showShop: boolean;
+  shopItems: Item[];
+  
+  // Authentication state
+  isLoggingIn: boolean;
+  isRegistering: boolean;
+  authError: string | null;
+  
   // Actions
   connect: (username: string, avatar: string) => void;
   disconnect: () => void;
@@ -22,6 +35,27 @@ interface WebSocketState {
   joinRoom: (roomId: number) => void;
   orderMenuItem: (itemId: number) => void;
   toggleMenu: () => void;
+  
+  // Auth actions
+  login: (username: string, password: string) => void;
+  register: (username: string, password: string, email?: string, avatar?: string) => void;
+  logout: () => void;
+  
+  // Inventory actions
+  getInventory: () => void;
+  getEquippedItems: () => void;
+  equipItem: (itemId: number, slot: string) => void;
+  unequipItem: (itemId: number) => void;
+  buyItem: (itemId: number, quantity?: number) => void;
+  sellItem: (itemId: number, quantity?: number) => void;
+  useItem: (itemId: number) => void;
+  
+  // Currency actions
+  getCurrency: () => void;
+  
+  // UI toggle actions
+  toggleInventory: () => void;
+  toggleShop: () => void;
 }
 
 export const useWebSocketStore = create<WebSocketState>((set, get) => ({
@@ -36,6 +70,19 @@ export const useWebSocketStore = create<WebSocketState>((set, get) => ({
   menuItems: [],
   showMenu: false,
   bartenderMoods: [],
+  
+  // Inventory and shop state
+  inventory: [],
+  equippedItems: {},
+  currency: { silver: 0, gold: 0 },
+  showInventory: false,
+  showShop: false,
+  shopItems: [],
+  
+  // Authentication state
+  isLoggingIn: false,
+  isRegistering: false,
+  authError: null,
   
   connect: (username, avatar) => {
     try {
@@ -84,6 +131,15 @@ export const useWebSocketStore = create<WebSocketState>((set, get) => ({
                 rooms: data.payload.rooms || get().rooms,
                 bartenders: data.payload.bartenders || get().bartenders
               });
+              
+              // After joining, fetch inventory and currency if we have a user
+              if (data.payload.user?.id) {
+                setTimeout(() => {
+                  get().getInventory();
+                  get().getEquippedItems();
+                  get().getCurrency();
+                }, 500);
+              }
               break;
               
             case WebSocketMessageType.JOIN_ROOM:
@@ -118,6 +174,94 @@ export const useWebSocketStore = create<WebSocketState>((set, get) => ({
               }
               break;
               
+            // Authentication message handlers
+            case WebSocketMessageType.AUTH_SUCCESS:
+              if (data.payload.user) {
+                set({ 
+                  user: data.payload.user,
+                  isLoggingIn: false,
+                  isRegistering: false,
+                  authError: null
+                });
+                
+                // After successful login/register, fetch inventory and currency
+                setTimeout(() => {
+                  get().getInventory();
+                  get().getEquippedItems();
+                  get().getCurrency();
+                }, 500);
+              } else {
+                // This is for logout success
+                set({
+                  user: null,
+                  connected: false,
+                  inventory: [],
+                  equippedItems: {},
+                  currency: { silver: 0, gold: 0 },
+                });
+                
+                // Clear local storage for logout
+                localStorage.removeItem('tavern_username');
+                localStorage.removeItem('tavern_selected_avatar');
+                localStorage.removeItem('tavern_auto_connect');
+              }
+              break;
+            
+            case WebSocketMessageType.AUTH_ERROR:
+              console.error('Authentication error:', data.payload.message);
+              set({ 
+                authError: data.payload.message || 'Authentication failed',
+                isLoggingIn: false,
+                isRegistering: false
+              });
+              break;
+              
+            case WebSocketMessageType.AUTH_RESPONSE:
+              if (data.payload.user) {
+                set({ user: data.payload.user });
+              }
+              break;
+              
+            // Inventory message handlers
+            case WebSocketMessageType.INVENTORY_UPDATE:
+              if (data.payload.inventory) {
+                set({ inventory: data.payload.inventory });
+              }
+              break;
+              
+            case WebSocketMessageType.EQUIPPED_ITEMS_UPDATE:
+              if (data.payload.equipped) {
+                // Convert array to object with slot as key for easier access
+                const equippedObj: { [slot: string]: (UserInventory & { item: Item }) | null } = {};
+                data.payload.equipped.forEach((item: UserInventory & { item: Item }) => {
+                  if (item.equipSlot) {
+                    equippedObj[item.equipSlot] = item;
+                  }
+                });
+                set({ equippedItems: equippedObj });
+              }
+              break;
+              
+            // Currency message handlers
+            case WebSocketMessageType.CURRENCY_UPDATE:
+              if (data.payload.currency) {
+                set({ currency: {
+                  silver: data.payload.currency.silver || 0,
+                  gold: data.payload.currency.gold || 0
+                }});
+              }
+              break;
+              
+            // Shop message handlers
+            case WebSocketMessageType.SHOP_OPEN:
+              if (data.payload.items) {
+                set({ 
+                  shopItems: data.payload.items,
+                  showShop: true
+                });
+              }
+              break;
+              
             case WebSocketMessageType.ERROR:
               console.error('WebSocket error:', data.payload.message);
               // Add a system message for errors
@@ -130,7 +274,8 @@ export const useWebSocketStore = create<WebSocketState>((set, get) => ({
                   roomId: state.roomId,
                   bartenderId: null,
                   timestamp: new Date()
-                }]
+                }],
+                authError: data.payload.message || null
               }));
               break;
               
