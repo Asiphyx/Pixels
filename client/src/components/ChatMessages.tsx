@@ -2,7 +2,7 @@ import { FC, useEffect, useRef } from 'react';
 import { useWebSocketStore } from '@/lib/websocket';
 import { Message } from '@shared/schema';
 import { BartenderAvatar } from '@/assets/svgs/bartenders';
-import { PixelAvatar } from '@/assets/svgs/pixel-avatars';
+import { PixelAvatar, RoleDescriptions } from '@/assets/svgs/pixel-avatars';
 
 const ChatMessages: FC = () => {
   const { messages, user, onlineUsers } = useWebSocketStore();

@@ -2,7 +2,7 @@ import { FC, useState } from 'react';
 import { useWebSocketStore } from '@/lib/websocket';
 import { motion } from 'framer-motion';
 import { Users } from 'lucide-react';
-import { PixelAvatar } from '@/assets/svgs/pixel-avatars';
+import { PixelAvatar, RoleDescriptions } from '@/assets/svgs/pixel-avatars';
 
 const OnlineUsers: FC = () => {
   const { onlineUsers } = useWebSocketStore();
@@ -51,7 +51,14 @@ const OnlineUsers: FC = () => {
                     key={user.id}
                     className="user-item flex items-center gap-2 mb-2 p-2 rounded-sm hover:bg-[#8B4513] transition-colors"
                   >
-                    <PixelAvatar name={user.avatar || 'bard'} size={36} />
+                    <div className="relative group">
+                      <PixelAvatar name={user.avatar || 'bard'} size={36} />
+                      <div className="absolute -top-10 left-0 bg-[#2C1810] p-2 rounded border border-[#8B4513] 
+                                    text-[#E8D6B3] text-xs whitespace-nowrap opacity-0 group-hover:opacity-100 
+                                    transition-opacity z-50 pointer-events-none shadow-lg">
+                        {RoleDescriptions[(user.avatar || 'bard').toLowerCase() as keyof typeof RoleDescriptions]}
+                      </div>
+                    </div>
                     <div className="user-name text-[#E8D6B3] font-['VT323'] text-lg">{user.username}</div>
                   </div>
                 );

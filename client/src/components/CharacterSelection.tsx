@@ -1,6 +1,6 @@
 import { FC, useState, useEffect } from 'react';
 import { useWebSocketStore } from '@/lib/websocket';
-import { PixelAvatar, PixelAvatarMap } from '@/assets/svgs/pixel-avatars';
+import { PixelAvatar, PixelAvatarMap, RoleDescriptions } from '@/assets/svgs/pixel-avatars';
 import backgroundImage from '@/assets/background.png';
 
 // Storage keys for saving user preferences
@@ -191,14 +191,19 @@ const CharacterSelection: FC = () => {
                 >
                   <div className={`rounded-full p-1 mb-1 ${
                     selectedAvatar === avatar 
-                    ? 'bg-[#FFD700] bg-opacity-20' 
+                    ? 'bg-[#FFD700] bg-opacity-20 scale-105 transition-all duration-300' 
                     : ''
                   }`}>
                     <PixelAvatar name={avatar} size={64} className="mb-1" />
                   </div>
-                  <span className="font-['VT323'] text-[#E8D6B3] text-center capitalize">
+                  <span className="font-['VT323'] text-[#FFD700] text-center capitalize font-bold">
                     {avatar}
                   </span>
+                  {selectedAvatar === avatar && (
+                    <span className="font-['VT323'] text-[#E8D6B3] text-xs text-center mt-1 max-w-32">
+                      {RoleDescriptions[avatar as keyof typeof RoleDescriptions]}
+                    </span>
+                  )}
                 </div>
               ))}
             </div>
