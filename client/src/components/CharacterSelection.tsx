@@ -68,6 +68,13 @@ const CharacterSelection: FC = () => {
   
   // Only show character selection if user is not connected
   // This prevents the patron screen from staying visible after connection
+  // Handle Enter key press
+  const handleKeyPress = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' && username.trim()) {
+      handleConfirm();
+    }
+  };
+  
   return (
     <div 
       id="character-select"
@@ -107,6 +114,7 @@ const CharacterSelection: FC = () => {
               type="text" 
               value={username}
               onChange={(e) => setUsername(e.target.value)}
+              onKeyDown={handleKeyPress}
               className="bg-[#2C1810] text-[#E8D6B3] border border-[#8B4513] p-2 flex-grow font-['VT323']" 
               placeholder="Enter name..."
             />
