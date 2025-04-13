@@ -10,7 +10,9 @@ import {
   insertMessageSchema,
   insertRoomSchema,
   InsertUser,
-  users
+  users,
+  userAuthSchema,
+  userRegisterSchema
 } from "@shared/schema";
 import { z } from "zod";
 import { getOpenRouterResponse, checkForBartenderMention, extractQueryFromMention, isReturningCustomer, getCustomerContext } from "./openRouter";

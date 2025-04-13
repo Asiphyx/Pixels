@@ -76,27 +76,18 @@ const CharacterSelection: FC = () => {
     localStorage.setItem(STORAGE_KEY_AVATAR, selectedAvatar);
     localStorage.setItem(STORAGE_KEY_AUTO_LOGIN, rememberMe.toString());
     
-    // Establish WebSocket connection if not connected
-    if (!socket) {
-      console.log('Establishing WebSocket connection first...');
-      connect(username, selectedAvatar);
-      
-      // Small delay to allow connection to establish
-      setTimeout(() => {
-        if (mode === AuthMode.REGISTER) {
-          performRegistration();
-        } else {
-          performLogin();
-        }
-      }, 500);
-    } else {
-      // We already have a connection, proceed directly
+    // First connect to establish WebSocket connection
+    console.log('Establishing WebSocket connection...');
+    connect(username, selectedAvatar);
+    
+    // Small delay to allow connection to establish
+    setTimeout(() => {
       if (mode === AuthMode.REGISTER) {
         performRegistration();
       } else {
         performLogin();
       }
-    }
+    }, 500);
   };
   
   // Perform registration with validation
