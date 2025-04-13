@@ -24,14 +24,14 @@ export interface PixelAvatarProps {
   className?: string;
 }
 
-// Map avatar names to RPG class and race descriptions
+// Map avatar names to RPG class and race descriptions with deeper lore
 export const RoleDescriptions = {
-  bard: "An elven charismatic performer with magical music",
-  knight: "A human stalwart defender with heavy armor and weapons",
-  wizard: "A human master of arcane magic and spellcasting",
-  merchant: "A demonkind trader with shrewd business skills",
-  ranger: "A troll wilderness expert and skilled archer",
-  rogue: "A half-human half-dark elf stealthy scout with nimble reflexes"
+  bard: "An elven melodious wanderer who collects songs, stories and memories from all realms. Their ancient harp can briefly bring memories to life as visible apparitions.",
+  knight: "A human oath-bound protector from a fallen kingdom. Their enchanted armor adapts to absorbed properties of defeated foes, granting special resistances.",
+  wizard: "A human paradigm-breaking arcane researcher whose revolutionary magical theories were stolen. They can analyze and identify almost any spell encountered.",
+  merchant: "A demonkind boundary broker who escaped their soul-claiming family. They craft binding agreements between realms that cannot normally interact.",
+  ranger: "A troll between-worlds pathfinder who tracks and repairs rifts between dimensions. They have a unique ability to communicate with creatures from any world.",
+  rogue: "A half-human half-dark elf shadow diplomat with unique biological adaptations. They can move between connected shadows and have perfect memory recall."
 };
 
 export const PixelAvatar: FC<PixelAvatarProps> = ({ name, size = 32, className = "" }) => {

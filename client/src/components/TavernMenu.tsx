@@ -1,8 +1,9 @@
 import { FC, useState } from 'react';
 import { useWebSocketStore } from '@/lib/websocket';
 import { MenuItemIcon } from '@/assets/svgs/menu-items';
-import { UserCircle, Trophy, HeartHandshake } from 'lucide-react';
+import { UserCircle, Trophy, HeartHandshake, Book, BookOpen } from 'lucide-react';
 import { getMoodDescription, getMoodColor, getMoodIcon } from '../utils/mood';
+import LoreBook from './LoreBook';
 
 // Storage keys for saving user preferences (must match those in CharacterSelection.tsx)
 const STORAGE_KEY_USERNAME = 'tavern_username';
@@ -16,6 +17,7 @@ interface TavernMenuProps {
 const TavernMenu: FC<TavernMenuProps> = ({ onClose }) => {
   const { menuItems, orderMenuItem, disconnect, bartenders, bartenderMoods, user } = useWebSocketStore();
   const [activeCategory, setActiveCategory] = useState<string>('drinks');
+  const [showLoreBook, setShowLoreBook] = useState<boolean>(false);
   
   const filteredItems = menuItems.filter(item => item.category === activeCategory);
   
@@ -46,10 +48,13 @@ const TavernMenu: FC<TavernMenuProps> = ({ onClose }) => {
   
   return (
     <div className="fixed inset-0 flex items-center justify-center z-50 bg-black bg-opacity-50">
-      <div 
-        className="menu-container bg-[#4A3429] w-5/6 max-w-md h-4/5 max-h-[600px] rounded-sm overflow-hidden 
-                   shadow-[0_-4px_0_0px_#2C1810,0_4px_0_0px_#2C1810,-4px_0_0_0px_#2C1810,4px_0_0_0px_#2C1810,0_0_0_4px_#8B4513]"
-      >
+      {showLoreBook ? (
+        <LoreBook onClose={() => setShowLoreBook(false)} />
+      ) : (
+        <div 
+          className="menu-container bg-[#4A3429] w-5/6 max-w-md h-4/5 max-h-[600px] rounded-sm overflow-hidden 
+                     shadow-[0_-4px_0_0px_#2C1810,0_4px_0_0px_#2C1810,-4px_0_0_0px_#2C1810,4px_0_0_0px_#2C1810,0_0_0_4px_#8B4513]"
+        >
         <div className="menu-header bg-[#8B4513] p-3 flex justify-between items-center">
           <h2 className="font-['Press_Start_2P'] text-[#FFD700] text-xl">TAVERN MENU</h2>
           <button onClick={onClose} className="text-[#E8D6B3] hover:text-[#FFD700] text-2xl">×</button>
@@ -97,6 +102,19 @@ const TavernMenu: FC<TavernMenuProps> = ({ onClose }) => {
             <div className="flex items-center justify-center">
               <HeartHandshake className="w-4 h-4 mr-1" />
               <span>Moods</span>
+            </div>
+          </button>
+          <button 
+            className={`menu-tab flex-1 py-2 px-4 font-['VT323'] text-xl text-[#E8D6B3] ${
+              activeCategory === 'lore' 
+                ? 'bg-[#8B4513]' 
+                : 'bg-[#2C1810] hover:bg-[#3C281A]'
+            }`}
+            onClick={() => setActiveCategory('lore')}
+          >
+            <div className="flex items-center justify-center">
+              <Book className="w-4 h-4 mr-1" />
+              <span>Lore</span>
             </div>
           </button>
           <button 
@@ -313,6 +331,37 @@ const TavernMenu: FC<TavernMenuProps> = ({ onClose }) => {
                   Please sign in first to view your badges.
                 </div>
               )}
+            </div>
+          ) : activeCategory === 'lore' ? (
+            <div className="lore-container p-4">
+              <div className="text-center mb-6">
+                <div className="inline-flex justify-center items-center w-20 h-20 rounded-full bg-[#2C1810] border-2 border-[#8B4513]">
+                  <Book className="h-14 w-14 text-[#FFD700]" />
+                </div>
+                <h3 className="font-['Press_Start_2P'] text-[#FFD700] text-sm mt-2">Tavern Lore</h3>
+              </div>
+              
+              <div 
+                className="tavern-lore-button p-3 bg-[#2C1810] border border-[#8B4513] rounded-sm cursor-pointer hover:bg-[#3C281A] mb-4"
+                onClick={() => setShowLoreBook(true)}
+              >
+                <h4 className="font-['VT323'] text-[#FFD700] text-lg flex items-center">
+                  <BookOpen className="w-4 h-4 mr-2" />
+                  Open Lore Book
+                </h4>
+                <p className="text-[#E8D6B3] opacity-80 text-sm mt-1 font-['VT323']">
+                  Read about the Hidden Gems Tavern, its patrons, and the fantastical world beyond
+                </p>
+              </div>
+              
+              <div className="lore-preview p-4 bg-[#2C1810] border border-[#8B4513] rounded-sm">
+                <p className="text-[#E8D6B3] font-['VT323'] text-center italic">
+                  "The Hidden Gems Tavern was born from necessity and magic during The Great Rift Crisis over two centuries ago. Three sisters - Ruby, Sapphire, and Amethyst - found themselves caught in a cataclysmic magical event while attempting to escape the collapse of the Grand Arcanum Academy..."
+                </p>
+                <p className="text-[#FFD700] text-center text-sm mt-4 font-['VT323']">
+                  ~ Open the Lore Book to continue reading ~
+                </p>
+              </div>
             </div>
           ) : filteredItems.length === 0 ? (
             <div className="text-center py-8 text-[#E8D6B3] font-['VT323'] text-xl">

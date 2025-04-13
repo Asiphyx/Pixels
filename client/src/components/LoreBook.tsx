@@ -530,7 +530,7 @@ The Pattern Wardens: A monastic order whose members can perceive probability lin
     if (characterCategory === CharacterCategory.HEROES) {
       selectedLore = heroLore.find(hero => hero.avatar === selectedCharacter);
     } else {
-      selectedLore = bartenderLore.find(bartender => hero => hero.avatar === selectedCharacter);
+      selectedLore = bartenderLore.find(bartender => bartender.avatar === selectedCharacter);
     }
     
     if (!selectedLore) return null;
