@@ -4,6 +4,7 @@ import { setupVite, serveStatic, log } from "./vite";
 import { seedDatabase } from "./seed";
 import { resetUserOnlineStatus } from "./storage";
 import { runMigrations } from "./dbMigration";
+import { createInitialItems } from "./initialItems";
 
 const app = express();
 app.use(express.json());
@@ -43,6 +44,9 @@ app.use((req, res, next) => {
   try {
     // Run database migrations to ensure schema is up-to-date
     await runMigrations();
+    
+    // Create initial items for the inventory system
+    await createInitialItems();
     
     // Seed the database with default data if needed
     await seedDatabase();
