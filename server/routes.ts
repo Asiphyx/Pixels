@@ -513,8 +513,7 @@ async function handleMessage(client: ConnectedClient, rawMessage: string) {
         break;
       }
       
-      case WebSocketMessageType.AUTH_LOGOUT:
-      case WebSocketMessageType.LOGOUT: { // Support legacy logout type
+      case WebSocketMessageType.AUTH_LOGOUT: { // User logout
         try {
           if (client.userId) {
             // Update user status to offline
@@ -590,8 +589,7 @@ async function handleMessage(client: ConnectedClient, rawMessage: string) {
       }
       
       // Inventory message handlers
-      case WebSocketMessageType.INVENTORY_GET:
-      case WebSocketMessageType.GET_INVENTORY: { // Support legacy type
+      case WebSocketMessageType.INVENTORY_GET: { // Get user inventory
         try {
           if (!client.userId) {
             client.socket.send(JSON.stringify({
@@ -647,8 +645,7 @@ async function handleMessage(client: ConnectedClient, rawMessage: string) {
         break;
       }
       
-      case WebSocketMessageType.INVENTORY_ADD_ITEM:
-      case WebSocketMessageType.ADD_ITEM: { // Support legacy type
+      case WebSocketMessageType.INVENTORY_ADD_ITEM: { // Add item to inventory
         try {
           if (!client.userId) {
             client.socket.send(JSON.stringify({
@@ -682,8 +679,7 @@ async function handleMessage(client: ConnectedClient, rawMessage: string) {
         break;
       }
       
-      case WebSocketMessageType.INVENTORY_REMOVE_ITEM:
-      case WebSocketMessageType.REMOVE_ITEM: { // Support legacy type
+      case WebSocketMessageType.INVENTORY_REMOVE_ITEM: { // Remove item from inventory
         try {
           if (!client.userId) {
             client.socket.send(JSON.stringify({
@@ -725,8 +721,7 @@ async function handleMessage(client: ConnectedClient, rawMessage: string) {
         break;
       }
       
-      case WebSocketMessageType.INVENTORY_EQUIP_ITEM:
-      case WebSocketMessageType.EQUIP_ITEM: { // Support legacy type
+      case WebSocketMessageType.INVENTORY_EQUIP_ITEM: { // Equip item
         try {
           if (!client.userId) {
             client.socket.send(JSON.stringify({
@@ -776,8 +771,7 @@ async function handleMessage(client: ConnectedClient, rawMessage: string) {
         break;
       }
       
-      case WebSocketMessageType.INVENTORY_UNEQUIP_ITEM:
-      case WebSocketMessageType.UNEQUIP_ITEM: { // Support legacy type
+      case WebSocketMessageType.INVENTORY_UNEQUIP_ITEM: { // Unequip item
         try {
           if (!client.userId) {
             client.socket.send(JSON.stringify({
@@ -847,8 +841,7 @@ async function handleMessage(client: ConnectedClient, rawMessage: string) {
         break;
       }
       
-      case WebSocketMessageType.CURRENCY_ADD:
-      case WebSocketMessageType.ADD_CURRENCY: { // Support legacy type
+      case WebSocketMessageType.CURRENCY_ADD: { // Add currency to user
         try {
           if (!client.userId) {
             client.socket.send(JSON.stringify({
@@ -878,8 +871,7 @@ async function handleMessage(client: ConnectedClient, rawMessage: string) {
         break;
       }
       
-      case WebSocketMessageType.CURRENCY_SPEND:
-      case WebSocketMessageType.SPEND_CURRENCY: { // Support legacy type
+      case WebSocketMessageType.CURRENCY_SPEND: { // Spend user currency
         try {
           if (!client.userId) {
             client.socket.send(JSON.stringify({
