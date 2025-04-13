@@ -396,7 +396,7 @@ async function handleMessage(client: ConnectedClient, rawMessage: string) {
           if (!user) {
             client.socket.send(JSON.stringify({
               type: WebSocketMessageType.AUTH_ERROR,
-              payload: { message: "Invalid username or password" }
+              payload: { message: "Account not found. Please register first." }
             }));
             return;
           }
@@ -461,7 +461,7 @@ async function handleMessage(client: ConnectedClient, rawMessage: string) {
           console.error('Login error:', error);
           client.socket.send(JSON.stringify({
             type: WebSocketMessageType.AUTH_ERROR,
-            payload: { message: "Invalid login data" }
+            payload: { message: "There was a problem with your login. Please check your credentials or register a new account." }
           }));
         }
         break;
@@ -1421,7 +1421,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         try {
           const message = JSON.parse(data.toString());
           
-          // User registration message
+          // Check if it's a registration/login message
           if (message.type === WebSocketMessageType.USER_JOINED) {
             try {
               const userData = insertUserSchema.parse(message.payload);
@@ -1434,10 +1434,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
               }));
               socket.close();
             }
-          } else {
+          } 
+          // Handle login as first message (new secure flow)
+          else if (message.type === WebSocketMessageType.AUTH_LOGIN || 
+                  message.type === WebSocketMessageType.AUTH_REGISTER) {
+            // Add client to connected clients with minimal info
+            connectedClients.set(socket, {
+              socket,
+              userId: -1, // Temporary ID until authenticated
+              roomId: 1, // Default room
+              username: 'Guest' // Temporary name
+            });
+            
+            // Now process the message normally
+            const client = connectedClients.get(socket);
+            if (client) {
+              handleMessage(client, data.toString());
+            }
+          }
+          else {
             socket.send(JSON.stringify({
               type: WebSocketMessageType.ERROR,
-              payload: { message: "First message must be user registration" }
+              payload: { message: "First message must be registration or login" }
             }));
             socket.close();
           }
