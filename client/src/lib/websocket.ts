@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { WebSocketMessageType, WebSocketMessage, User, Room, Message, Bartender, MenuItem, BartenderMood } from '@shared/schema';
+import { tavernSoundscape } from './audio/tavernSoundscape';
 
 // Define the websocket store state
 interface WebSocketState {
@@ -92,12 +93,38 @@ export const useWebSocketStore = create<WebSocketState>((set, get) => ({
               break;
               
             case WebSocketMessageType.NEW_MESSAGE:
+              // Play notification sound if it's not from current user
+              if (data.payload.message.userId !== get().user?.id) {
+                // Play with increased volume for better audibility
+                tavernSoundscape.playUiSound('notification', 1.0);
+                
+                console.log('Playing notification sound for new message');
+              }
+              
               set(state => ({ 
                 messages: [...state.messages, data.payload.message] 
               }));
               break;
               
             case WebSocketMessageType.BARTENDER_RESPONSE:
+              // Play bartender notification sound with even higher volume
+              tavernSoundscape.playUiSound('notification', 1.0);
+              console.log('Playing notification sound for bartender response');
+              
+              // If a bartender is mentioned, also play a special sound
+              if (data.payload.message.bartenderId) {
+                setTimeout(() => {
+                  // Slightly delay bartender voice sound
+                  const bartenderName = data.payload.message.bartenderId === 1 
+                    ? "amethyst" 
+                    : data.payload.message.bartenderId === 2 
+                      ? "sapphire" 
+                      : "ruby";
+                  
+                  tavernSoundscape.playBartenderVoice(bartenderName, 'neutral');
+                }, 300);
+              }
+              
               set(state => ({ 
                 messages: [...state.messages, data.payload.message] 
               }));

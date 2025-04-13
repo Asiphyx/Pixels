@@ -56,10 +56,15 @@ class TavernSoundscape {
    */
   private registerSounds(): void {
     try {
-      // Helper function to check if actual sound files exist
-      // For now we'll use dummy audio, but in production we'd use real files
+      // Helper function to check if actual sound files exist or use dummy audio if not
       const getSources = (path: string): string[] => {
-        return [path, generateDummyAudio()]; // Fallback to dummy audio if file doesn't exist
+        // For UI sounds like notifications, we have real MP3 files
+        if (path.includes('notification') || path.includes('message_send')) {
+          return [path];
+        }
+        
+        // For other sounds, fallback to dummy audio for now
+        return [path, generateDummyAudio()];
       };
       
       // Register ambient sounds
@@ -128,10 +133,14 @@ class TavernSoundscape {
       };
       
       Object.entries(uiSounds).forEach(([id, path]) => {
+        // Increase volume for notifications specifically
+        const volume = id === 'notification' ? 0.8 : 0.5;
+        
         audioManager.registerSound(id, getSources(path), {
           category: 'ui',
           loop: false,
-          volume: 0.5
+          volume: volume,
+          preload: true // Make sure UI sounds are preloaded
         });
       });
       
@@ -281,8 +290,9 @@ class TavernSoundscape {
   /**
    * Play UI interaction sounds
    * @param type - Type of UI sound to play
+   * @param volume - Optional volume override (0-1)
    */
-  playUiSound(type: 'ui_click' | 'notification' | 'message_send' | 'menu_open'): void {
+  playUiSound(type: 'ui_click' | 'notification' | 'message_send' | 'menu_open', volume?: number): void {
     const soundMap: Record<string, string> = {
       'ui_click': 'ui_click',
       'notification': 'notification',
@@ -290,6 +300,26 @@ class TavernSoundscape {
       'menu_open': 'menu_open'
     };
     
+    if (volume !== undefined) {
+      // Get the sound and temporarily override its volume
+      const sound = audioManager['sounds'].get(soundMap[type]);
+      if (sound) {
+        const originalVolume = sound.volume || 1;
+        sound.volume = volume;
+        
+        // Play the sound
+        const playId = audioManager.play(soundMap[type]);
+        
+        // Restore original volume after playing
+        setTimeout(() => {
+          sound.volume = originalVolume;
+        }, 100);
+        
+        return;
+      }
+    }
+    
+    // Default playback if no volume override
     audioManager.play(soundMap[type]);
   }
 

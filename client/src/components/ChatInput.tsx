@@ -48,7 +48,8 @@ const ChatInput: FC = () => {
     } else {
       // Regular message
       sendMessage(trimmedMessage);
-      tavernSoundscape.playUiSound('message_send');
+      // Play message send sound with increased volume
+      tavernSoundscape.playUiSound('message_send', 0.9);
     }
     
     setMessage('');
