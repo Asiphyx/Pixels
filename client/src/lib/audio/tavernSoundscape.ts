@@ -25,8 +25,8 @@ const SOUND_PATHS = {
   
   // UI sounds
   BUTTON_CLICK: '/sounds/ui_click.mp3',
-  NOTIFICATION: '/sounds/notification.mp3',
-  MESSAGE_SEND: '/sounds/message_send.mp3',
+  NOTIFICATION: '/sounds/notification.mp3?v=1',
+  MESSAGE_SEND: '/sounds/message_send.mp3?v=1',
   MENU_OPEN: '/sounds/menu_open.mp3'
 };
 
@@ -300,6 +300,35 @@ class TavernSoundscape {
       'menu_open': 'menu_open'
     };
     
+    // For notification and message sounds, we'll try a direct Web Audio API approach
+    // as a fallback mechanism
+    if (type === 'notification' || type === 'message_send') {
+      try {
+        // Use both approaches - our audio manager and direct Audio API
+        this.playDirectUISound(type);
+        
+        // Also try the normal way
+        if (volume !== undefined) {
+          const sound = audioManager['sounds'].get(soundMap[type]);
+          if (sound) {
+            const originalVolume = sound.volume || 1;
+            sound.volume = volume;
+            const playId = audioManager.play(soundMap[type]);
+            setTimeout(() => { sound.volume = originalVolume; }, 100);
+          } else {
+            audioManager.play(soundMap[type]);
+          }
+        } else {
+          audioManager.play(soundMap[type]);
+        }
+        
+        return;
+      } catch (error) {
+        console.error(`Error playing UI sound ${type}:`, error);
+      }
+    }
+    
+    // For other sounds or if direct approach failed, use the normal approach
     if (volume !== undefined) {
       // Get the sound and temporarily override its volume
       const sound = audioManager['sounds'].get(soundMap[type]);
@@ -321,6 +350,35 @@ class TavernSoundscape {
     
     // Default playback if no volume override
     audioManager.play(soundMap[type]);
+  }
+  
+  /**
+   * Play a UI sound directly using the Web Audio API
+   * This is a fallback for cases where Howler.js might not be working
+   */
+  private playDirectUISound(type: 'notification' | 'message_send'): void {
+    const soundPath = type === 'notification' 
+      ? '/sounds/notification.mp3?v=2' 
+      : '/sounds/message_send.mp3?v=2';
+    
+    try {
+      // Create and play the audio element directly
+      const audio = new Audio(soundPath);
+      audio.volume = 1.0; // Full volume
+      
+      console.log(`Directly playing sound: ${soundPath}`);
+      
+      // Play the sound - this should work in most browsers with user interaction
+      const playPromise = audio.play();
+      
+      if (playPromise !== undefined) {
+        playPromise.catch(error => {
+          console.error('Direct audio playback failed:', error);
+        });
+      }
+    } catch (error) {
+      console.error('Error with direct audio playback:', error);
+    }
   }
 
   /**

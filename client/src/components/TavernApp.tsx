@@ -10,30 +10,78 @@ import { Button } from '@/components/ui/button';
 import { tavernSoundscape } from '@/lib/audio/tavernSoundscape';
 import { audioManager } from '@/lib/audio/audioManager';
 import { InventoryButton, InventoryItemPicker } from './inventory';
+import AudioNotificationSystem from './AudioNotificationSystem';
 
 const TavernApp: FC = () => {
   const { user, showMenu, toggleMenu } = useWebSocketStore();
   const [audioMuted, setAudioMuted] = useState(false);
 
-  // Initialize audio when component mounts
+  // Track if audio has been initialized
+  const [audioInitialized, setAudioInitialized] = useState(false);
+  
+  // Initialize audio when component mounts with user interaction
   useEffect(() => {
-    // Start ambient tavern soundscape
-    tavernSoundscape.startAmbience();
+    if (audioInitialized) return; // Skip if already initialized
     
-    // Play tavern music
-    tavernSoundscape.playMusic('mellow');
+    // Create an initialization function that requires user interaction
+    const initAudio = () => {
+      console.log('Initializing audio system on user interaction...');
+      
+      // Try forcing audio context to resume
+      if (window.AudioContext || (window as any).webkitAudioContext) {
+        try {
+          const tempAudio = new Audio();
+          tempAudio.play().catch(e => console.log('Initial audio play attempt:', e));
+        } catch (e) {
+          console.log('Audio context setup attempt:', e);
+        }
+      }
+      
+      // Register bartender voices
+      tavernSoundscape.registerBartenderVoice('Ruby', 'high');
+      tavernSoundscape.registerBartenderVoice('Sapphire', 'neutral');
+      tavernSoundscape.registerBartenderVoice('Amethyst', 'deep');
+      
+      // Start ambient tavern soundscape
+      tavernSoundscape.startAmbience();
+      
+      // Play tavern music
+      tavernSoundscape.playMusic('mellow');
+      
+      // Try playing a notification sound after a delay
+      setTimeout(() => {
+        // Directly create and play a notification sound as a test
+        const audio = new Audio('/sounds/notification.mp3?v=3');
+        audio.volume = 1.0;
+        audio.play().catch(e => console.error('Error playing test notification:', e));
+        
+        // Also try through our system
+        tavernSoundscape.playUiSound('notification', 1.0);
+        console.log('Test notification sound played');
+      }, 1000);
+      
+      // Mark audio as initialized
+      setAudioInitialized(true);
+      
+      // Remove event listeners
+      document.removeEventListener('click', initAudio);
+      document.removeEventListener('touchstart', initAudio);
+    };
     
-    // Register bartender voices
-    tavernSoundscape.registerBartenderVoice('Ruby', 'high');
-    tavernSoundscape.registerBartenderVoice('Sapphire', 'neutral');
-    tavernSoundscape.registerBartenderVoice('Amethyst', 'deep');
+    // Add event listeners for user interaction
+    document.addEventListener('click', initAudio);
+    document.addEventListener('touchstart', initAudio);
     
-    // Clean up on unmount
+    // Clean up
     return () => {
+      document.removeEventListener('click', initAudio);
+      document.removeEventListener('touchstart', initAudio);
+      
+      // Stop audio if component unmounts
       tavernSoundscape.stopAmbience();
       tavernSoundscape.stopMusic();
     };
-  }, []);
+  }, [audioInitialized]);
 
   // Handle audio mute toggle
   const toggleMute = () => {
@@ -146,6 +194,9 @@ const TavernApp: FC = () => {
       
       {/* Menu */}
       {showMenu && <TavernMenu onClose={handleMenuToggle} />}
+      
+      {/* Invisible component that handles audio notifications directly */}
+      <AudioNotificationSystem />
     </div>
   );
 };
