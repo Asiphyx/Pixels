@@ -2,7 +2,7 @@ import { FC, useState } from 'react';
 import { useWebSocketStore } from '@/lib/websocket';
 import { motion } from 'framer-motion';
 import { Users } from 'lucide-react';
-import { PatronAvatar } from '@/assets/svgs/tavern-patrons';
+import { PixelAvatar } from '@/assets/svgs/pixel-avatars';
 
 const OnlineUsers: FC = () => {
   const { onlineUsers } = useWebSocketStore();
@@ -51,7 +51,7 @@ const OnlineUsers: FC = () => {
                     key={user.id}
                     className="user-item flex items-center gap-2 mb-2 p-2 rounded-sm hover:bg-[#8B4513] transition-colors"
                   >
-                    <PatronAvatar name={user.avatar || 'bard'} size={32} />
+                    <PixelAvatar name={user.avatar || 'bard'} size={36} />
                     <div className="user-name text-[#E8D6B3] font-['VT323'] text-lg">{user.username}</div>
                   </div>
                 );

@@ -1,12 +1,12 @@
 import { FC } from 'react';
 
-// Import PNG avatar images
-import bard from '@assets/images/backgroundless/ruby.png';
-import knight from '@assets/images/backgroundless/sapphire.png';
-import wizard from '@assets/images/backgroundless/amethyst.png';
-import merchant from '@assets/images/backgroundless/emerald.png';
-import ranger from '@assets/images/backgroundless/jade.png';
-import rogue from '@assets/images/backgroundless/indigo.png';
+// Import PNG avatar images from assets directory
+import bard from '@/assets/ruby_avatar.png';
+import knight from '@/assets/sapphire_avatar.png';
+import wizard from '@/assets/amethyst_avatar.png';
+import merchant from '@/assets/amethyst_new.png';
+import ranger from '@/assets/ruby_new.png';
+import rogue from '@/assets/sapphire_new.png';
 
 // Map avatar names to their PNG images
 export const PixelAvatarMap = {

@@ -1,6 +1,6 @@
 import { FC, useState, useEffect } from 'react';
 import { useWebSocketStore } from '@/lib/websocket';
-import { PatronAvatar, PatronIconMap } from '@/assets/svgs/tavern-patrons';
+import { PixelAvatar, PixelAvatarMap } from '@/assets/svgs/pixel-avatars';
 import backgroundImage from '@/assets/background.png';
 
 // Storage keys for saving user preferences
@@ -37,7 +37,7 @@ const CharacterSelection: FC = () => {
   
   // Avatar selection
   const [selectedAvatar, setSelectedAvatar] = useState<string>(
-    localStorage.getItem(STORAGE_KEY_AVATAR) || 'warrior'
+    localStorage.getItem(STORAGE_KEY_AVATAR) || 'bard'
   );
   
   // Validation state
@@ -132,7 +132,7 @@ const CharacterSelection: FC = () => {
   };
   
   // Available patron avatars
-  const avatarOptions = Object.keys(PatronIconMap);
+  const avatarOptions = Object.keys(PixelAvatarMap);
   
   // Only show character selection if user is not connected
   // This prevents the patron screen from staying visible after connection
@@ -194,7 +194,7 @@ const CharacterSelection: FC = () => {
                     ? 'bg-[#FFD700] bg-opacity-20' 
                     : ''
                   }`}>
-                    <PatronAvatar name={avatar} size={54} className="mb-1" />
+                    <PixelAvatar name={avatar} size={64} className="mb-1" />
                   </div>
                   <span className="font-['VT323'] text-[#E8D6B3] text-center capitalize">
                     {avatar}

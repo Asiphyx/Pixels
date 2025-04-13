@@ -2,7 +2,7 @@ import { FC, useEffect, useRef } from 'react';
 import { useWebSocketStore } from '@/lib/websocket';
 import { Message } from '@shared/schema';
 import { BartenderAvatar } from '@/assets/svgs/bartenders';
-import { PatronAvatar } from '@/assets/svgs/tavern-patrons';
+import { PixelAvatar } from '@/assets/svgs/pixel-avatars';
 
 const ChatMessages: FC = () => {
   const { messages, user, onlineUsers } = useWebSocketStore();
@@ -27,9 +27,9 @@ const ChatMessages: FC = () => {
         return (
           <div className={`chat-message ${isCurrentUser ? 'user flex justify-end' : 'flex'}`}>
             {!isCurrentUser && message.userId && (
-              <PatronAvatar 
+              <PixelAvatar 
                 name={avatarString}
-                size={32}
+                size={36}
                 className="mr-2"
               />
             )}
