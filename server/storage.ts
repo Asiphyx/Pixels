@@ -448,7 +448,6 @@ export class MemStorage implements IStorage {
   }
 
   async addMemoryEntry(userId: number, bartenderId: number, entry: MemoryEntry): Promise<BartenderMemory> {
-    const { safeJsonParse, safeJsonStringify } = await import('./utils/jsonHelpers');
     const key = `${userId}-${bartenderId}`;
     let memory = this.bartenderMemories.get(key);
     
@@ -461,26 +460,37 @@ export class MemStorage implements IStorage {
       });
     }
     
-    // Parse existing memories, safely handling errors and data types
-    let memories: MemoryEntry[] = safeJsonParse<MemoryEntry[]>(memory.memories);
+    // Parse existing memories, add new one, then stringify back to JSON
+    let memories: MemoryEntry[] = [];
+    try {
+      // Handle null, undefined, or invalid JSON
+      if (memory.memories && typeof memory.memories === 'string') {
+        memories = JSON.parse(memory.memories) as MemoryEntry[];
+      }
+      
+      // If memories is not an array after parsing, initialize it
+      if (!Array.isArray(memories)) {
+        memories = [];
+      }
+    } catch (error) {
+      console.error('Error parsing memory entries in MemStorage:', error);
+      // If there's an error parsing, start with an empty array
+      memories = [];
+    }
     
-    // Add new entry to memory array, ensuring timestamp is a Date
+    // Add new entry to memory array
     memories.push({
       ...entry,
       timestamp: new Date()
     });
     
     // Sort memories by timestamp (newest first)
-    memories.sort((a, b) => {
-      const timeA = a.timestamp instanceof Date ? a.timestamp.getTime() : new Date(a.timestamp).getTime();
-      const timeB = b.timestamp instanceof Date ? b.timestamp.getTime() : new Date(b.timestamp).getTime();
-      return timeB - timeA;
-    });
+    memories.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
     
-    // Update the memories with proper JSON serialization
+    // Update the memories
     const updatedMemory: BartenderMemory = {
       ...memory,
-      memories: safeJsonStringify(memories),
+      memories: JSON.stringify(memories),
       updatedAt: new Date()
     };
     
@@ -489,60 +499,54 @@ export class MemStorage implements IStorage {
   }
 
   async getMemoryEntries(userId: number, bartenderId: number, limit = 10): Promise<MemoryEntry[]> {
-    const { safeJsonParse, validateMemoryEntries } = await import('./utils/jsonHelpers');
     const memory = await this.getBartenderMemory(userId, bartenderId);
     
     if (!memory) {
       return [];
     }
     
-    // Parse memories with robust error handling
-    let memories: MemoryEntry[] = safeJsonParse<MemoryEntry[]>(memory.memories);
-    
-    // Validate and fix any memory entries that might have invalid data
-    memories = validateMemoryEntries(memories);
-    
-    // Sort by timestamp (newest first) and limit
-    memories.sort((a, b) => {
-      const timeA = a.timestamp instanceof Date ? a.timestamp.getTime() : new Date(a.timestamp).getTime();
-      const timeB = b.timestamp instanceof Date ? b.timestamp.getTime() : new Date(b.timestamp).getTime();
-      return timeB - timeA;
-    });
-    
-    return memories.slice(0, limit);
+    try {
+      // Handle null, undefined, or invalid JSON
+      let memories: MemoryEntry[] = [];
+      if (memory.memories && typeof memory.memories === 'string') {
+        memories = JSON.parse(memory.memories) as MemoryEntry[];
+      }
+      
+      // If memories is not an array after parsing, initialize it
+      if (!Array.isArray(memories)) {
+        memories = [];
+        return [];
+      }
+      
+      // Sort by timestamp (newest first) and limit
+      memories.sort((a, b) => {
+        const timeA = a.timestamp ? new Date(a.timestamp).getTime() : 0;
+        const timeB = b.timestamp ? new Date(b.timestamp).getTime() : 0;
+        return timeB - timeA;
+      });
+      
+      return memories.slice(0, limit);
+    } catch (error) {
+      console.error('Error parsing memory entries in MemStorage:', error);
+      return [];
+    }
   }
 
   async getSummarizedMemories(userId: number, bartenderId: number, maxEntries = 5): Promise<string> {
     try {
-      // Use our enhanced getMemoryEntries which already handles validation and parsing
       const entries = await this.getMemoryEntries(userId, bartenderId, maxEntries);
       
       if (!entries || entries.length === 0) {
         return "This customer is new. No previous interactions.";
       }
       
-      // Generate a summarized format for each memory with improved error handling
+      // Generate a summarized format for each memory with error handling
       const memorySummaries = entries.map(entry => {
         try {
-          // First ensure timestamp is a valid Date object
-          const timestamp = entry.timestamp instanceof Date ? 
-            entry.timestamp : 
-            (entry.timestamp ? new Date(entry.timestamp) : new Date());
+          const dateStr = entry.timestamp ? new Date(entry.timestamp).toLocaleDateString() : 'Unknown date';
+          let summary = `[${dateStr}, ${entry.type || 'interaction'}${entry.importance ? `, importance: ${entry.importance}` : ''}] ${entry.content || 'Interaction recorded'}`;
           
-          const dateStr = timestamp.toLocaleDateString();
-          
-          // Create a structured summary with proper error checks for all fields
-          let summary = `[${dateStr}, ${entry.type || 'interaction'}`;
-          
-          // Only add importance if it's a valid number
-          if (typeof entry.importance === 'number' && entry.importance >= 1 && entry.importance <= 5) {
-            summary += `, importance: ${entry.importance}`;
-          }
-          
-          summary += `] ${entry.content || 'Interaction recorded'}`;
-          
-          // Only add context if it exists and is a string
-          if (entry.context && typeof entry.context === 'string') {
+          if (entry.context) {
             summary += ` (Context: ${entry.context})`;
           }
           
@@ -772,8 +776,6 @@ export class DatabaseStorage implements IStorage {
   }
   
   async addMemoryEntry(userId: number, bartenderId: number, entry: MemoryEntry): Promise<BartenderMemory> {
-    const { safeJsonParse, safeJsonStringify } = await import('./utils/jsonHelpers');
-    
     let memory = await this.getBartenderMemory(userId, bartenderId);
     
     if (!memory) {
@@ -785,30 +787,35 @@ export class DatabaseStorage implements IStorage {
       });
     }
     
-    // Parse existing memories using our safe parser
-    let memories: MemoryEntry[] = safeJsonParse<MemoryEntry[]>(memory.memories);
+    // Parse existing memories with error handling
+    let memories: MemoryEntry[] = [];
+    try {
+      // Handle null, undefined, or invalid JSON
+      if (memory.memories && typeof memory.memories === 'string') {
+        memories = JSON.parse(memory.memories) as MemoryEntry[];
+      }
+      
+      // If memories is not an array after parsing, initialize it
+      if (!Array.isArray(memories)) {
+        memories = [];
+      }
+    } catch (error) {
+      console.error('Error parsing memory entries:', error);
+      // Initialize as empty array if parsing fails
+      memories = [];
+    }
     
     // Validate entry with zod schema
     memoryEntrySchema.parse(entry);
     
-    // Add new entry to memories with timestamp
-    memories.push({
-      ...entry,
-      timestamp: new Date()
-    });
+    // Add new entry to memories
+    memories.push(entry);
     
-    // Sort by timestamp (newest first)
-    memories.sort((a, b) => {
-      const timeA = a.timestamp instanceof Date ? a.timestamp.getTime() : new Date(a.timestamp).getTime();
-      const timeB = b.timestamp instanceof Date ? b.timestamp.getTime() : new Date(b.timestamp).getTime();
-      return timeB - timeA;
-    });
-    
-    // Update memory record with new entry using safe stringify
+    // Update memory record with new entry
     const [updatedMemory] = await db
       .update(bartenderMemories)
       .set({
-        memories: safeJsonStringify(memories),
+        memories: JSON.stringify(memories),
         updatedAt: new Date()
       })
       .where(
@@ -823,94 +830,75 @@ export class DatabaseStorage implements IStorage {
   }
   
   async getMemoryEntries(userId: number, bartenderId: number, limit = 10): Promise<MemoryEntry[]> {
-    const { safeJsonParse, validateMemoryEntries } = await import('./utils/jsonHelpers');
     const memory = await this.getBartenderMemory(userId, bartenderId);
     
     if (!memory) {
       return [];
     }
     
-    // Parse memories with our safe parser 
-    let memories: MemoryEntry[] = safeJsonParse<MemoryEntry[]>(memory.memories);
-    
-    // Validate and fix any memory entries that might have invalid data
-    memories = validateMemoryEntries(memories);
-    
-    // Sort by timestamp (newest first)
-    memories.sort((a, b) => {
-      const timeA = a.timestamp instanceof Date ? a.timestamp.getTime() : new Date(a.timestamp).getTime();
-      const timeB = b.timestamp instanceof Date ? b.timestamp.getTime() : new Date(b.timestamp).getTime();
-      return timeB - timeA;
-    });
-    
-    // Return limited number of entries
-    return memories.slice(0, limit);
+    try {
+      // Handle null, undefined, or invalid JSON
+      let memories: MemoryEntry[] = [];
+      if (memory.memories && typeof memory.memories === 'string') {
+        memories = JSON.parse(memory.memories) as MemoryEntry[];
+      }
+      
+      // If memories is not an array after parsing, initialize it
+      if (!Array.isArray(memories)) {
+        memories = [];
+        return [];
+      }
+      
+      // Sort by timestamp (most recent first)
+      memories.sort((a, b) => {
+        const timeA = a.timestamp ? new Date(a.timestamp).getTime() : 0;
+        const timeB = b.timestamp ? new Date(b.timestamp).getTime() : 0;
+        return timeB - timeA;
+      });
+      
+      // Return limited number of entries
+      return memories.slice(0, limit);
+    } catch (error) {
+      console.error('Error parsing memory entries:', error);
+      return [];
+    }
   }
   
   async getSummarizedMemories(userId: number, bartenderId: number, maxEntries = 5): Promise<string> {
     try {
-      // Use our enhanced getMemoryEntries which already handles validation and parsing
-      const entries = await this.getMemoryEntries(userId, bartenderId, maxEntries);
+      const memories = await this.getMemoryEntries(userId, bartenderId, maxEntries);
       
-      if (!entries || entries.length === 0) {
+      if (!memories || memories.length === 0) {
         return "No previous interactions recorded.";
       }
       
       // Sort by importance (highest first) and then by recency (most recent first)
-      entries.sort((a, b) => {
+      memories.sort((a, b) => {
         // Check if importance exists before comparing
-        const importanceA = typeof a.importance === 'number' ? a.importance : 0;
-        const importanceB = typeof b.importance === 'number' ? b.importance : 0;
+        const importanceA = a.importance || 0;
+        const importanceB = b.importance || 0;
         
         if (importanceB !== importanceA) {
           return importanceB - importanceA;
         }
         
         // Safely handle timestamps
-        const timeA = a.timestamp instanceof Date ? 
-          a.timestamp.getTime() : 
-          (a.timestamp ? new Date(a.timestamp).getTime() : 0);
-          
-        const timeB = b.timestamp instanceof Date ? 
-          b.timestamp.getTime() : 
-          (b.timestamp ? new Date(b.timestamp).getTime() : 0);
-          
+        const timeA = a.timestamp ? new Date(a.timestamp).getTime() : 0;
+        const timeB = b.timestamp ? new Date(b.timestamp).getTime() : 0;
         return timeB - timeA;
       });
       
-      // Generate a summarized format for each memory with improved error handling
-      const memorySummaries = entries.map(entry => {
+      // Create a summarized string of memories with error handling
+      return memories.map(memory => {
         try {
-          // First ensure timestamp is a valid Date object
-          const timestamp = entry.timestamp instanceof Date ? 
-            entry.timestamp : 
-            (entry.timestamp ? new Date(entry.timestamp) : new Date());
-          
-          const dateStr = timestamp.toLocaleDateString();
-          
-          // Create a structured summary with proper error checks for all fields
-          let summary = `[${dateStr}, ${entry.type || 'interaction'}`;
-          
-          // Only add importance if it's a valid number
-          if (typeof entry.importance === 'number' && entry.importance >= 1 && entry.importance <= 5) {
-            summary += `, importance: ${entry.importance}`;
-          }
-          
-          summary += `] ${entry.content || 'Interaction recorded'}`;
-          
-          // Only add context if it exists and is a string
-          if (entry.context && typeof entry.context === 'string') {
-            summary += ` (Context: ${entry.context})`;
-          }
-          
-          return summary;
+          const date = memory.timestamp ? new Date(memory.timestamp) : new Date();
+          return `- ${memory.content || 'Interaction recorded'} (${date.toLocaleDateString()})`;
         } catch (error) {
-          // Fallback for any problematic memory entry
+          // Provide a fallback for any problematic memory entry
           return `- Past interaction recorded`;
         }
-      });
+      }).join("\n");
       
-      return memorySummaries.join('\n');
     } catch (error) {
       console.error('Error processing memories for summary:', error);
       return "Unable to retrieve previous interactions.";

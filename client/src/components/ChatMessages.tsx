@@ -7,14 +7,10 @@ import { PatronAvatar } from '@/assets/svgs/tavern-patrons';
 const ChatMessages: FC = () => {
   const { messages, user, onlineUsers } = useWebSocketStore();
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const messagesLengthRef = useRef<number>(0);
 
   // Auto scroll to bottom on new messages
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-    
-    // Update the reference for message count comparisons
-    messagesLengthRef.current = messages.length;
   }, [messages]);
 
   const renderMessage = (message: Message) => {
@@ -90,7 +86,6 @@ const ChatMessages: FC = () => {
       className="flex-grow p-4 overflow-y-auto font-['VT323'] text-lg text-[#E8D6B3]"
       style={{ maxHeight: 'calc(100vh - 400px)' }}
     >
-      
       {messages.length === 0 ? (
         <div className="flex items-center justify-center h-full text-center text-[#8B4513] opacity-50">
           <div>

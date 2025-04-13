@@ -92,15 +92,12 @@ export const useWebSocketStore = create<WebSocketState>((set, get) => ({
               break;
               
             case WebSocketMessageType.NEW_MESSAGE:
-              // Add the message to the messages array
               set(state => ({ 
                 messages: [...state.messages, data.payload.message] 
               }));
               break;
               
             case WebSocketMessageType.BARTENDER_RESPONSE:
-              // Add the bartender response to the messages array
-              
               set(state => ({ 
                 messages: [...state.messages, data.payload.message] 
               }));

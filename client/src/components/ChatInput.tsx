@@ -20,11 +20,7 @@ const ChatInput: FC = () => {
       if (emoteAction) {
         sendMessage(emoteAction, 'emote');
       }
-    } else if (trimmedMessage.startsWith('/order ')) {
-      // Process drink order
-      sendMessage(trimmedMessage);
     } else {
-      // Regular message
       sendMessage(trimmedMessage);
     }
     

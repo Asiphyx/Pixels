@@ -1,4 +1,4 @@
-import { FC } from 'react';
+import { FC, useEffect } from 'react';
 import TavernView from './TavernView';
 import ChatPanel from './ChatPanel';
 import OnlineUsers from './OnlineUsers';
@@ -7,15 +7,9 @@ import TavernMenu from './TavernMenu';
 import { useWebSocketStore } from '@/lib/websocket';
 import { Menu } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { InventoryButton, InventoryItemPicker } from './inventory';
 
 const TavernApp: FC = () => {
   const { user, showMenu, toggleMenu } = useWebSocketStore();
-
-  // Menu toggle handler
-  const handleMenuToggle = () => {
-    toggleMenu();
-  };
 
   return (
     <div className="tavern-app min-h-screen flex flex-col">
@@ -28,20 +22,13 @@ const TavernApp: FC = () => {
             <span className="hidden md:inline-block font-['VT323'] text-xl text-[#E8D6B3]">
               {user ? `Welcome, ${user.username}!` : 'Welcome, Adventurer!'}
             </span>
-            
-            {/* Inventory */}
-            <div className="inventory-controls flex items-center space-x-2">
-              <InventoryButton className="bg-[#4A3429] text-[#FFD700] border-2 border-[#8B4513] hover:bg-[#3A2419]" />
-              {user && <InventoryItemPicker />}
-            </div>
-            
             {user ? (
               <div className="menu-icon-container relative">
                 <Button 
                   variant="outline" 
                   size="sm"
                   className="bg-[#4A3429] text-[#FFD700] border-2 border-[#8B4513] rounded-md hover:bg-[#3A2419] relative overflow-hidden"
-                  onClick={handleMenuToggle}
+                  onClick={toggleMenu}
                 >
                   <div className="absolute inset-0 bg-opacity-10 pointer-events-none"
                       style={{
@@ -93,7 +80,7 @@ const TavernApp: FC = () => {
       <CharacterSelection />
       
       {/* Menu */}
-      {showMenu && <TavernMenu onClose={handleMenuToggle} />}
+      {showMenu && <TavernMenu onClose={toggleMenu} />}
     </div>
   );
 };
