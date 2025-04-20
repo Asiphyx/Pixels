@@ -1466,22 +1466,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
           const message = JSON.parse(data.toString());
           
           // Check if it's a registration/login message
-          if (message.type === WebSocketMessageType.USER_JOINED) {
-            try {
-              const userData = insertUserSchema.parse(message.payload);
-              processUserData(socket, userData);
-            } catch (err) {
-              console.error("Error in user registration:", err);
-              socket.send(JSON.stringify({
-                type: WebSocketMessageType.ERROR,
-                payload: { message: "Invalid user data" }
-              }));
-              socket.close();
-            }
-          } 
-          // Handle login as first message (new secure flow)
-          else if (message.type === WebSocketMessageType.AUTH_LOGIN || 
-                  message.type === WebSocketMessageType.AUTH_REGISTER) {
+          // Check if it's a registration/login message
+          if (message.type === WebSocketMessageType.AUTH_LOGIN ||
+              message.type === WebSocketMessageType.AUTH_REGISTER) {
             // Add client to connected clients with minimal info
             connectedClients.set(socket, {
               socket,
@@ -1489,7 +1476,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
               roomId: 1, // Default room
               username: 'Guest' // Temporary name
             });
-            
+
             // Now process the message normally
             const client = connectedClients.get(socket);
             if (client) {

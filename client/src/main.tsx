@@ -1,6 +1,10 @@
 import { createRoot } from "react-dom/client";
 import App from "./App";
+import { useWebSocketStore } from "./lib/websocket";
 import "./index.css";
+
+// Set the port to 9002
+const newPort = 9002;
 
 // Global error handler for unhandled promise rejections
 window.addEventListener('unhandledrejection', (event) => {
@@ -112,5 +116,14 @@ const addColorStyles = () => {
 };
 
 addColorStyles();
+
+// Update the websocket connection to use port 9002
+const updateWebsocketPort = () => {
+  const { connect } = useWebSocketStore.getState();
+  const username = localStorage.getItem('tavern_username') || 'Guest';
+  const avatar = localStorage.getItem('tavern_selected_avatar') || 'bard'; // Use 'bard' as a default
+  connect(username, avatar);
+};
+updateWebsocketPort();
 
 createRoot(document.getElementById("root")!).render(<App />);

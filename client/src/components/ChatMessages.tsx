@@ -8,6 +8,11 @@ const ChatMessages: FC = () => {
   const { messages, user, onlineUsers, roomId } = useWebSocketStore();
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
+  // 1. Log initial messages value
+  useEffect(() => {
+    console.log("Initial messages:", messages);
+  }, []);
+
   // Debug logging for messages
   useEffect(() => {
     console.log(`Room ${roomId} has ${messages.length} messages:`, messages);
@@ -136,13 +141,33 @@ const ChatMessages: FC = () => {
           </div>
         </div>
       ) : (
-        messages
-          .filter(message => message && typeof message === 'object')
-          .map((message, index) => (
-            <div key={index} className="mb-4 animate-fadeIn">
-              {renderMessage(message)}
+        (() => {
+          const filteredMessages = messages
+            .filter(message => message && typeof message === 'object');
+          console.log("Filtered messages:", filteredMessages);
+          return filteredMessages.length === 0 ? (
+            <div className="flex items-center justify-center h-full text-center text-[#8B4513] opacity-50">
+              <div>
+                <p className="text-xl mb-2">Welcome to the Pixel Tavern!</p>
+                <p>Messages will appear here. Type /menu to see available drinks and food.</p>
+              </div>
             </div>
-          ))
+          ) : (
+            filteredMessages.map((message, index) => {
+              try {
+                return (
+                  <div key={index} className="mb-4 animate-fadeIn">
+                    {renderMessage(message)}
+                  </div>
+                );
+              } catch (error) {
+                // 2. Log errors during map operation
+                console.error("Error rendering message:", error, message);
+                return null; // Return null to prevent crashing
+              }
+            })
+          );
+        })()
       )}
       <div ref={messagesEndRef} />
     </div>

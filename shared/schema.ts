@@ -148,8 +148,7 @@ export const items = pgTable("items", {
 });
 
 export const insertItemSchema = createInsertSchema(items).omit({
-  id: true,
-  createdAt: true
+  id: true
 });
 
 // User Inventory model

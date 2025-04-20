@@ -14,73 +14,9 @@ import {
 import { db } from './db';
 import { eq, and, desc, asc, sql } from 'drizzle-orm';
 import * as bcrypt from 'bcryptjs';
+import { type } from 'os';
 
-export interface IStorage {
-  // User operations
-  getUser(id: number): Promise<User | undefined>;
-  getUserByUsername(username: string): Promise<User | undefined>;
-  getUserByEmail(email: string): Promise<User | undefined>;
-  createUser(user: InsertUser): Promise<User>;
-  updateUserRoom(userId: number, roomId: number): Promise<User | undefined>;
-  updateUserStatus(userId: number, online: boolean): Promise<User | undefined>;
-  updateUserPassword(userId: number, passwordHash: string): Promise<User | undefined>;
-  getOnlineUsers(roomId: number): Promise<User[]>;
-  
-  // Authentication operations
-  registerUser(username: string, password: string, email?: string, avatar?: string): Promise<User>;
-  verifyUser(username: string, password: string): Promise<User | null>;
-  
-  // Currency operations
-  addCurrency(userId: number, silver: number): Promise<{silver: number, gold: number}>;
-  spendCurrency(userId: number, silver: number): Promise<{silver: number, gold: number} | null>;
-  getCurrency(userId: number): Promise<{silver: number, gold: number}>;
-  
-  // Room operations
-  getRoom(id: number): Promise<Room | undefined>;
-  getRoomByName(name: string): Promise<Room | undefined>;
-  getRooms(): Promise<Room[]>;
-  createRoom(room: InsertRoom): Promise<Room>;
-  
-  // Message operations
-  createMessage(message: InsertMessage): Promise<Message>;
-  getMessagesByRoom(roomId: number, limit?: number): Promise<Message[]>;
-  
-  // Bartender operations
-  getBartenders(): Promise<Bartender[]>;
-  getBartender(id: number): Promise<Bartender | undefined>;
-  createBartender(bartender: InsertBartender): Promise<Bartender>;
-  
-  // Menu operations
-  getMenuItems(category?: string): Promise<MenuItem[]>;
-  getMenuItem(id: number): Promise<MenuItem | undefined>;
-  createMenuItem(menuItem: InsertMenuItem): Promise<MenuItem>;
-
-  // Bartender Mood operations
-  getBartenderMood(userId: number, bartenderId: number): Promise<BartenderMood | undefined>;
-  createBartenderMood(mood: InsertBartenderMood): Promise<BartenderMood>;
-  updateBartenderMood(userId: number, bartenderId: number, moodChange: number): Promise<BartenderMood>;
-  getAllBartenderMoodsForUser(userId: number): Promise<BartenderMood[]>;
-  
-  // Bartender Memory operations
-  getBartenderMemory(userId: number, bartenderId: number): Promise<BartenderMemory | undefined>;
-  createBartenderMemory(memory: InsertBartenderMemory): Promise<BartenderMemory>;
-  addMemoryEntry(userId: number, bartenderId: number, entry: MemoryEntry): Promise<BartenderMemory>;
-  getMemoryEntries(userId: number, bartenderId: number, limit?: number): Promise<MemoryEntry[]>;
-  getSummarizedMemories(userId: number, bartenderId: number, maxEntries?: number): Promise<string>;
-  
-  // Inventory operations
-  getItems(): Promise<Item[]>;
-  getItem(id: number): Promise<Item | undefined>;
-  createItem(item: InsertItem): Promise<Item>;
-  
-  getUserInventory(userId: number): Promise<(UserInventory & {item: Item})[]>;
-  getUserInventoryItem(userId: number, itemId: number): Promise<UserInventory | undefined>;
-  addItemToInventory(userId: number, itemId: number, quantity?: number): Promise<UserInventory>;
-  removeItemFromInventory(userId: number, itemId: number, quantity?: number): Promise<boolean>;
-  equipItem(userId: number, itemId: number, slot: string): Promise<UserInventory | null>;
-  unequipItem(userId: number, itemId: number): Promise<UserInventory | null>;
-  getEquippedItems(userId: number): Promise<(UserInventory & {item: Item})[]>;
-}
+import { IStorage } from './storage.interface';
 
 export class MemStorage implements IStorage {
   private users: Map<number, User>;
@@ -98,7 +34,11 @@ export class MemStorage implements IStorage {
   private menuItemId: number;
   private moodId: number;
   private memoryId: number;
+  private items: Map<number, Item>;
+  private userInventory: Map<string, UserInventory>; // Changed to string key for "userId-itemId"
+  private inventoryItemId: number; // Added missing property
 
+  private itemId: number;
   constructor() {
     this.users = new Map();
     this.rooms = new Map();
@@ -115,8 +55,16 @@ export class MemStorage implements IStorage {
     this.menuItemId = 1;
     this.moodId = 1;
     this.memoryId = 1;
+    this.itemId = 1;
+    this.inventoryItemId = 1; // Initialize the inventory item ID
+    this.items = new Map();
+    this.userInventory = new Map();
     
-    // Initialize with default data
+    // Initialize with default data in the constructor
+    // These need to be after the userId, bartenderId and menuItemId
+    // are defined because the create functions use them
+    // We also need to use the methods createBartender and createMenuItem
+    // as they add the items to the maps.
     this.initializeDefaultData();
   }
 
@@ -144,7 +92,7 @@ export class MemStorage implements IStorage {
     ];
     
     // Create bartenders first so we have their IDs
-    defaultBartenders.forEach(bartender => this.createBartender(bartender));
+    defaultBartenders.forEach(bartender => this.createBartender(bartender)); // Calls createBartender
     
     // Create default rooms - one for each gem
     const defaultRooms: InsertRoom[] = [
@@ -172,7 +120,7 @@ export class MemStorage implements IStorage {
         icon: "elvenMoonshine"
       },
       {
-        name: "Dwarven Mead",
+        name: "Dwarven",
         description: "Sweet honey mead from the mountain halls",
         price: 8,
         category: "drinks",
@@ -249,10 +197,23 @@ export class MemStorage implements IStorage {
       }
     ];
     
-    [...defaultDrinks, ...defaultFood, ...defaultSpecials].forEach(item => this.createMenuItem(item));
+    [...defaultDrinks, ...defaultFood, ...defaultSpecials].forEach(item => this.createMenuItem(item)); // Calls createMenuItem
   }
-
   // User operations
+  async addCurrency(userId: number, silver: number): Promise<{ silver: number; gold: number; }> {
+    // Implementation for adding currency
+    const user = await this.getUser(userId);
+    return { silver: user?.silver || 0, gold: user?.gold || 0 };
+  }
+  async spendCurrency(userId: number, silver: number): Promise<{ silver: number; gold: number; } | null> {
+    // Implementation for spending currency
+    return null;
+  }
+  async getCurrency(userId: number): Promise<{ silver: number; gold: number; }> {
+    // Implementation for getting currency
+    const user = await this.getUser(userId);
+    return { silver: user?.silver || 0, gold: user?.gold || 0 };
+  }
   async getUser(id: number): Promise<User | undefined> {
     return this.users.get(id);
   }
@@ -271,11 +232,19 @@ export class MemStorage implements IStorage {
   async createUser(insertUser: InsertUser): Promise<User> {
     const id = this.userId++;
     const timestamp = new Date();
-    const user: User = { 
-      ...insertUser, 
-      id, 
+    // Handle undefined email by setting it to null
+    const email = insertUser.email !== undefined ? insertUser.email : null;
+    const user: User = {
+      ...insertUser,
+      id,
+      passwordHash: null,
       joinedAt: timestamp,
-      online: true
+      email: email,
+      online: true,
+      roomId: insertUser.roomId ?? 1,
+      level: insertUser.level ?? 1,
+      silver: insertUser.silver ?? 0,
+      gold: insertUser.gold ?? 0
     };
     this.users.set(id, user);
     return user;
@@ -311,10 +280,55 @@ export class MemStorage implements IStorage {
     return onlineUsers;
   }
 
+  async getUserByEmail(email: string): Promise<User | undefined> {
+    // Already case-insensitive, but let's make it explicit for consistency
+    const lowercaseEmail = email.toLowerCase();
+    for (const user of this.users.values()) {
+      if (user.email && user.email.toLowerCase() === lowercaseEmail) {
+        return user;
+      }
+    }
+    return undefined;
+  }
+
+  async updateUserPassword(userId: number, passwordHash: string): Promise<User | undefined> {
+    const user = await this.getUser(userId);
+    if (user) {
+      const updatedUser: User = { ...user, passwordHash };
+      this.users.set(userId, updatedUser);
+      return updatedUser;
+    }
+    return undefined;
+  }
+  
+  async registerUser(username: string, password: string, email?: string, avatar: string = 'knight'): Promise<User> {
+    const existingUser = await this.getUserByUsername(username);
+    if (existingUser) {
+      throw new Error('Username already taken');
+    }
+    if (email) {
+      const existingEmail = await this.getUserByEmail(email);
+      if (existingEmail) {
+        throw new Error('Email already registered');
+      }
+    }
+    const salt = await bcrypt.genSalt(10);
+    const passwordHash = await bcrypt.hash(password, salt);
+    const user = await this.createUser({ username, email: email || null, avatar, silver: 100, gold: 0, level: 1, roomId: 1, online: true });
+    const updatedUser = await this.updateUserPassword(user.id, passwordHash);
+    
+    return updatedUser!;
+  }
+
+  async verifyUser(username: string, password: string): Promise<User | null> {
+    const user = await this.getUserByUsername(username);
+    return user && user.passwordHash && await bcrypt.compare(password, user.passwordHash) ? user : null;
+  }
+
   // Room operations
   async getRoom(id: number): Promise<Room | undefined> {
     return this.rooms.get(id);
-  }
+  }  
 
   async getRoomByName(name: string): Promise<Room | undefined> {
     // Already case-insensitive, but let's make it explicit for consistency
@@ -342,13 +356,24 @@ export class MemStorage implements IStorage {
   async createMessage(insertMessage: InsertMessage): Promise<Message> {
     const id = this.messageId++;
     const timestamp = new Date();
-    const message: Message = { ...insertMessage, id, timestamp };
+
+    const message: Message = { 
+      ...insertMessage, 
+      id, 
+      timestamp, 
+      type: insertMessage.type || 'text',
+      userId: insertMessage.userId !== undefined ? insertMessage.userId : null,
+      bartenderId: insertMessage.bartenderId !== undefined ? insertMessage.bartenderId : null,
+    };
+    
     this.messages.set(id, message);
-    return message;
+    return message; // Return the original message
   }
 
   async getMessagesByRoom(roomId: number, limit = 50): Promise<Message[]> {
     const roomMessages: Message[] = [];
+    // **IMPORTANT** - Add a comment to remind users to update their tsconfig.json
+    // To use the most recent iterator features, add `"downlevelIteration": true` to the `compilerOptions` section.
     for (const message of this.messages.values()) {
       if (message.roomId === roomId) {
         roomMessages.push(message);
@@ -356,9 +381,12 @@ export class MemStorage implements IStorage {
     }
     
     // Sort by timestamp (newest first) and limit
-    return roomMessages
-      .sort((a, b) => a.timestamp.getTime() - b.timestamp.getTime())
-      .slice(-limit);
+    return roomMessages.sort((a, b) => {
+      if (!a.timestamp && !b.timestamp) return 0;
+      if (!a.timestamp) return -1; // Treat null as earlier
+      if (!b.timestamp) return 1; // Treat null as earlier
+      return a.timestamp.getTime() - b.timestamp.getTime();
+    }).slice(-limit); 
   }
 
   // Bartender operations
@@ -408,14 +436,16 @@ export class MemStorage implements IStorage {
     const id = this.moodId++;
     const timestamp = new Date();
     const bartenderMood: BartenderMood = { 
-      ...mood, 
-      id, 
-      updatedAt: timestamp 
+      ...mood,
+      mood: mood.mood ?? 50, 
+      id,
+      updatedAt: timestamp
     };
     
     const key = `${mood.userId}-${mood.bartenderId}`;
     this.bartenderMoods.set(key, bartenderMood);
     return bartenderMood;
+
   }
 
   async updateBartenderMood(userId: number, bartenderId: number, moodChange: number): Promise<BartenderMood> {
@@ -470,9 +500,11 @@ export class MemStorage implements IStorage {
     const bartenderMemory: BartenderMemory = {
       ...memory,
       id,
+      memories: [],
       createdAt: timestamp,
       updatedAt: timestamp
     };
+    
     
     const key = `${memory.userId}-${memory.bartenderId}`;
     this.bartenderMemories.set(key, bartenderMemory);
@@ -595,93 +627,253 @@ export class MemStorage implements IStorage {
       return "Unable to retrieve previous interactions.";
     }
   }
-}
-
-export class DatabaseStorage implements IStorage {
-  // User operations
-  async getUser(id: number): Promise<User | undefined> {
-    const [user] = await db.select().from(users).where(eq(users.id, id));
-    return user || undefined;
+  
+  // Inventory operations
+  async getItems(): Promise<Item[]> {
+    return Array.from(this.items.values());
   }
 
-  async getUserByUsername(username: string): Promise<User | undefined> {
-    // Use SQL LOWER function to make the username comparison case-insensitive
-    const [user] = await db.select().from(users).where(
-      sql`LOWER(${users.username}) = LOWER(${username})`
-    );
-    return user || undefined;
+  async getItem(id: number): Promise<Item | undefined> {
+    return this.items.get(id);
   }
-  
-  async getUserByEmail(email: string): Promise<User | undefined> {
-    if (!email) return undefined;
-    const [user] = await db.select().from(users).where(eq(users.email, email));
-    return user || undefined;
+
+  async createItem(insertItem: InsertItem): Promise<Item> {
+    const id = this.itemId++;
+    const timestamp = new Date();
+    const item: Item = {
+      ...insertItem,
+      id,
+      createdAt: timestamp,
+      rarity: insertItem.rarity ?? 'common',
+      stackable: insertItem.stackable ?? false,
+      maxStack: insertItem.maxStack ?? 1,
+      icon: insertItem.icon ?? 'default_item',
+      stats: insertItem.stats ?? '{}'
+    };
+    this.items.set(id, item);
+    return item;
   }
-  
-  async updateUserPassword(userId: number, passwordHash: string): Promise<User | undefined> {
-    await db.update(users)
-      .set({ passwordHash })
-      .where(eq(users.id, userId));
-    return this.getUser(userId);
+
+  // Implementation for IStorage.createBaseItem
+  async createBaseItem(insertItem: InsertItem): Promise<Item> {
+    return this.createItem(insertItem);
   }
-  
-  // Authentication operations
-  async registerUser(username: string, password: string, email?: string, avatar: string = 'knight'): Promise<User> {
-    // Check if username already exists
-    const existingUser = await this.getUserByUsername(username);
-    if (existingUser) {
-      throw new Error('Username already taken');
+
+  async getUserInventory(userId: number): Promise<(UserInventory & { item: Item; })[]> {
+    const inventory: (UserInventory & { item: Item; })[] = [];
+    for (const [key, inventoryItem] of this.userInventory.entries()) {
+      if (inventoryItem.userId === userId) {
+        const item = this.items.get(inventoryItem.itemId);
+        if (item) {
+          inventory.push({ ...inventoryItem, item });
+        }
+      }
     }
+    return inventory;
+  }
+
+  async getUserInventoryItem(userId: number, itemId: number): Promise<UserInventory | undefined> {
+    const key = `${userId}-${itemId}`;
+    return this.userInventory.get(key);
+  }
+
+  async addItemToInventory(userId: number, itemId: number, quantity: number = 1): Promise<UserInventory> {
+    const item = await this.getItem(itemId);
+    if (!item) throw new Error('Item not found');
     
-    // Check if email already exists (if provided)
-    if (email) {
-      const existingEmail = await this.getUserByEmail(email);
-      if (existingEmail) {
-        throw new Error('Email already registered');
+    const key = `${userId}-${itemId}`;
+    const existingInventory = this.userInventory.get(key);
+    
+    if (existingInventory) {
+      const updatedInventory = {
+        ...existingInventory,
+        quantity: existingInventory.quantity + quantity,
+        updatedAt: new Date()
+      };
+      this.userInventory.set(key, updatedInventory);
+      return updatedInventory;
+    } else {
+      const newInventory = {
+        id: this.inventoryItemId++,
+        userId,
+        itemId,
+        quantity,
+        equipped: false,
+        equipSlot: null,
+        updatedAt: new Date()
+      };
+      this.userInventory.set(key, newInventory);
+      return newInventory;
+    }
+  }
+  
+  async removeItemFromInventory(userId: number, itemId: number, quantity: number = 1): Promise<boolean> {
+    const key = `${userId}-${itemId}`;
+    const existingInventory = this.userInventory.get(key);
+    
+    if (!existingInventory) return false;
+    
+    if (existingInventory.quantity <= quantity) {
+      this.userInventory.delete(key);
+    } else {
+      this.userInventory.set(key, {
+        ...existingInventory,
+        quantity: existingInventory.quantity - quantity,
+        updatedAt: new Date()
+      });
+    }
+    return true;
+  }
+
+  async equipItem(userId: number, itemId: number, slot: string): Promise<UserInventory | null> {
+    const key = `${userId}-${itemId}`;
+    const inventoryItem = this.userInventory.get(key);
+    
+    if (!inventoryItem) return null;
+    
+    // Unequip any item in the same slot
+    for (const [otherKey, otherItem] of this.userInventory.entries()) {
+      if (otherItem.userId === userId && otherItem.equipped && otherItem.equipSlot === slot) {
+        this.userInventory.set(otherKey, {
+          ...otherItem,
+          equipped: false,
+          equipSlot: null,
+          updatedAt: new Date()
+        });
       }
     }
     
-    // Hash the password
-    const salt = await bcrypt.genSalt(10);
-    const passwordHash = await bcrypt.hash(password, salt);
-    
-    // Create the user
-    const user = await this.createUser({
-      username,
-      email: email || null,
-      passwordHash,
-      avatar,
-      silver: 100, // Starting currency
-      gold: 0,
-      level: 1,
-      roomId: 1, // Default room
-      online: true
-    });
-    
-    return user;
+    const updatedItem = {
+      ...inventoryItem,
+      equipped: true,
+      equipSlot: slot,
+      updatedAt: new Date()
+    };
+    this.userInventory.set(key, updatedItem);
+    return updatedItem;
   }
-  
-  async verifyUser(username: string, password: string): Promise<User | null> {
-    // Find user by username
-    const user = await this.getUserByUsername(username);
-    if (!user || !user.passwordHash) {
-      return null;
+
+  async unequipItem(userId: number, itemId: number): Promise<UserInventory | null> {
+    const key = `${userId}-${itemId}`;
+    const inventoryItem = this.userInventory.get(key);
+    
+    if (!inventoryItem || !inventoryItem.equipped) return null;
+    
+    const updatedItem = {
+      ...inventoryItem,
+      equipped: false,
+      equipSlot: null,
+      updatedAt: new Date()
+    };
+    this.userInventory.set(key, updatedItem);
+    return updatedItem;
+  }
+
+  async getEquippedItems(userId: number): Promise<(UserInventory & { item: Item; })[]> {
+    const equippedItems: (UserInventory & { item: Item; })[] = [];
+    
+    for (const [key, inventoryItem] of this.userInventory.entries()) {
+      if (inventoryItem.userId === userId && inventoryItem.equipped) {
+        const item = this.items.get(inventoryItem.itemId);
+        if (item) {
+          equippedItems.push({ ...inventoryItem, item });
+        }
+      }
     }
     
-    // Compare passwords
-    const isMatch = await bcrypt.compare(password, user.passwordHash);
-    if (!isMatch) {
-      return null;
-    }
-    
-    // Update user to online status
-    await this.updateUserStatus(user.id, true);
-    
-    // Return the user
-    return user;
+    return equippedItems;
   }
   
-  // Currency operations
+  // Required by IStorage interface
+  async hasItem(userId: number, itemId: number, quantity: number = 1): Promise<boolean> {
+    const inventoryItem = await this.getUserInventoryItem(userId, itemId);
+    return !!inventoryItem && inventoryItem.quantity >= quantity;
+  }
+  
+  async transferItem(senderId: number, receiverId: number, itemId: number, quantity: number = 1): Promise<boolean> {
+    // Check if sender has the item
+    const senderHasItem = await this.hasItem(senderId, itemId, quantity);
+    if (!senderHasItem) return false;
+    
+    // Remove from sender
+    await this.removeItemFromInventory(senderId, itemId, quantity);
+    
+    // Add to receiver
+    await this.addItemToInventory(receiverId, itemId, quantity);
+    
+    return true;
+  }
+  
+  async craftItem(userId: number, craftedItemId: number, materials: {itemId: number, quantity: number}[]): Promise<Item | null> {
+    // Check if user has all required materials
+    for (const material of materials) {
+      const hasItem = await this.hasItem(userId, material.itemId, material.quantity);
+      if (!hasItem) return null;
+    }
+    
+    // Remove all materials from inventory
+    for (const material of materials) {
+      await this.removeItemFromInventory(userId, material.itemId, material.quantity);
+    }
+    
+    // Get the crafted item
+    const craftedItem = await this.getItem(craftedItemId);
+    if (!craftedItem) return null;
+    
+    // Add crafted item to inventory
+    await this.addItemToInventory(userId, craftedItemId, 1);
+    
+    return craftedItem;
+  }
+}
+
+export class MessageStorage {
+  private userStorage: MemStorage;
+  private roomStorage: MemStorage;
+  private messageStorage: MemStorage;
+  private bartenderStorage: MemStorage;
+  private menuItemStorage: MemStorage;
+  private bartenderMoodStorage: BartenderMoodStorage;
+
+  constructor() {
+    this.userStorage = new MemStorage();
+    this.roomStorage = new MemStorage();
+    this.messageStorage = new MemStorage();
+    this.bartenderStorage = new MemStorage();
+    this.menuItemStorage = new MemStorage();
+    this.bartenderMoodStorage = new BartenderMoodStorage();
+  }
+
+  async createMessage(message: InsertMessage): Promise<Message> {
+    const [newMessage] = await db
+      .insert(messages)
+      .values({
+        ...message,
+        timestamp: new Date()
+      })
+      .returning();
+    return newMessage;
+  }
+
+  async getItems(): Promise<Item[]> {
+    return db.select().from(items);
+  }
+
+  async getItem(id: number): Promise<Item | undefined> {
+    const [item] = await db.select().from(items).where(eq(items.id, id));
+    return item || undefined;
+  }
+
+  async getMessagesByRoom(roomId: number, limit = 50): Promise<Message[]> {
+    const roomMessages = await db
+      .select()
+      .from(messages)
+      .where(eq(messages.roomId, roomId))
+      .orderBy(desc(messages.timestamp))
+      .limit(limit);
+    
+    return roomMessages;
+  }
   async getCurrency(userId: number): Promise<{silver: number, gold: number}> {
     const user = await this.getUser(userId);
     if (!user) {
@@ -757,184 +949,32 @@ export class DatabaseStorage implements IStorage {
     return { silver: newSilver, gold: newGold };
   }
 
-  async createUser(insertUser: InsertUser): Promise<User> {
-    const [user] = await db
-      .insert(users)
-      .values(insertUser)
-      .returning();
-    return user;
+  // User operations, delegate to userStorage
+  async getUser(id: number): Promise<User | undefined> {
+    return this.userStorage.getUser(id);
   }
-  
-  async updateUserRoom(userId: number, roomId: number): Promise<User | undefined> {
-    const [user] = await db
-      .update(users)
-      .set({ roomId })
-      .where(eq(users.id, userId))
-      .returning();
-    return user || undefined;
+
+  async getUserByUsername(username: string): Promise<User | undefined> {
+    return this.userStorage.getUserByUsername(username);
   }
-  
-  async updateUserStatus(userId: number, online: boolean): Promise<User | undefined> {
-    const [user] = await db
-      .update(users)
-      .set({ online })
-      .where(eq(users.id, userId))
-      .returning();
-    return user || undefined;
+
+  async getUserByEmail(email: string): Promise<User | undefined> {
+    return this.userStorage.getUserByEmail(email);
   }
-  
-  async getOnlineUsers(roomId: number): Promise<User[]> {
-    return db
-      .select()
-      .from(users)
-      .where(and(eq(users.roomId, roomId), eq(users.online, true)));
+
+  async updateUserPassword(userId: number, passwordHash: string): Promise<User | undefined> {
+    return this.userStorage.updateUserPassword(userId, passwordHash);
   }
-  
-  // Room operations
-  async getRoom(id: number): Promise<Room | undefined> {
-    const [room] = await db.select().from(rooms).where(eq(rooms.id, id));
-    return room || undefined;
+  // Inventory operations
+  async createBaseItem(insertItem: InsertItem): Promise<Item> {
+    const [item] = await db.insert(items).values(insertItem).returning();
+    return item;
   }
-  
-  async getRoomByName(name: string): Promise<Room | undefined> {
-    // Use SQL LOWER function to make the name comparison case-insensitive
-    const [room] = await db.select().from(rooms).where(
-      sql`LOWER(${rooms.name}) = LOWER(${name})`
-    );
-    return room || undefined;
-  }
-  
-  async getRooms(): Promise<Room[]> {
-    return db.select().from(rooms);
-  }
-  
-  async createRoom(insertRoom: InsertRoom): Promise<Room> {
-    const [room] = await db
-      .insert(rooms)
-      .values(insertRoom)
-      .returning();
-    return room;
-  }
-  
-  // Message operations
-  async createMessage(insertMessage: InsertMessage): Promise<Message> {
-    const [message] = await db
-      .insert(messages)
-      .values(insertMessage)
-      .returning();
-    return message;
-  }
-  
-  async getMessagesByRoom(roomId: number, limit = 50): Promise<Message[]> {
-    return db
-      .select()
-      .from(messages)
-      .where(eq(messages.roomId, roomId))
-      .orderBy(desc(messages.timestamp))
-      .limit(limit)
-      .then(messages => messages.reverse());
-  }
-  
-  // Bartender operations
-  async getBartenders(): Promise<Bartender[]> {
-    return db.select().from(bartenders);
-  }
-  
-  async getBartender(id: number): Promise<Bartender | undefined> {
-    const [bartender] = await db.select().from(bartenders).where(eq(bartenders.id, id));
-    return bartender || undefined;
-  }
-  
-  async createBartender(insertBartender: InsertBartender): Promise<Bartender> {
-    const [bartender] = await db
-      .insert(bartenders)
-      .values(insertBartender)
-      .returning();
-    return bartender;
-  }
-  
-  // Menu operations
-  async getMenuItems(category?: string): Promise<MenuItem[]> {
-    if (category) {
-      return db.select().from(menuItems).where(eq(menuItems.category, category));
-    }
-    return db.select().from(menuItems);
-  }
-  
-  async getMenuItem(id: number): Promise<MenuItem | undefined> {
-    const [menuItem] = await db.select().from(menuItems).where(eq(menuItems.id, id));
-    return menuItem || undefined;
-  }
-  
-  async createMenuItem(insertMenuItem: InsertMenuItem): Promise<MenuItem> {
-    const [menuItem] = await db
-      .insert(menuItems)
-      .values(insertMenuItem)
-      .returning();
-    return menuItem;
-  }
-  
-  // Bartender Mood operations
-  async getBartenderMood(userId: number, bartenderId: number): Promise<BartenderMood | undefined> {
-    const [mood] = await db
-      .select()
-      .from(bartenderMoods)
-      .where(
-        and(
-          eq(bartenderMoods.userId, userId),
-          eq(bartenderMoods.bartenderId, bartenderId)
-        )
-      );
-    return mood || undefined;
-  }
-  
-  async createBartenderMood(insertMood: InsertBartenderMood): Promise<BartenderMood> {
-    const [mood] = await db
-      .insert(bartenderMoods)
-      .values(insertMood)
-      .returning();
-    return mood;
-  }
-  
-  async updateBartenderMood(userId: number, bartenderId: number, moodChange: number): Promise<BartenderMood> {
-    let mood = await this.getBartenderMood(userId, bartenderId);
-    
-    if (!mood) {
-      // Create initial mood if it doesn't exist
-      mood = await this.createBartenderMood({
-        userId,
-        bartenderId,
-        mood: 50 // Start at neutral
-      });
-    }
-    
-    // Calculate new mood value (clamped between 0-100)
-    let newMood = Math.min(100, Math.max(0, mood.mood + moodChange));
-    
-    // Update the mood
-    const [updatedMood] = await db
-      .update(bartenderMoods)
-      .set({ 
-        mood: newMood,
-        updatedAt: new Date()
-      })
-      .where(
-        and(
-          eq(bartenderMoods.userId, userId),
-          eq(bartenderMoods.bartenderId, bartenderId)
-        )
-      )
-      .returning();
-    
-    return updatedMood;
-  }
-  
-  async getAllBartenderMoodsForUser(userId: number): Promise<BartenderMood[]> {
-    return db
-      .select()
-      .from(bartenderMoods)
-      .where(eq(bartenderMoods.userId, userId));
-  }
+
+    async getBartenderMood(userId: number, bartenderId: number): Promise<BartenderMood | undefined> { return this.bartenderMoodStorage.getBartenderMood(userId, bartenderId); }
+    async createBartenderMood(mood: InsertBartenderMood): Promise<BartenderMood> { return this.bartenderMoodStorage.createBartenderMood(mood); }
+    async updateBartenderMood(userId: number, bartenderId: number, moodChange: number): Promise<BartenderMood> { return this.bartenderMoodStorage.updateBartenderMood(userId, bartenderId, moodChange); }
+    async getAllBartenderMoodsForUser(userId: number): Promise<BartenderMood[]> { return this.bartenderMoodStorage.getAllBartenderMoodsForUser(userId); }
   
   // Bartender Memory operations
   async getBartenderMemory(userId: number, bartenderId: number): Promise<BartenderMemory | undefined> {
@@ -1077,7 +1117,7 @@ export class DatabaseStorage implements IStorage {
           const date = memory.timestamp ? new Date(memory.timestamp) : new Date();
           return `- ${memory.content || 'Interaction recorded'} (${date.toLocaleDateString()})`;
         } catch (error) {
-          // Provide a fallback for any problematic memory entry
+          // Provide a fallback for any problemati memory entry
           return `- Past interaction recorded`;
         }
       }).join("\n");
@@ -1089,15 +1129,6 @@ export class DatabaseStorage implements IStorage {
   }
 
   // Inventory operations
-  async getItems(): Promise<Item[]> {
-    return db.select().from(items);
-  }
-
-  async getItem(id: number): Promise<Item | undefined> {
-    const [item] = await db.select().from(items).where(eq(items.id, id));
-    return item || undefined;
-  }
-
   async createItem(insertItem: InsertItem): Promise<Item> {
     const [item] = await db.insert(items).values(insertItem).returning();
     return item;
@@ -1332,8 +1363,133 @@ export class DatabaseStorage implements IStorage {
   }
 }
 
-// Use the database storage implementation
-export const storage = new DatabaseStorage();
+export class BartenderMoodStorage {
+  async getBartenderMood(userId: number, bartenderId: number): Promise<BartenderMood | undefined> {
+    const [mood] = await db
+      .select()
+      .from(bartenderMoods)
+      .where(
+        and(
+          eq(bartenderMoods.userId, userId),
+          eq(bartenderMoods.bartenderId, bartenderId)
+        )
+      );
+    return mood || undefined;
+  }
+  
+  async createBartenderMood(insertMood: InsertBartenderMood): Promise<BartenderMood> {
+    const [mood] = await db
+      .insert(bartenderMoods)
+      .values(insertMood)
+      .returning();
+    return mood;
+  }
+  
+  async updateBartenderMood(userId: number, bartenderId: number, moodChange: number): Promise<BartenderMood> {
+    let mood = await this.getBartenderMood(userId, bartenderId);
+    
+    if (!mood) {
+      // Create initial mood if it doesn't exist
+      mood = await this.createBartenderMood({
+        userId,
+        bartenderId,
+        mood: 50 // Start at neutral
+      });
+    }
+    
+    // Calculate new mood value (clamped between 0-100)
+    let newMood = Math.min(100, Math.max(0, mood.mood + moodChange));
+    
+    // Update the mood
+    const [updatedMood] = await db
+      .update(bartenderMoods)
+      .set({ 
+        mood: newMood,
+        updatedAt: new Date()
+      })
+      .where(
+        and(
+          eq(bartenderMoods.userId, userId),
+          eq(bartenderMoods.bartenderId, bartenderId)
+        )
+      )
+      .returning();
+    
+    return updatedMood;
+  }
+  
+  async getAllBartenderMoodsForUser(userId: number): Promise<BartenderMood[]> {
+    return db
+      .select()
+      .from(bartenderMoods)
+      .where(eq(bartenderMoods.userId, userId));
+  }
+}
+export class BartenderMemoryStorage {
+  async getBartenderMemory(userId: number, bartenderId: number): Promise<BartenderMemory | undefined> {
+    const [memory] = await db
+      .select()
+      .from(bartenderMemories)
+      .where(
+        and(
+          eq(bartenderMemories.userId, userId),
+          eq(bartenderMemories.bartenderId, bartenderId)
+        )
+      );
+    return memory || undefined;
+  }
+  
+  async createBartenderMemory(insertMemory: InsertBartenderMemory): Promise<BartenderMemory> {
+    const [memory] = await db
+      .insert(bartenderMemories)
+      .values(insertMemory)
+      .returning();
+    return memory;
+  }
+
+  async getMemoryEntries(userId: number, bartenderId: number, limit = 10): Promise<MemoryEntry[]> {
+    const memory = await this.getBartenderMemory(userId, bartenderId);
+    
+    if (!memory) {
+      return [];
+    }
+    
+    try {
+      // Handle null, undefined, or invalid JSON
+      let memories: MemoryEntry[] = [];
+      if (memory.memories && typeof memory.memories === 'string') {
+        memories = JSON.parse(memory.memories) as MemoryEntry[];
+      }
+      
+      // If memories is not an array after parsing, initialize it
+      if (!Array.isArray(memories)) {
+        memories = [];
+        return [];
+      }
+      
+      // Sort by timestamp (most recent first)
+      memories.sort((a, b) => {
+        const timeA = a.timestamp ? new Date(a.timestamp).getTime() : 0;
+        const timeB = b.timestamp ? new Date(b.timestamp).getTime() : 0;
+        return timeB - timeA;
+      });
+      return memories.slice(0, limit);
+    } catch (error) { return []; }
+  }
+}
+
+
+
+
+
+
+
+
+
+
+
+// Use the memory storage implementation for now
+export const storage = new MemStorage();
 
 /**
  * Resets all user online statuses to false
